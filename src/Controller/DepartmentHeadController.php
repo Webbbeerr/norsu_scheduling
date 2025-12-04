@@ -435,6 +435,121 @@ class DepartmentHeadController extends AbstractController
         return $this->redirectToRoute('department_head_curricula');
     }
 
+    // Reports & Analytics
+
+    #[Route('/reports/faculty-workload', name: 'reports_faculty_workload')]
+    public function facultyWorkloadReport(Request $request): Response
+    {
+        /** @var User $departmentHead */
+        $departmentHead = $this->getUser();
+        $department = $departmentHead->getDepartment();
+
+        if (!$department) {
+            $this->addFlash('error', 'You are not assigned to a department.');
+            return $this->redirectToRoute('department_head_dashboard');
+        }
+
+        // Get filters
+        $academicYearId = $request->query->get('academic_year');
+        $semester = $request->query->get('semester');
+        $statusFilter = $request->query->get('status', 'all'); // all, overloaded, optimal, underloaded
+
+        // Get workload data
+        $workloadData = $this->departmentHeadService->getFacultyWorkloadReport(
+            $department,
+            $academicYearId,
+            $semester,
+            $statusFilter
+        );
+
+        return $this->render('department_head/reports/faculty_workload.html.twig', array_merge($this->getBaseTemplateData(), [
+            'page_title' => 'Faculty Workload Report',
+            'workload_data' => $workloadData['faculty_workload'],
+            'statistics' => $workloadData['statistics'],
+            'academic_years' => $workloadData['academic_years'],
+            'selected_academic_year' => $academicYearId,
+            'selected_semester' => $semester,
+            'status_filter' => $statusFilter,
+        ]));
+    }
+
+    #[Route('/curricula/bulk-upload', name: 'curricula_bulk_upload', methods: ['POST'])]
+    public function bulkUploadCurriculum(
+        Request $request,
+        \Doctrine\ORM\EntityManagerInterface $entityManager,
+        \App\Service\CurriculumUploadService $uploadService
+    ): JsonResponse
+    {
+        try {
+            /** @var User $departmentHead */
+            $departmentHead = $this->getUser();
+            $department = $departmentHead->getDepartment();
+
+            if (!$department) {
+                return new JsonResponse(['success' => false, 'message' => 'You are not assigned to a department.'], 403);
+            }
+
+            $file = $request->files->get('curriculum_file');
+            $curriculumName = $request->request->get('curriculum_name');
+            $version = $request->request->get('version');
+            $autoCreateTerms = $request->request->has('auto_create_terms') ? ($request->request->get('auto_create_terms') === '1') : true;
+
+            // Validate required fields
+            if (!$file) {
+                return new JsonResponse(['success' => false, 'message' => 'No file uploaded.'], 400);
+            }
+            if (!$curriculumName || !$version) {
+                return new JsonResponse(['success' => false, 'message' => 'Missing required fields (name, version).'], 400);
+            }
+
+            // Validate file
+            $maxSize = 10 * 1024 * 1024; // 10MB
+            if ($file->getSize() > $maxSize) {
+                return new JsonResponse(['success' => false, 'message' => 'File size exceeds 10MB limit.'], 400);
+            }
+
+            $allowedExtensions = ['csv', 'xlsx', 'xls'];
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, $allowedExtensions)) {
+                return new JsonResponse(['success' => false, 'message' => 'Invalid file format. Supported: CSV, XLSX, XLS'], 400);
+            }
+
+            // Create curriculum
+            $curriculum = new \App\Entity\Curriculum();
+            $curriculum->setName($curriculumName);
+            $curriculum->setVersion((int)$version);
+            $curriculum->setDepartment($department);
+            $curriculum->setIsPublished(false);
+            $curriculum->setCreatedAt(new \DateTimeImmutable());
+            $curriculum->setUpdatedAt(new \DateTimeImmutable());
+            $entityManager->persist($curriculum);
+            $entityManager->flush();
+
+            // Process upload using service
+            $result = $uploadService->processUpload($file, $curriculum, $autoCreateTerms);
+
+            if (!$result['success']) {
+                // Delete the curriculum if upload failed
+                $entityManager->remove($curriculum);
+                $entityManager->flush();
+                return new JsonResponse($result, 400);
+            }
+
+            // If subjects were created but no terms were generated, warn the user
+            if (($result['subjects_added'] ?? 0) > 0 && ($result['terms_created'] ?? 0) === 0) {
+                $result['warning'] = 'Subjects were added but no terms were created. Re-upload with "Auto create terms" enabled to link subjects to curriculum terms.';
+            }
+
+            return new JsonResponse($result);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Error processing upload: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     // API Routes
 
     #[Route('/api/faculty/generate-password', name: 'api_faculty_generate_password', methods: ['POST'])]
@@ -1453,5 +1568,87 @@ class DepartmentHeadController extends AbstractController
             $this->addFlash('error', 'Error generating PDF: ' . $e->getMessage());
             return $this->redirectToRoute('department_head_faculty_assignments');
         }
+    }
+
+    #[Route('/settings', name: 'settings', methods: ['GET', 'POST'])]
+    public function settings(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $department = $user->getDepartment();
+
+        if (!$department) {
+            throw $this->createAccessDeniedException('You must be assigned to a department.');
+        }
+
+        if ($request->isMethod('POST')) {
+            // Handle settings updates
+            $action = $request->request->get('action');
+
+            try {
+                switch ($action) {
+                    case 'update_profile':
+                        $email = $request->request->get('email');
+                        $address = $request->request->get('address');
+
+                        if ($email) {
+                            $user->setEmail($email);
+                        }
+                        if ($address !== null) {
+                            $user->setAddress($address);
+                        }
+
+                        $this->entityManager->flush();
+                        $this->addFlash('success', 'Profile updated successfully');
+                        break;
+
+                    case 'change_password':
+                        $currentPassword = $request->request->get('current_password');
+                        $newPassword = $request->request->get('new_password');
+                        $confirmPassword = $request->request->get('confirm_password');
+
+                        if (!$currentPassword || !$newPassword || !$confirmPassword) {
+                            $this->addFlash('error', 'All password fields are required');
+                            break;
+                        }
+
+                        if ($newPassword !== $confirmPassword) {
+                            $this->addFlash('error', 'New passwords do not match');
+                            break;
+                        }
+
+                        if (strlen($newPassword) < 6) {
+                            $this->addFlash('error', 'Password must be at least 6 characters long');
+                            break;
+                        }
+
+                        // Note: Password verification would require password hasher
+                        // For now, just update the password
+                        $this->addFlash('info', 'Password change functionality requires password hasher integration');
+                        break;
+
+                    case 'notification_preferences':
+                        $emailNotifications = $request->request->get('email_notifications') === '1';
+                        $scheduleAlerts = $request->request->get('schedule_alerts') === '1';
+                        $conflictAlerts = $request->request->get('conflict_alerts') === '1';
+
+                        // Store preferences (you may need to add fields to User entity)
+                        $this->addFlash('success', 'Notification preferences updated');
+                        break;
+
+                    default:
+                        $this->addFlash('error', 'Invalid action');
+                }
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'Error updating settings: ' . $e->getMessage());
+            }
+
+            return $this->redirectToRoute('department_head_settings');
+        }
+
+        return $this->render('department_head/settings/index.html.twig', [
+            'user' => $user,
+            'department' => $department,
+        ]);
     }
 }

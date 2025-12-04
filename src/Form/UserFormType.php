@@ -128,7 +128,8 @@ class UserFormType extends AbstractType
                     'Faculty' => 3,
                 ],
                 'attr' => [
-                    'class' => 'form-select'
+                    'class' => 'form-select',
+                    'disabled' => $options['is_department_head'], // Disable for department heads
                 ],
                 'label' => 'Role',
                 'placeholder' => 'Select a role',
@@ -137,6 +138,7 @@ class UserFormType extends AbstractType
                         'message' => 'Please select a role',
                     ]),
                 ],
+                'disabled' => $options['is_department_head'], // Lock role selection
             ])
             ->add('college', EntityType::class, [
                 'class' => College::class,
@@ -151,11 +153,12 @@ class UserFormType extends AbstractType
                 },
                 'attr' => [
                     'class' => 'form-select',
-                    'id' => 'college-select'
+                    'id' => 'college-select',
                 ],
                 'label' => 'College',
                 'placeholder' => 'Select a college',
                 'required' => false,
+                'disabled' => $options['is_department_head'], // Lock college selection
             ])
             ->add('department', EntityType::class, [
                 'class' => Department::class,
@@ -177,11 +180,12 @@ class UserFormType extends AbstractType
                 },
                 'attr' => [
                     'class' => 'form-select',
-                    'id' => 'department-select'
+                    'id' => 'department-select',
                 ],
                 'label' => 'Department',
                 'placeholder' => 'Select a department',
                 'required' => false,
+                'disabled' => $options['is_department_head'], // Lock department selection
             ])
             ->add('isActive', CheckboxType::class, [
                 'attr' => [
@@ -232,6 +236,7 @@ class UserFormType extends AbstractType
         $resolver->setDefaults([
             'data_class' => User::class,
             'is_edit' => false,
+            'is_department_head' => false,
             'csrf_protection' => true,
         ]);
     }

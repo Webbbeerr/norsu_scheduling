@@ -701,5 +701,133 @@ class DepartmentHeadService
         
         $this->entityManager->flush();
     }
+
+    /**
+     * Get faculty workload report data
+     */
+    public function getFacultyWorkloadReport(
+        \App\Entity\Department $department,
+        ?string $academicYearId = null,
+        ?string $semester = null,
+        string $statusFilter = 'all'
+    ): array {
+        $departmentId = $department->getId();
+        
+        // Get all faculty in the department
+        $faculty = $this->userRepository->findBy([
+            'department' => $department,
+            'role' => 3, // Faculty role
+            'isActive' => true,
+        ]);
+
+        // Get academic years for filter
+        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+            ->findBy(['isActive' => true], ['year' => 'DESC']);
+
+        // If no academic year selected, use current active one
+        if (!$academicYearId && !empty($academicYears)) {
+            $academicYearId = $academicYears[0]->getId();
+        }
+
+        $facultyWorkload = [];
+        $totalUnits = 0;
+        $overloadedCount = 0;
+        $optimalCount = 0;
+        $underloadedCount = 0;
+        $standardLoad = 21; // Standard teaching load in units
+
+        foreach ($faculty as $facultyMember) {
+            // Get schedules for this faculty
+            $qb = $this->entityManager->createQueryBuilder();
+            $qb->select('s', 'sub', 'r')
+                ->from(\App\Entity\Schedule::class, 's')
+                ->leftJoin('s.subject', 'sub')
+                ->leftJoin('s.room', 'r')
+                ->where('s.faculty = :faculty')
+                ->setParameter('faculty', $facultyMember);
+
+            if ($academicYearId) {
+                $qb->andWhere('s.academicYear = :academicYear')
+                   ->setParameter('academicYear', $academicYearId);
+            }
+
+            if ($semester) {
+                $qb->andWhere('s.semester = :semester')
+                   ->setParameter('semester', $semester);
+            }
+
+            $schedules = $qb->getQuery()->getResult();
+
+            // Calculate total units
+            $units = 0;
+            $courses = [];
+            foreach ($schedules as $schedule) {
+                $subject = $schedule->getSubject();
+                if ($subject) {
+                $units += $subject->getUnits();
+                $courses[] = [
+                    'code' => $subject->getCode(),
+                    'name' => $subject->getTitle(),
+                    'units' => $subject->getUnits(),
+                    'schedule' => $schedule->getDayPattern() . ' ' . $schedule->getStartTime()->format('H:i') . '-' . $schedule->getEndTime()->format('H:i'),
+                    'room' => $schedule->getRoom() ? $schedule->getRoom()->getName() : 'TBA',
+                ];
+            }
+        }            // Determine status
+            $status = 'optimal';
+            $statusColor = 'green';
+            if ($units > $standardLoad) {
+                $status = 'overloaded';
+                $statusColor = 'red';
+                $overloadedCount++;
+            } elseif ($units < 15) {
+                $status = 'underloaded';
+                $statusColor = 'yellow';
+                $underloadedCount++;
+            } else {
+                $optimalCount++;
+            }
+
+            $totalUnits += $units;
+
+            $workloadInfo = [
+                'id' => $facultyMember->getId(),
+                'name' => $facultyMember->getFirstName() . ' ' . $facultyMember->getLastName(),
+                'email' => $facultyMember->getEmail(),
+                'units' => $units,
+                'percentage' => ($units / $standardLoad) * 100,
+                'status' => $status,
+                'status_color' => $statusColor,
+                'courses' => $courses,
+                'course_count' => count($courses),
+            ];
+
+            // Apply status filter
+            if ($statusFilter === 'all' || $statusFilter === $status) {
+                $facultyWorkload[] = $workloadInfo;
+            }
+        }
+
+        // Sort by units descending
+        usort($facultyWorkload, function($a, $b) {
+            return $b['units'] <=> $a['units'];
+        });
+
+        $statistics = [
+            'total_faculty' => count($faculty),
+            'overloaded' => $overloadedCount,
+            'optimal' => $optimalCount,
+            'underloaded' => $underloadedCount,
+            'average_load' => count($faculty) > 0 ? round($totalUnits / count($faculty), 2) : 0,
+            'total_units' => $totalUnits,
+            'standard_load' => $standardLoad,
+        ];
+
+        return [
+            'faculty_workload' => $facultyWorkload,
+            'statistics' => $statistics,
+            'academic_years' => $academicYears,
+        ];
+    }
 }
 
