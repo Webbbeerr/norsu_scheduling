@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Smart Scheduling System</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>📅</text></svg>">
+    
+    <!-- Tailwind CSS -->
+    <link href="/build/app.css" rel="stylesheet">
+    
+    {{ importmap('app') }}
+    
+    <style>
+        .form-input {
+            @apply appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition duration-200 ease-in-out;
+        }
+        .form-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .btn-primary {
+            @apply w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 ease-in-out transform hover:scale-105;
+        }
+        .form-label {
+            @apply block text-sm font-semibold text-gray-700 mb-2;
+        }
+        .card {
+            @apply bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl;
+        }
+    </style>
+</head>
+<body class="h-full">
+    <div class="min-h-full flex flex-col justify-center py-8 sm:px-6 lg:px-8">
+        <div class="sm:mx-auto sm:w-full sm:max-w-lg">
+            <!-- Logo -->
+            <div class="flex justify-center mb-8">
+                <div class="flex items-center">
+                    <div class="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Smart Scheduling</h1>
+                        <p class="text-sm text-gray-600">Academic Management System</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">
+                    Join Our Community
+                </h2>
+                <p class="text-gray-600">
+                    Create your faculty account to get started
+                </p>
+                <p class="mt-3 text-sm text-gray-500">
+                    Already have an account?
+                    <a href="{{ path('app_login') }}" class="font-semibold text-blue-600 hover:text-blue-500 transition duration-200">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <div class="sm:mx-auto sm:w-full sm:max-w-lg">
+            <div class="card py-10 px-8 sm:px-10">
+                {{ form_start(registrationForm, {'attr': {'class': 'space-y-6'}}) }}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.firstName, null, {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.firstName, {'attr': {'class': 'form-input', 'placeholder': 'Enter your first name'}}) }}
+                            {{ form_errors(registrationForm.firstName, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.lastName, null, {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.lastName, {'attr': {'class': 'form-input', 'placeholder': 'Enter your last name'}}) }}
+                            {{ form_errors(registrationForm.lastName, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        {{ form_label(registrationForm.username, null, {'label_attr': {'class': 'form-label'}}) }}
+                        {{ form_widget(registrationForm.username, {'attr': {'class': 'form-input', 'placeholder': 'Choose a username'}}) }}
+                        {{ form_errors(registrationForm.username, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                    </div>
+
+                    <div class="space-y-2">
+                        {{ form_label(registrationForm.employeeId, null, {'label_attr': {'class': 'form-label'}}) }}
+                        {{ form_widget(registrationForm.employeeId, {'attr': {'class': 'form-input', 'placeholder': 'Enter your employee ID'}}) }}
+                        {{ form_errors(registrationForm.employeeId, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                    </div>
+
+                    <div class="space-y-2">
+                        {{ form_label(registrationForm.email, null, {'label_attr': {'class': 'form-label'}}) }}
+                        {{ form_widget(registrationForm.email, {'attr': {'class': 'form-input', 'placeholder': 'Enter your email address'}}) }}
+                        {{ form_errors(registrationForm.email, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                    </div>
+
+                    <div class="space-y-2">
+                        {{ form_label(registrationForm.address, null, {'label_attr': {'class': 'form-label'}}) }}
+                        {{ form_widget(registrationForm.address, {'attr': {'class': 'form-input', 'placeholder': 'Enter your address'}}) }}
+                        {{ form_errors(registrationForm.address, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.college, null, {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.college, {'attr': {'class': 'form-input', 'id': 'registration_form_college'}}) }}
+                            {{ form_errors(registrationForm.college, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.department, null, {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.department, {'attr': {'class': 'form-input', 'id': 'registration_form_department'}}) }}
+                            {{ form_errors(registrationForm.department, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.plainPassword.first, 'Password', {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.plainPassword.first, {'attr': {'class': 'form-input', 'placeholder': 'Create a strong password'}}) }}
+                            {{ form_errors(registrationForm.plainPassword.first, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.plainPassword.second, 'Confirm Password', {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.plainPassword.second, {'attr': {'class': 'form-input', 'placeholder': 'Confirm your password'}}) }}
+                            {{ form_errors(registrationForm.plainPassword.second, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" class="btn-primary">
+                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                                <svg class="h-5 w-5 text-white opacity-75" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"/>
+                                </svg>
+                            </span>
+                            Create Faculty Account
+                        </button>
+                    </div>
+
+                    {{ form_rest(registrationForm) }}
+                {{ form_end(registrationForm) }}
+
+                <!-- Info note -->
+                <div class="mt-8">
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="text-sm font-semibold text-blue-900 mb-1">Faculty Account Information</h4>
+                                <p class="text-sm text-blue-700">
+                                    Your account will be created with <span class="font-semibold">Faculty role</span> by default. After registration, you can access your personal dashboard and start managing your schedule.
+                                </p>
+                                <div class="mt-3 text-xs text-blue-600">
+                                    <p>✓ Secure account creation</p>
+                                    <p>✓ College and department association</p>
+                                    <p>✓ Immediate access after registration</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-8">
+            <p class="text-xs text-gray-500">
+                By creating an account, you agree to our terms of service and privacy policy.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Registration form college-department filtering loaded');
+            
+            // Get the departments data from PHP
+            const departmentsByCollege = {{ departments_by_college|json_encode|raw }};
+            console.log('Departments by college data:', departmentsByCollege);
+            
+            // Multiple strategies to find form elements
+            function findElement(selectors) {
+                for (let selector of selectors) {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        console.log('Found element with selector:', selector);
+                        return element;
+                    }
+                }
+                return null;
+            }
+            
+            // Try multiple selectors for college field
+            const collegeSelectors = [
+                '#registration_form_college',
+                'select[name="registration_form[college]"]',
+                'select[id*="college"]',
+                'select[name*="college"]',
+                '.college-select'
+            ];
+            
+            // Try multiple selectors for department field
+            const departmentSelectors = [
+                '#registration_form_department',
+                'select[name="registration_form[department]"]',
+                'select[id*="department"]',
+                'select[name*="department"]',
+                '.department-select'
+            ];
+            
+            const collegeSelect = findElement(collegeSelectors);
+            const departmentSelect = findElement(departmentSelectors);
+            
+            console.log('College select element:', collegeSelect);
+            console.log('Department select element:', departmentSelect);
+            
+            if (collegeSelect && departmentSelect) {
+                console.log('Both elements found, setting up event listener');
+                
+                // Store original options for department select
+                const originalDepartmentOptions = Array.from(departmentSelect.options);
+                console.log('Original department options:', originalDepartmentOptions.length);
+                
+                // Function to populate departments based on selected college
+                function populateDepartments(collegeId) {
+                    console.log('Populating departments for college ID:', collegeId);
+                    
+                    // Clear existing options
+                    departmentSelect.innerHTML = '';
+                    
+                    // Add placeholder option
+                    const placeholderOption = document.createElement('option');
+                    placeholderOption.value = '';
+                    placeholderOption.textContent = 'Choose a department';
+                    placeholderOption.disabled = true;
+                    placeholderOption.selected = true;
+                    departmentSelect.appendChild(placeholderOption);
+                    
+                    if (collegeId && departmentsByCollege[collegeId]) {
+                        console.log('Found departments for college:', departmentsByCollege[collegeId]);
+                        
+                        departmentsByCollege[collegeId].forEach(function(department) {
+                            const option = document.createElement('option');
+                            option.value = department.id;
+                            option.textContent = department.name;
+                            departmentSelect.appendChild(option);
+                        });
+                        
+                        departmentSelect.disabled = false;
+                        departmentSelect.style.opacity = '1';
+                        console.log('Departments populated, select enabled');
+                    } else {
+                        console.log('No college selected or no departments found, disabling select');
+                        departmentSelect.disabled = true;
+                        departmentSelect.style.opacity = '0.5';
+                    }
+                }
+                
+                // Set up event listener with error handling
+                collegeSelect.addEventListener('change', function() {
+                    try {
+                        const selectedCollegeId = this.value;
+                        console.log('College changed to:', selectedCollegeId);
+                        populateDepartments(selectedCollegeId);
+                    } catch (error) {
+                        console.error('Error in college change handler:', error);
+                    }
+                });
+                
+                // Initial setup
+                departmentSelect.disabled = true;
+                departmentSelect.style.opacity = '0.5';
+                
+                // Initial population if a college is already selected
+                if (collegeSelect.value) {
+                    console.log('Initial college value:', collegeSelect.value);
+                    populateDepartments(collegeSelect.value);
+                } else {
+                    console.log('No initial college value, department select disabled');
+                }
+                
+                // Add visual feedback
+                collegeSelect.addEventListener('focus', function() {
+                    this.style.borderColor = '#3b82f6';
+                });
+                
+                collegeSelect.addEventListener('blur', function() {
+                    this.style.borderColor = '#d1d5db';
+                });
+                
+            } else {
+                console.error('Could not find college or department select elements');
+                console.log('Available select elements:');
+                document.querySelectorAll('select').forEach((select, index) => {
+                    console.log(`Select ${index}:`, {
+                        id: select.id,
+                        name: select.name,
+                        className: select.className
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

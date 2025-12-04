@@ -1,0 +1,411 @@
+{% extends "department_head/base.html.twig" %}
+
+{% block title %}Department Head Dashboard - Smart Scheduling System{% endblock %}
+
+{% block main_content %}
+    <!-- Welcome Section -->
+    <div class="mb-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="gradient-bg px-8 py-12 text-white relative">
+                <div class="absolute inset-0 bg-black bg-opacity-10"></div>
+                <div class="relative">
+                    <h1 class="text-3xl font-bold mb-2">Welcome back, {{ app.user.firstName }}!</h1>
+                    <p class="text-lg opacity-90">{{ dashboard_data.department.name }} Department</p>
+                    <p class="text-sm opacity-75 mt-1">Here's what's happening in your department today</p>
+                </div>
+                <div class="absolute -bottom-6 -right-6 opacity-20">
+                    <svg class="w-32 h-32" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Faculty -->
+        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+            <div class="gradient-primary absolute inset-0 opacity-5"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Faculty</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">24</p>
+                        <p class="text-sm text-green-600 mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            +2 this month
+                        </p>
+                    </div>
+                    <div class="gradient-primary p-4 rounded-xl">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Schedules -->
+        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+            <div class="gradient-success absolute inset-0 opacity-5"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Active Schedules</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">12</p>
+                        <p class="text-sm text-green-600 mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                            </svg>
+                            All approved
+                        </p>
+                    </div>
+                    <div class="gradient-success p-4 rounded-xl">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Approvals -->
+        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+            <div class="gradient-warning absolute inset-0 opacity-5"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Pending Approvals</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">7</p>
+                        <p class="text-sm text-amber-600 mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            3 urgent
+                        </p>
+                    </div>
+                    <div class="gradient-warning p-4 rounded-xl">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Utilization -->
+        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+            <div class="gradient-primary absolute inset-0 opacity-5"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Room Utilization</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">87%</p>
+                        <p class="text-sm text-blue-600 mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            Optimal usage
+                        </p>
+                    </div>
+                    <div class="gradient-primary p-4 rounded-xl">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column - Quick Actions and Recent Activity -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <button class="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-200 hover:shadow-md">
+                        <div class="gradient-primary p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Add Faculty</h3>
+                        <p class="text-sm text-gray-600">Register new faculty member</p>
+                    </button>
+
+                    <button class="group p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:border-green-200 transition-all duration-200 hover:shadow-md">
+                        <div class="gradient-success p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Create Schedule</h3>
+                        <p class="text-sm text-gray-600">Design new class schedule</p>
+                    </button>
+
+                    <button class="group p-6 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border border-amber-100 hover:border-amber-200 transition-all duration-200 hover:shadow-md">
+                        <div class="gradient-warning p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Book Room</h3>
+                        <p class="text-sm text-gray-600">Reserve classroom space</p>
+                    </button>
+
+                    <button class="group p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100 hover:border-purple-200 transition-all duration-200 hover:shadow-md">
+                        <div class="gradient-bg p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">View Reports</h3>
+                        <p class="text-sm text-gray-600">Department analytics</p>
+                    </button>
+
+                    <button class="group p-6 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border border-red-100 hover:border-red-200 transition-all duration-200 hover:shadow-md">
+                        <div class="gradient-danger p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Resolve Conflicts</h3>
+                        <p class="text-sm text-gray-600">Handle schedule issues</p>
+                    </button>
+
+                    <button class="group p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-100 hover:border-indigo-200 transition-all duration-200 hover:shadow-md">
+                        <div class="bg-gradient-to-r from-indigo-500 to-blue-600 p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Settings</h3>
+                        <p class="text-sm text-gray-600">Configure preferences</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">Recent Activity</h2>
+                    <button class="text-sm text-blue-600 hover:text-blue-700 font-medium">View all</button>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Activity Item -->
+                    <div class="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="gradient-success p-2 rounded-lg">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">Schedule approved</p>
+                            <p class="text-xs text-gray-500">CS 301 - Database Systems</p>
+                            <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="gradient-warning p-2 rounded-lg">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">Schedule pending review</p>
+                            <p class="text-xs text-gray-500">IT 205 - Web Development</p>
+                            <p class="text-xs text-gray-400 mt-1">4 hours ago</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="gradient-primary p-2 rounded-lg">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">New faculty added</p>
+                            <p class="text-xs text-gray-500">Dr. Sarah Johnson - Computer Science</p>
+                            <p class="text-xs text-gray-400 mt-1">Yesterday</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Pending Approvals and Faculty Workload -->
+        <div class="space-y-8">
+            <!-- Pending Approvals -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">Pending Approvals</h2>
+                    <span class="bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1 rounded-full">7 pending</span>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Approval Item -->
+                    <div class="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors duration-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-sm font-medium text-gray-900">Schedule Request</h3>
+                                <p class="text-xs text-gray-600 mt-1">CS 401 - Machine Learning</p>
+                                <p class="text-xs text-gray-500 mt-1">Submitted by Dr. Smith</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">Urgent</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-4">
+                                <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                <button class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors duration-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-sm font-medium text-gray-900">Room Change</h3>
+                                <p class="text-xs text-gray-600 mt-1">IT 301 - Software Engineering</p>
+                                <p class="text-xs text-gray-500 mt-1">Submitted by Prof. Davis</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded">Normal</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-4">
+                                <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                <button class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition-colors duration-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h3 class="text-sm font-medium text-gray-900">Schedule Adjustment</h3>
+                                <p class="text-xs text-gray-600 mt-1">CS 205 - Data Structures</p>
+                                <p class="text-xs text-gray-500 mt-1">Submitted by Dr. Wilson</p>
+                                <div class="flex items-center mt-2">
+                                    <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">Urgent</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 ml-4">
+                                <button class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                <button class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="w-full mt-6 text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors duration-200">
+                    View All Pending Approvals
+                </button>
+            </div>
+
+            <!-- Faculty Workload -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">Faculty Workload</h2>
+                
+                <div class="space-y-6">
+                    <!-- Faculty Member -->
+                    <div class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-full gradient-primary flex items-center justify-center text-white font-medium">
+                            DS
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <p class="text-sm font-medium text-gray-900">Dr. Sarah Johnson</p>
+                                <span class="text-xs text-gray-500">18/21 hrs</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="gradient-success h-2 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-full gradient-warning flex items-center justify-center text-white font-medium">
+                            MS
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <p class="text-sm font-medium text-gray-900">Prof. Michael Smith</p>
+                                <span class="text-xs text-gray-500">21/21 hrs</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="gradient-warning h-2 rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-full gradient-danger flex items-center justify-center text-white font-medium">
+                            ED
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <p class="text-sm font-medium text-gray-900">Dr. Emily Davis</p>
+                                <span class="text-xs text-gray-500">24/21 hrs</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="gradient-danger h-2 rounded-full" style="width: 114%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="h-10 w-10 rounded-full gradient-success flex items-center justify-center text-white font-medium">
+                            JW
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <p class="text-sm font-medium text-gray-900">Prof. John Wilson</p>
+                                <span class="text-xs text-gray-500">15/21 hrs</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="gradient-primary h-2 rounded-full" style="width: 71%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="w-full mt-6 text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors duration-200">
+                    View Detailed Workload Report
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}

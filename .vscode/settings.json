@@ -1,0 +1,7 @@
+{
+    "intelephense.diagnostics.undefinedVariables": false,
+    "intelephense.diagnostics.undefinedMethods": false,
+    "intelephense.diagnostics.undefinedTypes": false,
+    "php.validate.enable": true,
+    "php.suggest.basic": false
+}

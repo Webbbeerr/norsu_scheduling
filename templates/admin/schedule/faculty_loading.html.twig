@@ -1,0 +1,1021 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Faculty Loading - Admin Dashboard{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Faculty Loading
+                </h1>
+                <p class="mt-2 text-sm text-gray-600">
+                    {% if selectedDepartment %}
+                        {{ selectedDepartment.name }}
+                        {% if selectedDepartment.departmentGroup %}
+                            <span class="text-blue-600">(Group: {{ selectedDepartment.departmentGroup.name }})</span>
+                        {% endif %}
+                    {% else %}
+                        Select a department to manage faculty assignments
+                    {% endif %}
+                </p>
+            </div>
+            <div class="mt-4 md:mt-0 flex gap-3">
+                {% if selectedDepartment %}
+                    <button onclick="window.location.href='{{ path('app_schedule_faculty_loading') }}?change=1'" 
+                            class="inline-flex items-center px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 font-medium rounded-lg shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-all duration-200">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                        </svg>
+                        Change Department
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if selectedDepartment %}
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Total Schedules -->
+            <div class="bg-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-100 text-sm font-medium">Total Schedules</p>
+                        <p class="text-4xl font-bold mt-2">{{ scheduledSubjects|length }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-full p-3">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned -->
+            <div class="bg-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-green-100 text-sm font-medium">Assigned</p>
+                        <p class="text-4xl font-bold mt-2">
+                            {% set assignedCount = scheduledSubjects|filter(s => s.faculty is not null)|length %}
+                            {{ assignedCount }}
+                        </p>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-full p-3">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unassigned -->
+            <div class="bg-orange-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-orange-100 text-sm font-medium">Unassigned</p>
+                        <p class="text-4xl font-bold mt-2">
+                            {% set unassignedCount = scheduledSubjects|filter(s => s.faculty is null)|length %}
+                            {{ unassignedCount }}
+                        </p>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-full p-3">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Faculty Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for member in faculty %}
+                {% set assignedSchedules = scheduledSubjects|filter(s => s.faculty and s.faculty.id == member.id) %}
+                {% set unassignedCount = scheduledSubjects|filter(s => s.faculty is null)|length %}
+                
+                <div class="bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 border border-gray-100">
+                    <!-- Card Content -->
+                    <div class="p-6">
+                        <!-- Avatar -->
+                        <div class="flex justify-center mb-4">
+                            <div class="w-24 h-24 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                                {{ member.firstName|first|upper }}{{ member.lastName|first|upper }}
+                            </div>
+                        </div>
+
+                        <!-- Faculty Info -->
+                        <div class="text-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">{{ member.firstName }} {{ member.lastName }}</h3>
+                            <p class="text-sm text-gray-500 mb-3">{{ member.email }}</p>
+                            {% if member.department %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                    </svg>
+                                    {{ member.department.name }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="flex items-center justify-center gap-12 mb-5">
+                            <div class="text-center">
+                                <p class="text-3xl font-bold text-purple-600">{{ assignedSchedules|length }}</p>
+                                <p class="text-sm text-gray-500 mt-1">Assigned</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-3xl font-bold text-orange-500">{{ unassignedCount }}</p>
+                                <p class="text-sm text-gray-500 mt-1">Available</p>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="space-y-2">
+                            <button onclick="openLoadSubjectModal({{ member.id }}, '{{ member.firstName|e('js') }} {{ member.lastName|e('js') }}')"
+                                    class="w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-md">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Load Subject
+                            </button>
+                            {% if assignedSchedules|length > 0 %}
+                            <button onclick="viewFacultyAssignments({{ member.id }})"
+                                    class="w-full bg-white border-2 border-gray-300 text-gray-700 px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                View Assignments
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-span-full">
+                    <div class="bg-white rounded-xl shadow-md p-12 text-center">
+                        <svg class="w-20 h-20 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        <h3 class="mt-4 text-xl font-semibold text-gray-700">No Faculty Members Found</h3>
+                        <p class="mt-2 text-gray-500">There are no faculty members in this department.</p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <!-- No Department Selected - Show Modal Trigger -->
+        <div class="bg-white rounded-xl shadow-md p-12 text-center">
+            <svg class="w-24 h-24 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+            <h3 class="mt-6 text-2xl font-bold text-gray-700">Select a Department</h3>
+            <p class="mt-2 text-gray-500">Choose a department to view and manage faculty loading</p>
+            <button onclick="openDepartmentSelectionModal()"
+                    class="mt-6 inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Select Department
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Load Subject Modal -->
+<div id="loadSubjectModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <!-- Modal panel -->
+        <div class="relative bg-white rounded-2xl shadow-2xl max-w-7xl w-full" style="max-height: 90vh;">
+            <div class="flex flex-col h-full" style="max-height: 90vh;">
+                
+                <!-- TOP: Faculty Details Header -->
+                <div class="flex-shrink-0 p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <!-- Faculty Avatar -->
+                            <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                                <span class="text-white font-bold text-2xl" id="facultyInitials"></span>
+                            </div>
+                            <!-- Faculty Info -->
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-900" id="selectedFacultyName"></h3>
+                                <p class="text-sm text-gray-600" id="facultyEmail"></p>
+                                <div class="flex items-center gap-3 mt-1">
+                                    <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                        </svg>
+                                        <span id="facultyDepartment"></span>
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        <span id="facultyLoadedCount" class="font-semibold text-green-600">0</span> subjects loaded
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="closeLoadSubjectModal()" class="text-gray-400 hover:text-gray-600 transition">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Content: 2 Column Layout -->
+                <div class="flex-1 overflow-hidden p-6">
+                    <div class="grid grid-cols-12 gap-6 h-full">
+                        
+                        <!-- LEFT COLUMN: Loaded Subjects (takes 7 columns) -->
+                        <div class="col-span-7 flex flex-col h-full">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Loaded Subjects
+                                </h4>
+                                <span class="text-sm text-gray-500">
+                                    <span id="loadedCount" class="font-semibold text-green-600">0</span> subjects
+                                </span>
+                            </div>
+                            <div class="flex-1 border-2 border-green-200 bg-green-50 rounded-xl overflow-hidden" style="height: 55vh;">
+                                <div class="h-full overflow-y-auto" id="loadedSubjectsList" style="max-height: calc(55vh - 4px);">
+                                    <!-- Will be populated dynamically -->
+                                    <div class="p-8 text-center text-gray-500">
+                                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        <p class="text-sm">No subjects loaded yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Unassigned Subjects (takes 5 columns) -->
+                        <div class="col-span-5 flex flex-col h-full">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Unassigned Subjects
+                                </h4>
+                                <button onclick="selectAllSchedules()" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                    Select All
+                                </button>
+                            </div>
+                            <div class="flex-1 border-2 border-orange-200 bg-orange-50 rounded-xl overflow-hidden" style="height: 55vh;">
+                                <div class="h-full overflow-y-auto" style="max-height: calc(55vh - 4px);">
+                                    <table class="min-w-full divide-y divide-orange-200">
+                                        <thead class="bg-orange-100 sticky top-0">
+                                            <tr>
+                                                <th class="px-3 py-2 text-left w-10">
+                                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllSchedules(this)"
+                                                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+                                                </th>
+                                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase">Subject</th>
+                                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase">Schedule</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-orange-100" id="schedulesList">
+                                            {% for schedule in scheduledSubjects %}
+                                                {% if schedule.faculty is null %}
+                                                    <tr class="hover:bg-orange-100 transition-colors cursor-pointer" 
+                                                        data-schedule-id="{{ schedule.id }}"
+                                                        data-day-pattern="{{ schedule.dayPattern }}"
+                                                        data-start-time="{{ schedule.startTime|date('H:i') }}"
+                                                        data-end-time="{{ schedule.endTime|date('H:i') }}"
+                                                        data-subject-code="{{ schedule.subject.code }}"
+                                                        data-section="{{ schedule.section }}">
+                                                        <td class="px-3 py-3">
+                                                            <input type="checkbox" class="subject-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer" 
+                                                                   value="{{ schedule.id }}">
+                                                        </td>
+                                                        <td class="px-3 py-3">
+                                                            <div class="text-sm font-semibold text-gray-900">{{ schedule.subject.code }}</div>
+                                                            <div class="text-xs text-gray-600">{{ schedule.subject.title|slice(0, 30) }}{% if schedule.subject.title|length > 30 %}...{% endif %}</div>
+                                                            <div class="flex items-center gap-2 mt-1">
+                                                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                                    {{ schedule.section }}
+                                                                </span>
+                                                                <span class="text-xs text-gray-500">{{ schedule.subject.units }}u</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="px-3 py-3">
+                                                            <div class="text-xs text-gray-900 font-medium">{{ schedule.dayPatternLabel }}</div>
+                                                            <div class="text-xs text-gray-600">{{ schedule.startTime|date('g:i A') }} - {{ schedule.endTime|date('g:i A') }}</div>
+                                                            <div class="text-xs text-gray-500 mt-0.5">{{ schedule.room.code }}</div>
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-2 text-center">
+                                <span id="selectedSubjectsCount" class="font-semibold text-blue-600">0</span> selected
+                                <span id="selectedSubjectsCount" class="font-semibold text-purple-600">0</span> selected
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Action Buttons -->
+                <div class="flex-shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    <button onclick="closeLoadSubjectModal()" 
+                            class="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-colors">
+                        Cancel
+                    </button>
+                    <button onclick="confirmLoadSubject()" 
+                            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-lg transition-all">
+                        <svg class="inline-block h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Assign Selected Schedules
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Assignments Modal (Read-only) -->
+<div id="viewAssignmentsModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="view-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeViewAssignmentsModal()"></div>
+
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full" onclick="event.stopPropagation()">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-white" id="view-modal-title">Teaching Load</h3>
+                        <p class="text-blue-100 text-sm" id="view-modal-faculty-name"></p>
+                    </div>
+                    <button onclick="closeViewAssignmentsModal()" class="text-white hover:text-blue-100 transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6" id="view-assignments-content">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+
+            <div class="bg-gray-100 px-6 py-4 flex justify-between">
+                <button onclick="generateTeachingLoadPDF()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    Download PDF
+                </button>
+                <button onclick="closeViewAssignmentsModal()" 
+                        class="px-6 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-400 transition-all">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Selection Modal -->
+<div id="departmentSelectionModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="dept-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
+
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+                <h3 class="text-xl font-bold text-white" id="dept-modal-title">Select Department</h3>
+                <p class="text-purple-100 text-sm">Choose a department to manage faculty loading</p>
+            </div>
+
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                    {% for department in departments %}
+                        <button onclick="window.location.href='{{ path('app_schedule_faculty_loading') }}?department={{ department.id }}'"
+                                class="text-left p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all group">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-semibold text-gray-900 group-hover:text-purple-700">{{ department.name }}</h4>
+                                    <p class="text-sm text-gray-500 mt-1">{{ department.code }}</p>
+                                    {% if department.college %}
+                                        <p class="text-xs text-gray-400 mt-1">{{ department.college.name }}</p>
+                                    {% endif %}
+                                </div>
+                                <svg class="w-6 h-6 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Faculty data object with all assigned schedules
+const facultyData = {
+    {% for member in faculty %}
+        {{ member.id }}: {
+            id: {{ member.id }},
+            name: '{{ member.firstName|e('js') }} {{ member.lastName|e('js') }}',
+            assignedSchedules: [
+                {% for schedule in scheduledSubjects|filter(s => s.faculty and s.faculty.id == member.id) %}
+                {
+                    id: {{ schedule.id }},
+                    subjectCode: '{{ schedule.subject.code|e('js') }}',
+                    subjectTitle: '{{ schedule.subject.title|e('js') }}',
+                    units: {{ schedule.subject.units }},
+                    section: '{{ schedule.section|e('js') }}',
+                    dayPattern: '{{ schedule.dayPattern|e('js') }}',
+                    dayPatternRaw: '{{ schedule.dayPattern|e('js') }}',
+                    startTime: '{{ schedule.startTime|date('g:i A')|e('js') }}',
+                    startTimeRaw: '{{ schedule.startTime|date('H:i')|e('js') }}',
+                    endTime: '{{ schedule.endTime|date('g:i A')|e('js') }}',
+                    endTimeRaw: '{{ schedule.endTime|date('H:i')|e('js') }}',
+                    room: '{{ schedule.room ? schedule.room.name|e('js') : 'TBA' }}',
+                    roomCode: '{{ schedule.room ? schedule.room.code|e('js') : '' }}'
+                },
+                {% endfor %}
+            ]
+        },
+    {% endfor %}
+};
+
+let currentFacultyId = null;
+let selectedScheduleIds = new Set();
+
+// Utility: Convert day pattern to day names
+function getDaysFromPattern(pattern) {
+    const dayMap = {
+        'M': 'Monday',
+        'T': 'Tuesday',
+        'W': 'Wednesday',
+        'H': 'Thursday',
+        'F': 'Friday',
+        'S': 'Saturday',
+        'U': 'Sunday'
+    };
+    return pattern.split('').map(d => dayMap[d] || d);
+}
+
+// Utility: Check if two time ranges overlap (EXCLUDES edge cases)
+function timesOverlap(start1, end1, start2, end2) {
+    // Convert to minutes for comparison
+    const toMinutes = (time) => {
+        const [h, m] = time.split(':').map(Number);
+        return h * 60 + m;
+    };
+    
+    const s1 = toMinutes(start1);
+    const e1 = toMinutes(end1);
+    const s2 = toMinutes(start2);
+    const e2 = toMinutes(end2);
+    
+    // EXCLUDE edge cases where one ends exactly when the other starts
+    return (s1 < e2 && e1 > s2) && !(e1 === s2 || e2 === s1);
+}
+
+// Conflict Detection: Check if a schedule conflicts with faculty's assigned schedules
+function hasConflict(scheduleId, dayPattern, startTime, endTime) {
+    if (!currentFacultyId || !facultyData[currentFacultyId]) return false;
+    
+    const faculty = facultyData[currentFacultyId];
+    const scheduleDays = dayPattern.split('');
+    
+    for (const assigned of faculty.assignedSchedules) {
+        // Skip comparing with itself
+        if (assigned.id === scheduleId) continue;
+        
+        const assignedDays = assigned.dayPatternRaw.split('');
+        
+        // Check if days overlap
+        const daysOverlap = scheduleDays.some(day => assignedDays.includes(day));
+        
+        if (daysOverlap && timesOverlap(startTime, endTime, assigned.startTimeRaw, assigned.endTimeRaw)) {
+            return {
+                conflictsWith: assigned,
+                reason: `Conflicts with ${assigned.subjectCode} (${assigned.section}) on ${assigned.dayPattern} at ${assigned.startTime} - ${assigned.endTime}`
+            };
+        }
+    }
+    
+    return false;
+}
+
+// Detect conflicts between loaded schedules themselves
+function detectLoadedConflicts() {
+    if (!currentFacultyId || !facultyData[currentFacultyId]) return new Map();
+    
+    const faculty = facultyData[currentFacultyId];
+    const conflicts = new Map();
+    
+    for (let i = 0; i < faculty.assignedSchedules.length; i++) {
+        for (let j = i + 1; j < faculty.assignedSchedules.length; j++) {
+            const s1 = faculty.assignedSchedules[i];
+            const s2 = faculty.assignedSchedules[j];
+            
+            const days1 = s1.dayPatternRaw.split('');
+            const days2 = s2.dayPatternRaw.split('');
+            const daysOverlap = days1.some(day => days2.includes(day));
+            
+            if (daysOverlap && timesOverlap(s1.startTimeRaw, s1.endTimeRaw, s2.startTimeRaw, s2.endTimeRaw)) {
+                if (!conflicts.has(s1.id)) conflicts.set(s1.id, []);
+                if (!conflicts.has(s2.id)) conflicts.set(s2.id, []);
+                
+                conflicts.get(s1.id).push(s2);
+                conflicts.get(s2.id).push(s1);
+            }
+        }
+    }
+    
+    return conflicts;
+}
+
+// Detect all conflicts for checkboxes
+function detectConflicts() {
+    const conflicts = new Map();
+    const rows = document.querySelectorAll('.unassigned-subject-row');
+    
+    rows.forEach(row => {
+        const scheduleId = parseInt(row.dataset.scheduleId);
+        const dayPattern = row.dataset.dayPattern;
+        const startTime = row.dataset.startTime;
+        const endTime = row.dataset.endTime;
+        
+        const conflict = hasConflict(scheduleId, dayPattern, startTime, endTime);
+        if (conflict) {
+            conflicts.set(scheduleId, conflict);
+        }
+    });
+    
+    return conflicts;
+}
+
+// Show temporary toast message
+function showTemporaryMessage(message, type = 'success') {
+    const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+    const toast = document.createElement('div');
+    toast.className = `fixed top-20 right-6 ${bgColor} text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-x-0`;
+    toast.innerHTML = `
+        <div class="flex items-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.transform = 'translateX(400px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Refresh loaded subjects list with conflict detection
+function refreshLoadedSubjectsList() {
+    const container = document.getElementById('loadedSubjectsList');
+    const faculty = facultyData[currentFacultyId];
+    
+    if (!faculty || faculty.assignedSchedules.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <p class="text-sm">No subjects loaded yet</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const loadedConflicts = detectLoadedConflicts();
+    let html = '';
+    
+    faculty.assignedSchedules.forEach(schedule => {
+        const conflicts = loadedConflicts.get(schedule.id) || [];
+        const hasConflict = conflicts.length > 0;
+        
+        html += `
+            ${hasConflict ? `
+                <div class="bg-red-600 text-white px-4 py-2 text-sm font-semibold">
+                    ⚠ TIME CONFLICT DETECTED<br>
+                    <span class="text-xs font-normal">Conflicts with: ${conflicts.map(c => `${c.subjectCode} (${c.section}) on ${c.dayPattern} at ${c.startTime} - ${c.endTime}`).join(', ')}</span>
+                </div>
+            ` : ''}
+            <div class="bg-white border-b border-green-200 hover:bg-green-50 transition-colors ${hasConflict ? 'border-l-4 border-l-red-500' : ''}">
+                <div class="p-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-sm font-bold text-gray-900">${schedule.subjectCode}</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    ${schedule.section}
+                                </span>
+                                <span class="text-xs text-gray-500">${schedule.units} units</span>
+                            </div>
+                            <div class="text-xs text-gray-700 mb-2">${schedule.subjectTitle}</div>
+                            <div class="flex items-center gap-3 text-xs text-gray-600">
+                                <div class="flex items-center gap-1">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>${schedule.dayPattern}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <span>${schedule.startTime} - ${schedule.endTime}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                    </svg>
+                                    <span>${schedule.roomCode || schedule.room}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="unassignSchedule(${schedule.id})" 
+                                class="ml-3 p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                title="Remove assignment">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Add schedule back to unassigned list
+function addToUnassignedList(scheduleData) {
+    const tbody = document.getElementById('unassigned-subjects-tbody');
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-orange-50 cursor-pointer transition-colors unassigned-subject-row';
+    row.dataset.scheduleId = scheduleData.id;
+    row.dataset.dayPattern = scheduleData.dayPatternRaw;
+    row.dataset.startTime = scheduleData.startTimeRaw;
+    row.dataset.endTime = scheduleData.endTimeRaw;
+    row.dataset.subjectCode = scheduleData.subjectCode;
+    row.dataset.subjectTitle = scheduleData.subjectTitle;
+    row.dataset.section = scheduleData.section;
+    row.dataset.units = scheduleData.units;
+    row.dataset.room = scheduleData.room;
+    row.dataset.roomCode = scheduleData.roomCode;
+    
+    row.innerHTML = `
+        <td class="px-3 py-2">
+            <input type="checkbox" class="schedule-checkbox w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                   value="${scheduleData.id}">
+        </td>
+        <td class="px-3 py-2">
+            <div class="text-sm font-medium text-gray-900">${scheduleData.subjectCode}</div>
+            <div class="text-xs text-gray-500">${scheduleData.subjectTitle}</div>
+        </td>
+        <td class="px-3 py-2 text-sm text-gray-900">${scheduleData.section}</td>
+        <td class="px-3 py-2 text-sm text-gray-900">${scheduleData.units}</td>
+        <td class="px-3 py-2 text-xs text-gray-600">
+            <div>${scheduleData.dayPattern}</div>
+            <div>${scheduleData.startTime} - ${scheduleData.endTime}</div>
+            <div class="text-gray-500">${scheduleData.roomCode || scheduleData.room || 'TBA'}</div>
+        </td>
+    `;
+    
+    tbody.appendChild(row);
+    
+    // Re-attach checkbox event listener
+    row.querySelector('.schedule-checkbox').addEventListener('change', updateSelectedCount);
+}
+
+// Open Load Subject Modal
+function openLoadSubjectModal(facultyId, facultyName) {
+    currentFacultyId = facultyId;
+    selectedScheduleIds.clear();
+    
+    const faculty = facultyData[facultyId];
+    if (!faculty) {
+        console.error('Faculty not found:', facultyId);
+        return;
+    }
+    
+    // Update faculty info in modal header
+    const firstName = faculty.name.split(' ')[0];
+    const lastName = faculty.name.split(' ').slice(1).join(' ');
+    document.getElementById('selectedFacultyName').textContent = faculty.name;
+    document.getElementById('facultyEmail').textContent = ''; // Set from faculty card if needed
+    document.getElementById('facultyInitials').textContent = firstName.charAt(0) + lastName.charAt(0);
+    document.getElementById('facultyDepartment').textContent = '{{ selectedDepartment ? selectedDepartment.code : "" }}';
+    document.getElementById('facultyLoadedCount').textContent = faculty.assignedSchedules.length;
+    document.getElementById('loadedCount').textContent = faculty.assignedSchedules.length;
+    
+    // Show modal
+    document.getElementById('loadSubjectModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Refresh loaded subjects list with conflict detection
+    refreshLoadedSubjectsList();
+    
+    // Reset checkboxes
+    document.querySelectorAll('.subject-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // Detect conflicts and update unassigned table
+    setTimeout(() => {
+        const conflicts = detectConflicts();
+        
+        document.querySelectorAll('#schedulesList tr[data-schedule-id]').forEach(row => {
+            const scheduleId = row.dataset.scheduleId;
+            
+            // Remove existing conflict warnings
+            const existingWarning = row.querySelector('.conflict-warning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+            
+            if (conflicts.has(scheduleId)) {
+                // Add red border to indicate conflict
+                row.classList.add('border-l-4', 'border-l-red-500', 'bg-red-50');
+                
+                // Add conflict warning description
+                const conflictList = conflicts.get(scheduleId);
+                const scheduleCell = row.querySelector('td:last-child');
+                
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'conflict-warning mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs';
+                warningDiv.innerHTML = `
+                    <div class="flex items-start gap-1">
+                        <svg class="h-3 w-3 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <div class="text-red-700">
+                            <strong>Conflict with:</strong><br>
+                            ${conflictList.map(c => `• ${c.code} (${c.section}) on ${c.days} at ${c.time}`).join('<br>')}
+                        </div>
+                    </div>
+                `;
+                scheduleCell.appendChild(warningDiv);
+            } else {
+                // Remove conflict styling if no conflict
+                row.classList.remove('border-l-4', 'border-l-red-500', 'bg-red-50');
+            }
+        });
+    }, 100);
+    
+    updateSelectedCount();
+}
+
+// Close Load Subject Modal
+function closeLoadSubjectModal() {
+    document.getElementById('loadSubjectModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    currentFacultyId = null;
+    selectedScheduleIds.clear();
+}
+
+// Update selected count
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.subject-checkbox:checked');
+    document.getElementById('selectedSubjectsCount').textContent = checkboxes.length;
+}
+
+// Toggle all schedules
+function toggleAllSchedules(checkbox) {
+    document.querySelectorAll('.subject-checkbox').forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateSelectedCount();
+}
+
+// Select all schedules button
+function selectAllSchedules() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.checked = true;
+    toggleAllSchedules(selectAllCheckbox);
+}
+
+// Confirm Load Subject - Assign with real-time UI update (NO page reload)
+async function confirmLoadSubject() {
+    if (selectedScheduleIds.size === 0) return;
+    
+    const button = document.getElementById('confirm-load-btn');
+    button.disabled = true;
+    button.innerHTML = '<svg class="animate-spin h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...';
+    
+    const scheduleIds = Array.from(selectedScheduleIds);
+    let successCount = 0;
+    
+    for (const scheduleId of scheduleIds) {
+        try {
+            const response = await fetch('{{ path('app_schedule_faculty_loading_assign') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    schedule_id: scheduleId,
+                    faculty_id: currentFacultyId
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                successCount++;
+                
+                // Find the row and extract schedule data
+                const row = document.querySelector(`.unassigned-subject-row[data-schedule-id="${scheduleId}"]`);
+                if (row) {
+                    const scheduleData = {
+                        id: scheduleId,
+                        subjectCode: row.dataset.subjectCode,
+                        subjectTitle: row.dataset.subjectTitle,
+                        units: parseInt(row.dataset.units),
+                        section: row.dataset.section,
+                        dayPattern: row.dataset.dayPattern,
+                        dayPatternRaw: row.dataset.dayPattern,
+                        startTime: row.querySelector('td:nth-child(5) div:nth-child(2)').textContent.split(' - ')[0],
+                        startTimeRaw: row.dataset.startTime,
+                        endTime: row.querySelector('td:nth-child(5) div:nth-child(2)').textContent.split(' - ')[1],
+                        endTimeRaw: row.dataset.endTime,
+                        room: row.dataset.room,
+                        roomCode: row.dataset.roomCode
+                    };
+                    
+                    // Add to faculty data
+                    facultyData[currentFacultyId].assignedSchedules.push(scheduleData);
+                    
+                    // Remove from unassigned table
+                    row.remove();
+                }
+            }
+        } catch (error) {
+            console.error('Error assigning schedule:', error);
+        }
+    }
+    
+    // Update UI
+    refreshLoadedSubjectsList();
+    selectedScheduleIds.clear();
+    updateSelectedCount();
+    
+    button.disabled = false;
+    button.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Load Selected';
+    
+    showTemporaryMessage(`${successCount} subject(s) assigned successfully!`, 'success');
+    
+    // Update stats on main page (if visible)
+    setTimeout(() => location.reload(), 1500);
+}
+
+// Unassign schedule with real-time UI update (NO page reload)
+async function unassignSchedule(scheduleId) {
+    if (!confirm('Are you sure you want to remove this subject?')) return;
+    
+    try {
+        const response = await fetch('{{ path('app_schedule_faculty_loading_assign') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                schedule_id: scheduleId,
+                faculty_id: null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Find and remove from faculty data
+            const faculty = facultyData[currentFacultyId];
+            const scheduleIndex = faculty.assignedSchedules.findIndex(s => s.id === scheduleId);
+            
+            if (scheduleIndex !== -1) {
+                const scheduleData = faculty.assignedSchedules[scheduleIndex];
+                faculty.assignedSchedules.splice(scheduleIndex, 1);
+                
+                // Add back to unassigned list
+                addToUnassignedList(scheduleData);
+            }
+            
+            // Refresh loaded subjects
+            refreshLoadedSubjectsList();
+            
+            showTemporaryMessage('Subject unassigned successfully!', 'success');
+            
+            // Update stats on main page
+            setTimeout(() => location.reload(), 1500);
+        }
+    } catch (error) {
+        console.error('Error unassigning schedule:', error);
+        showTemporaryMessage('Failed to unassign subject', 'error');
+    }
+}
+
+// View Faculty Assignments (Read-only)
+function viewFacultyAssignments(facultyId) {
+    const faculty = facultyData[facultyId];
+    if (!faculty) return;
+    
+    document.getElementById('view-modal-faculty-name').textContent = faculty.name;
+    
+    const loadedConflicts = detectLoadedConflicts();
+    let totalUnits = 0;
+    let html = '<div class="space-y-3">';
+    
+    faculty.assignedSchedules.forEach(schedule => {
+        totalUnits += schedule.units;
+        const conflicts = loadedConflicts.get(schedule.id) || [];
+        const hasConflict = conflicts.length > 0;
+        
+        html += `
+            <div class="border-2 ${hasConflict ? 'border-red-300 bg-red-50' : 'border-gray-200'} rounded-lg p-4 ${hasConflict ? 'border-l-4 border-l-red-500' : ''}">
+                ${hasConflict ? `
+                    <div class="bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded mb-3 text-sm">
+                        <strong>⚠ TIME CONFLICT DETECTED</strong><br>
+                        ${conflicts.map(c => `Conflicts with: ${c.subjectCode} (${c.section}) on ${c.dayPattern} at ${c.startTime} - ${c.endTime}`).join('<br>')}
+                    </div>
+                ` : ''}
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="font-bold text-lg text-gray-900">${schedule.subjectCode}</div>
+                        <div class="text-sm text-gray-600 mt-1">${schedule.subjectTitle}</div>
+                        <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
+                            <div><span class="text-gray-500">Section:</span> <span class="font-medium">${schedule.section}</span></div>
+                            <div><span class="text-gray-500">Units:</span> <span class="font-medium">${schedule.units}</span></div>
+                            <div><span class="text-gray-500">Days:</span> <span class="font-medium">${schedule.dayPattern}</span></div>
+                            <div><span class="text-gray-500">Time:</span> <span class="font-medium">${schedule.startTime} - ${schedule.endTime}</span></div>
+                            <div class="col-span-2"><span class="text-gray-500">Room:</span> <span class="font-medium">${schedule.roomCode || schedule.room}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    html += `<div class="mt-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+        <div class="text-sm text-blue-700"><strong>Total Teaching Load:</strong> ${totalUnits} units</div>
+    </div>`;
+    
+    document.getElementById('view-assignments-content').innerHTML = html;
+    document.getElementById('viewAssignmentsModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Close View Assignments Modal
+function closeViewAssignmentsModal() {
+    document.getElementById('viewAssignmentsModal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// Generate Teaching Load PDF
+function generateTeachingLoadPDF() {
+    if (!currentFacultyId) {
+        const facultyId = Object.keys(facultyData).find(id => 
+            document.getElementById('view-modal-faculty-name').textContent.includes(facultyData[id].name)
+        );
+        if (facultyId) {
+            window.open('{{ path('app_schedule_teaching_load_pdf', {facultyId: '__FACULTY_ID__'}) }}'.replace('__FACULTY_ID__', facultyId), '_blank');
+        }
+    } else {
+        window.open('{{ path('app_schedule_teaching_load_pdf', {facultyId: '__FACULTY_ID__'}) }}'.replace('__FACULTY_ID__', currentFacultyId), '_blank');
+    }
+}
+
+// Open Department Selection Modal
+function openDepartmentSelectionModal() {
+    document.getElementById('departmentSelectionModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// Auto-show department selection modal if no department selected
+{% if not selectedDepartment %}
+document.addEventListener('DOMContentLoaded', function() {
+    openDepartmentSelectionModal();
+});
+{% endif %}
+
+// Attach event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+});
+</script>
+
+{% endblock %}
