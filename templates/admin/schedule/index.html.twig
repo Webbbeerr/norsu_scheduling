@@ -290,7 +290,7 @@
                                     </svg>
                                 </div>
                                 <div class="text-white">
-                                    <h3 class="font-bold text-base">{{ schedule.subject.code }}</h3>
+                                    <h3 class="font-bold text-base">{{ schedule.subject.code }}-{{ schedule.section }}</h3>
                                     <p class="text-xs opacity-90">{{ schedule.subject.title|slice(0, 35) }}{% if schedule.subject.title|length > 35 %}...{% endif %}</p>
                                 </div>
                             </div>
@@ -423,11 +423,11 @@ function filterSchedules() {
     let visibleCount = 0;
     
     cards.forEach(card => {
-        const room = card.dataset.room;
-        const day = card.dataset.day;
-        const status = card.dataset.status;
-        const subject = card.dataset.subject.toLowerCase();
-        const faculty = card.dataset.faculty.toLowerCase();
+        const room = card.dataset.room || '';
+        const day = card.dataset.day || '';
+        const status = card.dataset.status || '';
+        const subject = (card.dataset.subject || '').toLowerCase();
+        const faculty = (card.dataset.faculty || '').toLowerCase();
         
         const matchesSearch = !searchFilter || subject.includes(searchFilter) || faculty.includes(searchFilter);
         const matchesRoom = !roomFilter || room === roomFilter;

@@ -87,6 +87,25 @@
         .dataTables_wrapper .dataTables_filter {
             display: none;
         }
+        
+        /* Search input focus animation */
+        #searchInput:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        /* Highlight row on hover */
+        #facultyTable tbody tr {
+            transition: background-color 0.15s ease;
+        }
+        
+        #facultyTable tbody tr:hover {
+            background-color: #f9fafb !important;
+        }
+        
+        /* Smooth fade for filtered results */
+        #facultyTable tbody {
+            transition: opacity 0.1s ease;
+        }
     </style>
 {% endblock %}
 
@@ -179,31 +198,58 @@
             </div>
         </div>
 
-        <!-- Show per page control - positioned before table -->
-        <div class="mb-4 flex items-center gap-2">
-            <span class="text-sm font-medium text-gray-700">Show</span>
-            <select id="showFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 pr-8 bg-white">
-                <option value="10">10</option>
-                <option value="25" selected>25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-            </select>
-            <span class="text-sm text-gray-600">users per page</span>
-        </div>
-
         <!-- Faculty Table -->
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <!-- Table Header with Filters -->
-            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-end gap-4">
-                <!-- Filters -->
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-2">
-                        <label for="statusFilter" class="text-sm font-medium text-gray-700">Status:</label>
-                        <select id="statusFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 pr-8 bg-white">
-                            <option value="">All</option>
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                        </select>
+            <!-- Table Header with Search and Filters -->
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <!-- Left side: Search -->
+                    <div class="flex-1 max-w-md">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <input type="text" 
+                                   id="searchInput" 
+                                   placeholder="Search faculty by name, email, or employee ID..." 
+                                   class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                            <!-- Clear button -->
+                            <button type="button" 
+                                    id="clearSearch" 
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                    style="display: none;"
+                                    onclick="clearSearchInput()">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right side: Filters -->
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <!-- Show per page -->
+                        <div class="flex items-center gap-2">
+                            <label for="showFilter" class="text-sm font-medium text-gray-700">Show:</label>
+                            <select id="showFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 pr-8 bg-white">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Status Filter -->
+                        <div class="flex items-center gap-2">
+                            <label for="statusFilter" class="text-sm font-medium text-gray-700">Status:</label>
+                            <select id="statusFilter" class="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 pr-8 bg-white">
+                                <option value="">All</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -227,10 +273,15 @@
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
+                                        <div class="flex-shrink-0 h-10 w-10 relative">
                                             <div class="h-10 w-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
                                                 {{ member.firstName|first|upper }}{{ member.lastName|first|upper }}
                                             </div>
+                                            {% if assignedSchedules|length > 0 %}
+                                                <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-500 text-white shadow-lg border-2 border-white min-w-[1.25rem]">
+                                                    {{ assignedSchedules|length }}
+                                                </span>
+                                            {% endif %}
                                         </div>
                                         <div class="ml-4">
                                             <div class="text-sm font-medium text-gray-900">{{ member.firstName }} {{ member.lastName }}</div>
@@ -424,12 +475,9 @@
                                                                    value="{{ schedule.id }}">
                                                         </td>
                                                         <td class="px-3 py-3">
-                                                            <div class="text-sm font-semibold text-gray-900">{{ schedule.subject.code }}</div>
+                                                            <div class="text-sm font-semibold text-gray-900">{{ schedule.subject.code }}-{{ schedule.section }}</div>
                                                             <div class="text-xs text-gray-600">{{ schedule.subject.title|slice(0, 30) }}{% if schedule.subject.title|length > 30 %}...{% endif %}</div>
                                                             <div class="flex items-center gap-2 mt-1">
-                                                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                                    {{ schedule.section }}
-                                                                </span>
                                                                 <span class="text-xs text-gray-500">{{ schedule.subject.units }}u</span>
                                                             </div>
                                                         </td>
@@ -586,8 +634,19 @@
 <script>
 // Initialize DataTables
 $(document).ready(function() {
+    console.log('🔧 Initializing Faculty Loading DataTable...');
+    
+    // Check if facultyTable exists
+    if ($('#facultyTable').length === 0) {
+        console.log('⚠️ Faculty table not found - department not selected');
+        return;
+    }
+    
+    console.log('✓ Faculty table found with', $('#facultyTable tbody tr').length, 'rows');
+    
     // Check if DataTable already exists and destroy it
     if ($.fn.DataTable.isDataTable('#facultyTable')) {
+        console.log('♻️ Destroying existing DataTable instance');
         $('#facultyTable').DataTable().destroy();
     }
     
@@ -597,22 +656,27 @@ $(document).ready(function() {
         pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         lengthChange: false, // Hide default length control
+        searching: true, // Enable searching
         info: true,
+        autoWidth: false,
+        processing: false, // No processing indicator for instant results
         order: [[0, 'asc']], // Sort by faculty name by default
         columnDefs: [
             { orderable: false, targets: -1 } // Actions column not sortable
         ],
         language: {
-            info: "Showing _START_ to _END_ of _TOTAL_ results",
-            infoEmpty: "Showing 0 to 0 of 0 results",
-            infoFiltered: "(filtered from _MAX_ total results)",
+            info: "Showing _START_ to _END_ of _TOTAL_ faculty members",
+            infoEmpty: "Showing 0 to 0 of 0 faculty members",
+            infoFiltered: "(filtered from _MAX_ total faculty members)",
             zeroRecords: "No matching faculty members found",
+            emptyTable: "No faculty members available",
             paginate: {
-                previous: "<",
-                next: ">"
+                previous: "‹ Previous",
+                next: "Next ›"
             }
         },
-        dom: 'rt<"px-6 py-6 border-t border-gray-200 flex justify-between items-center"<"text-sm text-gray-700"i><"flex items-center gap-2"p>>',
+        // Custom DOM structure - remove default search and length
+        dom: 'rt<"px-6 py-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4"<"text-sm text-gray-700"i><"flex items-center gap-2"p>>',
         drawCallback: function() {
             // Custom styling for pagination buttons after draw
             $('.dataTables_paginate .paginate_button').addClass('inline-flex items-center justify-center');
@@ -620,23 +684,52 @@ $(document).ready(function() {
         }
     });
 
-    // Connect custom search input to DataTables search
-    $('#searchInput').on('input', function() {
-        table.search(this.value).draw();
+    console.log('✓ DataTable initialized successfully');
+
+    // Custom search - LIVE SEARCH with instant filtering
+    // Using 'input' event for the most immediate response
+    $('#searchInput').on('input keyup search', function() {
+        const searchValue = $.trim(this.value);
+        console.log('🔍 Searching for:', searchValue);
+        
+        // Perform search instantly
+        table.search(searchValue).draw();
+        
+        // Show/hide clear button
+        if (searchValue.length > 0) {
+            $('#clearSearch').show();
+        } else {
+            $('#clearSearch').hide();
+        }
     });
     
-    // Connect status filter to DataTables
+    // Status filter - INSTANT filtering on change
     $('#statusFilter').on('change', function() {
         const statusText = $(this).val();
+        console.log('📊 Filtering by status:', statusText || 'All');
         table.column(3).search(statusText).draw();
     });
     
-    // Connect show filter (page length) to DataTables
+    // Show/Page length filter - INSTANT update
     $('#showFilter').on('change', function() {
         const length = parseInt($(this).val());
+        console.log('📄 Showing', length, 'rows per page');
         table.page.len(length).draw();
     });
+    
+    // Log initialization complete
+    console.log('✅ Faculty DataTable ready with ' + table.rows().count() + ' total rows');
 });
+
+// Clear search input function
+function clearSearchInput() {
+    console.log('🗑️ Clearing search');
+    $('#searchInput').val('');
+    $('#clearSearch').hide();
+    if ($.fn.DataTable.isDataTable('#facultyTable')) {
+        $('#facultyTable').DataTable().search('').draw();
+    }
+}
 
 // Store all departments data for filtering
 const allDepartments = [
@@ -870,10 +963,7 @@ function refreshLoadedSubjectsList() {
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-sm font-bold ${hasConflict ? 'text-blue-700' : 'text-gray-900'}">${schedule.subjectCode}</span>
-                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    ${schedule.section}
-                                </span>
+                                <span class="text-sm font-bold ${hasConflict ? 'text-blue-700' : 'text-gray-900'}">${schedule.subjectCode}-${schedule.section}</span>
                                 <span class="text-xs text-gray-500">${schedule.units} units</span>
                             </div>
                             <div class="text-xs text-gray-700 mb-2">${schedule.subjectTitle}</div>
@@ -934,12 +1024,9 @@ function addToUnassignedList(scheduleData) {
                    value="${scheduleData.id}">
         </td>
         <td class="px-3 py-3">
-            <div class="text-sm font-semibold text-gray-900">${scheduleData.subjectCode}</div>
+            <div class="text-sm font-semibold text-gray-900">${scheduleData.subjectCode}-${scheduleData.section}</div>
             <div class="text-xs text-gray-600">${scheduleData.subjectTitle.slice(0, 30)}${scheduleData.subjectTitle.length > 30 ? '...' : ''}</div>
             <div class="flex items-center gap-2 mt-1">
-                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    ${scheduleData.section}
-                </span>
                 <span class="text-xs text-gray-500">${scheduleData.units}u</span>
             </div>
         </td>
@@ -1236,10 +1323,9 @@ function viewFacultyAssignments(facultyId) {
                 ` : ''}
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
-                        <div class="font-bold text-lg text-gray-900">${schedule.subjectCode}</div>
+                        <div class="font-bold text-lg text-gray-900">${schedule.subjectCode}-${schedule.section}</div>
                         <div class="text-sm text-gray-600 mt-1">${schedule.subjectTitle}</div>
                         <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
-                            <div><span class="text-gray-500">Section:</span> <span class="font-medium">${schedule.section}</span></div>
                             <div><span class="text-gray-500">Units:</span> <span class="font-medium">${schedule.units}</span></div>
                             <div><span class="text-gray-500">Days:</span> <span class="font-medium">${schedule.dayPattern}</span></div>
                             <div><span class="text-gray-500">Time:</span> <span class="font-medium">${schedule.startTime} - ${schedule.endTime}</span></div>

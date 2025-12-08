@@ -66,11 +66,17 @@
         <div class="sm:mx-auto sm:w-full sm:max-w-lg">
             <div class="card py-10 px-8 sm:px-10">
                 {{ form_start(registrationForm, {'attr': {'class': 'space-y-6'}}) }}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         <div class="space-y-2">
                             {{ form_label(registrationForm.firstName, null, {'label_attr': {'class': 'form-label'}}) }}
                             {{ form_widget(registrationForm.firstName, {'attr': {'class': 'form-input', 'placeholder': 'Enter your first name'}}) }}
                             {{ form_errors(registrationForm.firstName, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
+                        </div>
+
+                        <div class="space-y-2">
+                            {{ form_label(registrationForm.middleName, null, {'label_attr': {'class': 'form-label'}}) }}
+                            {{ form_widget(registrationForm.middleName, {'attr': {'class': 'form-input', 'placeholder': 'Enter your middle name (optional)'}}) }}
+                            {{ form_errors(registrationForm.middleName, {'attr': {'class': 'mt-1 text-sm text-red-600'}}) }}
                         </div>
 
                         <div class="space-y-2">
@@ -189,6 +195,12 @@
             // Get the departments data from PHP
             const departmentsByCollege = {{ departments_by_college|json_encode|raw }};
             console.log('Departments by college data:', departmentsByCollege);
+            console.log('Department data keys (College IDs):', Object.keys(departmentsByCollege));
+            
+            // Log each college's departments
+            Object.keys(departmentsByCollege).forEach(collegeId => {
+                console.log(`College ID ${collegeId}:`, departmentsByCollege[collegeId]);
+            });
             
             // Multiple strategies to find form elements
             function findElement(selectors) {
@@ -243,15 +255,25 @@
                     // Add placeholder option
                     const placeholderOption = document.createElement('option');
                     placeholderOption.value = '';
-                    placeholderOption.textContent = 'Choose a department';
-                    placeholderOption.disabled = true;
-                    placeholderOption.selected = true;
+                    placeholderOption.textContent = 'Select your department';
                     departmentSelect.appendChild(placeholderOption);
                     
-                    if (collegeId && departmentsByCollege[collegeId]) {
-                        console.log('Found departments for college:', departmentsByCollege[collegeId]);
+                    // Convert collegeId to number to match the object keys
+                    const numericCollegeId = parseInt(collegeId, 10);
+                    console.log('Converted college ID to number:', numericCollegeId);
+                    
+                    // Try both string and numeric versions
+                    const departments = departmentsByCollege[collegeId] || departmentsByCollege[numericCollegeId];
+                    
+                    if (departments && departments.length > 0) {
+                        console.log('Found departments for college:', departments);
                         
-                        departmentsByCollege[collegeId].forEach(function(department) {
+                        // Sort departments by name before adding
+                        const sortedDepartments = departments.sort((a, b) => {
+                            return a.name.localeCompare(b.name);
+                        });
+                        
+                        sortedDepartments.forEach(function(department) {
                             const option = document.createElement('option');
                             option.value = department.id;
                             option.textContent = department.name;
@@ -260,7 +282,7 @@
                         
                         departmentSelect.disabled = false;
                         departmentSelect.style.opacity = '1';
-                        console.log('Departments populated, select enabled');
+                        console.log(`${sortedDepartments.length} departments populated, select enabled`);
                     } else {
                         console.log('No college selected or no departments found, disabling select');
                         departmentSelect.disabled = true;
@@ -273,6 +295,9 @@
                     try {
                         const selectedCollegeId = this.value;
                         console.log('College changed to:', selectedCollegeId);
+                        console.log('Type of selected college ID:', typeof selectedCollegeId);
+                        console.log('Available college IDs in data:', Object.keys(departmentsByCollege));
+                        console.log('Does exact match exist?', departmentsByCollege.hasOwnProperty(selectedCollegeId));
                         populateDepartments(selectedCollegeId);
                     } catch (error) {
                         console.error('Error in college change handler:', error);

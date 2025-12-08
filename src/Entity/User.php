@@ -31,6 +31,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'firstname', length: 255, nullable: true)]
     private ?string $firstName = null;
 
+    #[ORM\Column(name: 'middlename', length: 255, nullable: true)]
+    private ?string $middleName = null;
+
     #[ORM\Column(name: 'lastname', length: 255, nullable: true)]
     private ?string $lastName = null;
 
@@ -199,9 +202,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getMiddleName(): ?string
+    {
+        return $this->middleName;
+    }
+
+    public function setMiddleName(?string $middleName): static
+    {
+        $this->middleName = $middleName;
+        return $this;
+    }
+
     public function getFullName(): string
     {
-        return trim(($this->firstName ?? '') . ' ' . ($this->lastName ?? ''));
+        $parts = array_filter([
+            $this->firstName,
+            $this->middleName,
+            $this->lastName
+        ]);
+        return implode(' ', $parts);
     }
 
     public function getRole(): ?int

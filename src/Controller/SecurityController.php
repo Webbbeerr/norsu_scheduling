@@ -103,6 +103,10 @@ class SecurityController extends AbstractController
         $departments = $departmentRepository->findBy(['isActive' => true]);
         $departmentsByCollege = [];
         foreach ($departments as $department) {
+            // Skip departments without a college assigned
+            if ($department->getCollege() === null) {
+                continue;
+            }
             $collegeId = $department->getCollege()->getId();
             if (!isset($departmentsByCollege[$collegeId])) {
                 $departmentsByCollege[$collegeId] = [];
@@ -111,6 +115,13 @@ class SecurityController extends AbstractController
                 'id' => $department->getId(),
                 'name' => $department->getName()
             ];
+        }
+        
+        // Sort departments within each college by name
+        foreach ($departmentsByCollege as &$depts) {
+            usort($depts, function($a, $b) {
+                return strcmp($a['name'], $b['name']);
+            });
         }
 
         return $this->render('security/register.html.twig', [

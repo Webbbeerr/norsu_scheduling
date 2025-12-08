@@ -59,6 +59,14 @@ class UserFormType extends AbstractType
                 'label' => 'First Name',
                 'required' => false,
             ])
+            ->add('middleName', TextType::class, [
+                'attr' => [
+                    'class' => 'form-control',
+                    'placeholder' => 'Enter middle name (optional)'
+                ],
+                'label' => 'Middle Name',
+                'required' => false,
+            ])
             ->add('lastName', TextType::class, [
                 'attr' => [
                     'class' => 'form-control',

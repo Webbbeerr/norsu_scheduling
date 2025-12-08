@@ -282,12 +282,9 @@
                                                                    value="{{ schedule.id }}">
                                                         </td>
                                                         <td class="px-3 py-3">
-                                                            <div class="text-sm font-semibold text-gray-900">{{ schedule.subject.code }}</div>
+                                                            <div class="text-sm font-semibold text-gray-900">{{ schedule.subject.code }}-{{ schedule.section }}</div>
                                                             <div class="text-xs text-gray-600">{{ schedule.subject.title|slice(0, 30) }}{% if schedule.subject.title|length > 30 %}...{% endif %}</div>
                                                             <div class="flex items-center gap-2 mt-1">
-                                                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                                    {{ schedule.section }}
-                                                                </span>
                                                                 <span class="text-xs text-gray-500">{{ schedule.subject.units }}u</span>
                                                             </div>
                                                         </td>
@@ -550,10 +547,7 @@ function refreshLoadedSubjectsList() {
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="text-sm font-bold ${hasConflict ? 'text-blue-700' : 'text-gray-900'}">${schedule.subjectCode}</span>
-                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    ${schedule.section}
-                                </span>
+                                <span class="text-sm font-bold ${hasConflict ? 'text-blue-700' : 'text-gray-900'}">${schedule.subjectCode}-${schedule.section}</span>
                                 <span class="text-xs text-gray-500">${schedule.units} units</span>
                             </div>
                             <div class="text-xs text-gray-700 mb-2">${schedule.subjectTitle}</div>
@@ -614,12 +608,9 @@ function addToUnassignedList(scheduleData) {
                    value="${scheduleData.id}">
         </td>
         <td class="px-3 py-3">
-            <div class="text-sm font-semibold text-gray-900">${scheduleData.subjectCode}</div>
+            <div class="text-sm font-semibold text-gray-900">${scheduleData.subjectCode}-${scheduleData.section}</div>
             <div class="text-xs text-gray-600">${scheduleData.subjectTitle.slice(0, 30)}${scheduleData.subjectTitle.length > 30 ? '...' : ''}</div>
             <div class="flex items-center gap-2 mt-1">
-                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    ${scheduleData.section}
-                </span>
                 <span class="text-xs text-gray-500">${scheduleData.units}u</span>
             </div>
         </td>
@@ -877,10 +868,9 @@ function viewFacultyAssignments(facultyId) {
                 ` : ''}
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
-                        <div class="font-bold text-lg text-gray-900">${schedule.subjectCode}</div>
+                        <div class="font-bold text-lg text-gray-900">${schedule.subjectCode}-${schedule.section}</div>
                         <div class="text-sm text-gray-600 mt-1">${schedule.subjectTitle}</div>
                         <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
-                            <div><span class="text-gray-500">Section:</span> <span class="font-medium">${schedule.section}</span></div>
                             <div><span class="text-gray-500">Units:</span> <span class="font-medium">${schedule.units}</span></div>
                             <div><span class="text-gray-500">Days:</span> <span class="font-medium">${schedule.dayPattern}</span></div>
                             <div><span class="text-gray-500">Time:</span> <span class="font-medium">${schedule.startTime} - ${schedule.endTime}</span></div>

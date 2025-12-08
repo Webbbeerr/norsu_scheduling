@@ -31,7 +31,7 @@
                         {{ schedule.subject.code[:3] }}
                     </div>
                     <h2 class="mt-4 text-xl font-bold text-gray-900 text-center">{{ schedule.subject.title }}</h2>
-                    <p class="text-gray-600 text-center text-sm">{{ schedule.subject.code }}</p>
+                    <p class="text-gray-600 text-center text-sm">{{ schedule.subject.code }}-{{ schedule.section }}</p>
                     
                     <div class="mt-4 w-full">
                         {% if schedule.status == 'active' %}

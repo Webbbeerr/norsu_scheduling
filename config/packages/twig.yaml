@@ -1,7 +1,7 @@
 twig:
     file_name_pattern: '*.twig'
-    date:
-        timezone: 'Asia/Manila'
+    # Timezone is now set globally in Kernel.php to 'Asia/Manila'
+    # Removed twig.date.timezone to prevent double timezone conversion
 
 when@test:
     twig:

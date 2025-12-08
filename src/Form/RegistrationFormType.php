@@ -50,6 +50,14 @@ class RegistrationFormType extends AbstractType
                     ]),
                 ],
             ])
+            ->add('middleName', TextType::class, [
+                'label' => 'Middle Name',
+                'attr' => [
+                    'class' => 'form-input',
+                    'placeholder' => 'Enter your middle name (optional)'
+                ],
+                'required' => false,
+            ])
             ->add('lastName', TextType::class, [
                 'label' => 'Last Name',
                 'attr' => [
@@ -160,6 +168,7 @@ class RegistrationFormType extends AbstractType
                         ->andWhere('d.deletedAt IS NULL')
                         ->andWhere('c.isActive = :active')
                         ->andWhere('c.deletedAt IS NULL')
+                        ->andWhere('d.college IS NOT NULL') // Only departments with a college
                         ->setParameter('active', true)
                         ->orderBy('c.name', 'ASC')
                         ->addOrderBy('d.name', 'ASC');

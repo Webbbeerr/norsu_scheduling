@@ -9,22 +9,42 @@
     <style>
         /* Custom DataTables styling to match your theme */
         .dataTables_wrapper .dataTables_length {
-            margin-bottom: 0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .dataTables_wrapper .dataTables_length select {
-            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
-            border-radius: 0.5rem;
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border-radius: 0.375rem;
             border: 1px solid #d1d5db;
             background-color: white;
             font-size: 0.875rem;
-            margin: 0 0.5rem;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 70px;
+        }
+        
+        .dataTables_wrapper .dataTables_length select:hover {
+            border-color: #9ca3af;
+        }
+        
+        .dataTables_wrapper .dataTables_length select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
         
         .dataTables_wrapper .dataTables_length label {
             font-size: 0.875rem;
-            color: #4b5563;
+            color: #6b7280;
             font-weight: 500;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .dataTables_wrapper .dataTables_filter input {
@@ -186,19 +206,23 @@
 <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
     <!-- Filters Bar -->
     <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-        <div class="flex items-center justify-between gap-4">
-            <h3 class="text-lg font-semibold text-gray-900">{{ page_title }} Directory</h3>
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <h3 class="text-lg font-semibold text-gray-900 min-w-fit">{{ page_title }} Directory</h3>
             
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Show Entries Control (Moved from DataTables) -->
+                <div id="customLengthControl"></div>
+                
                 <!-- Search Input -->
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
                     <input type="text" id="searchInput" placeholder="Search users..." 
-                           class="w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                           style="padding-left: 2.5rem !important;" 
+                           class="w-64 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                 </div>
 
                 {% if user_type == 'all' %}
@@ -425,11 +449,11 @@ $(document).ready(function() {
         ],
         language: {
             search: "Search:",
-            lengthMenu: "Show _MENU_ users per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ users",
-            infoEmpty: "Showing 0 to 0 of 0 users",
-            infoFiltered: "(filtered from _MAX_ total users)",
-            zeroRecords: "No matching users found",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            infoFiltered: "(filtered from _MAX_ total entries)",
+            zeroRecords: "No matching entries found",
             paginate: {
                 first: "First",
                 last: "Last",
@@ -437,12 +461,18 @@ $(document).ready(function() {
                 previous: "Previous"
             }
         },
-        dom: '<"flex justify-between items-center mb-4"<"flex items-center gap-3"l><"flex-1"><"flex items-center">>rt<"flex justify-between items-center mt-4"<"text-sm text-gray-700"i><"flex items-center gap-2"p>>',
+        dom: 'rt<"flex justify-between items-center mt-4 pb-6 px-6"<"text-sm text-gray-700"i><"flex items-center gap-2"p>>',
         drawCallback: function() {
             // Custom styling for pagination buttons after draw
             $('.dataTables_paginate .paginate_button').addClass('px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors');
             $('.dataTables_paginate .paginate_button.current').addClass('bg-indigo-600 text-white border-indigo-600').removeClass('hover:bg-gray-50');
             $('.dataTables_paginate .paginate_button.disabled').addClass('opacity-50 cursor-not-allowed');
+            
+            // Move the length control to custom location
+            if ($('#customLengthControl').is(':empty')) {
+                const lengthControl = $('.dataTables_length').detach();
+                $('#customLengthControl').append(lengthControl);
+            }
         }
     });
 

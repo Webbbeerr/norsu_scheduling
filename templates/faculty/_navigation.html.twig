@@ -94,10 +94,10 @@
     <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
         <div class="flex items-center">
             <div class="h-10 w-10 rounded-full gradient-primary flex items-center justify-center">
-                <span class="text-white font-semibold text-sm">{{ app.user.firstName|slice(0, 1) }}{{ app.user.lastName|slice(0, 1) }}</span>
+                <span class="text-white font-semibold text-sm">{{ app.user.firstName|slice(0, 1) }}{{ app.user.middleName ? app.user.middleName|slice(0, 1) : '' }}{{ app.user.lastName|slice(0, 1) }}</span>
             </div>
             <div class="ml-3 flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ app.user.firstName }} {{ app.user.lastName }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate">{{ app.user.fullName }}</p>
                 <p class="text-xs text-gray-500 truncate">{{ app.user.email }}</p>
             </div>
         </div>

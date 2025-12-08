@@ -55,6 +55,10 @@ class UserEditFormType extends AbstractType
                 'label' => 'First Name',
                 'required' => false,
             ])
+            ->add('middleName', TextType::class, [
+                'label' => 'Middle Name',
+                'required' => false,
+            ])
             ->add('lastName', TextType::class, [
                 'label' => 'Last Name',
                 'required' => false,

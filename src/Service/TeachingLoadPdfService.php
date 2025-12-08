@@ -24,7 +24,7 @@ class TeachingLoadPdfService
         // Set document information
         $pdf->SetCreator('Smart Scheduling System');
         $pdf->SetAuthor('NORSU');
-        $pdf->SetTitle('Individual Teaching Load - ' . $faculty->getFirstName() . ' ' . $faculty->getLastName());
+        $pdf->SetTitle('Individual Teaching Load - ' . $faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty) . $faculty->getLastName());
         $pdf->SetSubject('Teaching Load Report');
 
         // Remove default header/footer
@@ -79,6 +79,7 @@ class TeachingLoadPdfService
         $totalHours = 0;
         $totalStudents = 0;
         $semester = null;
+        $semesters = [];
 
         foreach ($schedules as $schedule) {
             $totalUnits += $schedule->getSubject()->getUnits();
@@ -94,10 +95,24 @@ class TeachingLoadPdfService
             
             $totalStudents += $schedule->getEnrolledStudents();
             
-            // Get semester from the first schedule
-            if ($semester === null) {
-                $semester = $schedule->getSemester();
+            // Collect all unique semesters
+            $scheduleSemester = $schedule->getSemester();
+            if ($scheduleSemester && !in_array($scheduleSemester, $semesters)) {
+                $semesters[] = $scheduleSemester;
             }
+        }
+
+        // Determine semester based on loaded subjects
+        if (count($semesters) === 1) {
+            // All subjects are in one semester
+            $semester = $semesters[0];
+        } elseif (count($semesters) > 1) {
+            // Mixed semesters - combine them (e.g., "1 & 2")
+            sort($semesters);
+            $semester = implode(' & ', $semesters);
+        } else {
+            // No semester found - default to 1st semester
+            $semester = '1';
         }
 
         return [
@@ -140,18 +155,21 @@ class TeachingLoadPdfService
         // Document title
         $pdf->SetFont('times', 'B', 11);
         $pdf->Cell(0, 5, 'INDIVIDUAL TEACHING LOAD', 0, 1, 'C');
-        
-        // Underline the title
-        $pdf->SetLineWidth(0.3);
-        $titleWidth = $pdf->GetStringWidth('INDIVIDUAL TEACHING LOAD');
-        $x = ($pdf->getPageWidth() - $titleWidth) / 2;
-        $y = $pdf->GetY() - 1;
-        $pdf->Line($x, $y, $x + $titleWidth, $y);
 
         // Semester info
         $pdf->SetFont('times', '', 11);
-        $semesterText = ($semester == '1' ? '1st' : '2nd') . ' Semester, School Year ' . $academicYear->getYear();
-        $pdf->Cell(0, 5, $semesterText, 0, 1, 'C');
+        
+        // Check if semester starts with '1' (handles '1', '1st', '1st Semest', '1st Semester', etc.)
+        if (preg_match('/^1/', $semester)) {
+            $semesterHtml = '<div style="text-align: center;">1<sup>st</sup> Semester, School Year ' . $academicYear->getYear() . '</div>';
+        } elseif (preg_match('/^2/', $semester)) {
+            $semesterHtml = '<div style="text-align: center;">2<sup>nd</sup> Semester, School Year ' . $academicYear->getYear() . '</div>';
+        } else {
+            // No consistent semester or no subjects
+            $semesterHtml = '<div style="text-align: center;">School Year ' . $academicYear->getYear() . '</div>';
+        }
+        
+        $pdf->writeHTML($semesterHtml, true, false, true, false, '');
         
         $pdf->Ln(3);
     }
@@ -166,7 +184,7 @@ class TeachingLoadPdfService
         $pdf->SetFont('times', 'B', 11);
         $pdf->Cell(20, 5, 'Name:', 0, 0, 'L');
         $pdf->SetFont('times', '', 11);
-        $pdf->Cell(75, 5, strtoupper($faculty->getLastName() . ', ' . $faculty->getFirstName()), 'B', 0, 'L');
+        $pdf->Cell(75, 5, strtoupper($faculty->getLastName() . ', ' . $faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty)), 'B', 0, 'L');
         
         $pdf->SetFont('times', 'B', 11);
         $pdf->Cell(27, 5, 'Acad. Rank:', 0, 0, 'L');
@@ -201,7 +219,7 @@ class TeachingLoadPdfService
         $startX = 12.7; // Align to left margin (same as margins)
         
         // Table header with advanced formatting
-        $pdf->SetFont('times', 'B', 8);
+        $pdf->SetFont('times', 'B', 9);
         $pdf->SetFillColor(255, 255, 255);
         
         $headerY = $pdf->GetY();
@@ -376,7 +394,7 @@ class TeachingLoadPdfService
         $nameWidth = 65; // approximate width for the name area
         $startX = 15;
         $pdf->SetX($startX);
-        $pdf->Cell($nameWidth, 5, strtoupper($faculty->getFirstName() . ' ' . $faculty->getLastName()), 0, 1, 'C');
+        $pdf->Cell($nameWidth, 5, strtoupper($faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty) . $faculty->getLastName()), 0, 1, 'C');
         
         $pdf->SetFont('times', '', 11);
         $pdf->SetLineWidth(0.3);
@@ -506,5 +524,17 @@ class TeachingLoadPdfService
         $pdf->MultiCell($col3, $rowHeight, 'Approved by', 1, 'L', false, 0, $startX + $col1 + $col2, $bottomY + ($rowHeight * 2), true, 0, false, true, $rowHeight, 'M');
         $pdf->SetFont('helvetica', '', 8);
         $pdf->MultiCell($col4, $rowHeight, 'OTUP', 1, 'L', false, 1, $startX + $col1 + $col2 + $col3, $bottomY + ($rowHeight * 2), true, 0, false, true, $rowHeight, 'M');
+    }
+
+    /**
+     * Get the middle initial from the faculty's middle name
+     */
+    private function getMiddleInitial(User $faculty): string
+    {
+        $middleName = $faculty->getMiddleName();
+        if ($middleName && strlen(trim($middleName)) > 0) {
+            return strtoupper(substr(trim($middleName), 0, 1)) . '. ';
+        }
+        return '';
     }
 }

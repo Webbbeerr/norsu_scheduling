@@ -34,7 +34,7 @@
                 <div class="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-8">
                     <div class="flex items-center space-x-4">
                         <div class="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center text-white text-2xl font-bold">
-                            {{ user.firstName ? user.firstName|first|upper : user.username|first|upper }}{{ user.lastName ? user.lastName|first|upper : '' }}
+                            {{ user.firstName ? user.firstName|first|upper : user.username|first|upper }}{{ user.middleName ? user.middleName|first|upper : '' }}{{ user.lastName ? user.lastName|first|upper : '' }}
                         </div>
                         <div>
                             <h2 class="text-2xl font-bold text-white">{{ user.fullName ?: user.username }}</h2>

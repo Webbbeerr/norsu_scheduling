@@ -10,10 +10,10 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
             <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
                 <div class="w-24 h-24 gradient-primary rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                    {{ app.user.firstName[:1] }}{{ app.user.lastName[:1] }}
+                    {{ app.user.firstName[:1] }}{{ app.user.middleName ? app.user.middleName[:1] : '' }}{{ app.user.lastName[:1] }}
                 </div>
                 <div class="flex-1">
-                    <h1 class="text-2xl font-bold text-gray-900">{{ app.user.firstName }} {{ app.user.lastName }}</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ app.user.fullName }}</h1>
                     <p class="text-gray-600 mt-1">{{ app.user.email }}</p>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Faculty Member</span>
@@ -51,10 +51,14 @@
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-6">Personal Information</h2>
                     <form class="space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                                 <input type="text" value="{{ app.user.firstName }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+                                <input type="text" value="{{ app.user.middleName }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>

@@ -30,7 +30,7 @@
                         Personal Information
                     </h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             {{ form_label(form.firstName, 'First Name', {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
                             {{ form_widget(form.firstName, {'attr': {'class': 'block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', 'placeholder': 'Enter first name'}}) }}
@@ -38,12 +38,19 @@
                         </div>
 
                         <div>
+                            {{ form_label(form.middleName, 'Middle Name', {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                            {{ form_widget(form.middleName, {'attr': {'class': 'block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', 'placeholder': 'Enter middle name (optional)'}}) }}
+                            {{ form_errors(form.middleName) }}
+                        </div>
+
+                        <div>
                             {{ form_label(form.lastName, 'Last Name', {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
                             {{ form_widget(form.lastName, {'attr': {'class': 'block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', 'placeholder': 'Enter last name'}}) }}
                             {{ form_errors(form.lastName) }}
                         </div>
+                    </div>
 
-                        <div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {{ form_label(form.email, 'Email Address', {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
                             {{ form_widget(form.email, {'attr': {'class': 'block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', 'placeholder': 'faculty@norsu.edu.ph'}}) }}
                             {{ form_errors(form.email) }}
