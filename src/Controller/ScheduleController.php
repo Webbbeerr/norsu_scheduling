@@ -546,6 +546,10 @@ class ScheduleController extends AbstractController
     public function checkConflict(Request $request, \App\Service\ScheduleConflictDetector $conflictDetector): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        
+        // Log the incoming request
+        error_log('=== CONFLICT CHECK REQUEST ===');
+        error_log('Data: ' . json_encode($data));
 
         // Create a temporary schedule object for conflict checking
         $schedule = new Schedule();
@@ -591,6 +595,9 @@ class ScheduleController extends AbstractController
             $conflicts = $conflictDetector->detectConflicts($schedule, $isEditingExisting);
             $duplicateConflicts = $conflictDetector->checkDuplicateSubjectSection($schedule, $isEditingExisting);
             
+            // Log results
+            error_log(sprintf('Conflicts found: %d, Duplicates: %d', count($conflicts), count($duplicateConflicts)));
+            
             // Combine hard conflicts
             $hardConflicts = array_filter($conflicts, function($conflict) {
                 return $conflict['type'] === 'room_time_conflict' || $conflict['type'] === 'section_conflict';
@@ -606,6 +613,8 @@ class ScheduleController extends AbstractController
                 return $c['message'];
             }, $hardConflicts);
             
+            error_log('Final conflicts: ' . json_encode($conflictMessages));
+            
             return $this->json([
                 'has_conflicts' => !empty($hardConflicts),
                 'conflicts' => $conflictMessages,
@@ -613,6 +622,11 @@ class ScheduleController extends AbstractController
                 'debug' => [
                     'section' => $schedule->getSection(),
                     'subject' => $subject->getCode(),
+                    'room' => $room->getName(),
+                    'room_id' => $room->getId(),
+                    'day_pattern' => $schedule->getDayPattern(),
+                    'start_time' => $schedule->getStartTime()->format('H:i'),
+                    'end_time' => $schedule->getEndTime()->format('H:i'),
                     'total_conflicts' => count($conflicts),
                     'duplicate_conflicts' => count($duplicateConflicts),
                     'hard_conflicts' => count($hardConflicts)

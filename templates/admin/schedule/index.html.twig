@@ -281,7 +281,19 @@
                      data-subject="{{ schedule.subject.code }}">
                     
                     <!-- Card Header with Status -->
-                    <div class="bg-gradient-to-r {% if schedule.status == 'approved' %}from-blue-500 to-blue-600{% elseif schedule.status == 'pending' %}from-blue-500 to-blue-600{% else %}from-blue-500 to-blue-600{% endif %} p-3">
+                    {% set yearLevel = schedule.subject.code|slice(4, 1) %}
+                    {% if yearLevel == '1' or yearLevel == '0' %}
+                        {% set headerColor = 'from-blue-500 to-blue-600' %}
+                    {% elseif yearLevel == '2' %}
+                        {% set headerColor = 'from-green-500 to-green-600' %}
+                    {% elseif yearLevel == '3' %}
+                        {% set headerColor = 'from-orange-500 to-orange-600' %}
+                    {% elseif yearLevel == '4' %}
+                        {% set headerColor = 'from-red-500 to-red-600' %}
+                    {% else %}
+                        {% set headerColor = 'from-blue-500 to-blue-600' %}
+                    {% endif %}
+                    <div class="bg-gradient-to-r {{ headerColor }} p-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2">
                                 <div class="bg-white bg-opacity-20 rounded-lg p-1.5">
@@ -290,7 +302,7 @@
                                     </svg>
                                 </div>
                                 <div class="text-white">
-                                    <h3 class="font-bold text-base">{{ schedule.subject.code }}-{{ schedule.section }}</h3>
+                                    <h3 class="font-bold text-lg">{{ schedule.subject.code }}-{{ schedule.section }}</h3>
                                     <p class="text-xs opacity-90">{{ schedule.subject.title|slice(0, 35) }}{% if schedule.subject.title|length > 35 %}...{% endif %}</p>
                                 </div>
                             </div>

@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Schedule;
 use App\Entity\AcademicYear;
 use App\Entity\User;
+use App\Form\FacultyProfileFormType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,9 +28,121 @@ class FacultyController extends AbstractController
     #[Route('/dashboard', name: 'dashboard')]
     public function dashboard(): Response
     {
+        /** @var User $user */
+        $user = $this->getUser();
+        
+        // Get current academic year
+        $currentAcademicYear = $this->entityManager->getRepository(AcademicYear::class)
+            ->findOneBy(['isCurrent' => true]);
+        
+        // Get today's day of week
+        $today = new \DateTime();
+        $dayOfWeek = $today->format('l'); // Monday, Tuesday, etc.
+        
+        // Map full day name to possible day patterns
+        $dayPatterns = $this->getDayPatternsForDay($dayOfWeek);
+        
+        // Fetch today's schedules
+        $todaySchedules = [];
+        if ($currentAcademicYear && !empty($dayPatterns)) {
+            $qb = $this->entityManager->getRepository(Schedule::class)
+                ->createQueryBuilder('s')
+                ->leftJoin('s.subject', 'sub')
+                ->leftJoin('s.room', 'r')
+                ->leftJoin('s.academicYear', 'ay')
+                ->leftJoin('s.curriculumSubject', 'cs')
+                ->where('s.faculty = :faculty')
+                ->andWhere('s.status = :status')
+                ->andWhere('ay.isCurrent = :isCurrent')
+                ->andWhere('s.dayPattern IN (:dayPatterns)')
+                ->setParameter('faculty', $user)
+                ->setParameter('status', 'active')
+                ->setParameter('isCurrent', true)
+                ->setParameter('dayPatterns', $dayPatterns)
+                ->orderBy('s.startTime', 'ASC')
+                ->getQuery();
+            
+            $todaySchedules = $qb->getResult();
+        }
+        
+        // Get all active schedules for statistics
+        $allSchedules = $this->entityManager->getRepository(Schedule::class)
+            ->createQueryBuilder('s')
+            ->leftJoin('s.academicYear', 'ay')
+            ->where('s.faculty = :faculty')
+            ->andWhere('s.status = :status')
+            ->andWhere('ay.isCurrent = :isCurrent')
+            ->setParameter('faculty', $user)
+            ->setParameter('status', 'active')
+            ->setParameter('isCurrent', true)
+            ->getQuery()
+            ->getResult();
+        
+        // Calculate total teaching hours per week
+        $totalHours = 0;
+        $uniqueClasses = [];
+        $totalStudents = 0;
+        
+        foreach ($allSchedules as $schedule) {
+            $start = $schedule->getStartTime();
+            $end = $schedule->getEndTime();
+            $diff = $start->diff($end);
+            $hours = $diff->h + ($diff->i / 60);
+            
+            // Count hours based on day pattern frequency per week
+            $daysPerWeek = count($schedule->getDaysFromPattern());
+            $totalHours += $hours * $daysPerWeek;
+            
+            // Track unique classes
+            $classKey = $schedule->getSubject()->getId() . '_' . $schedule->getSection();
+            if (!isset($uniqueClasses[$classKey])) {
+                $uniqueClasses[$classKey] = true;
+                $totalStudents += $schedule->getEnrolledStudents();
+            }
+        }
+        
         return $this->render('faculty/dashboard.html.twig', [
             'page_title' => 'Faculty Dashboard',
+            'todaySchedules' => $todaySchedules,
+            'totalHours' => round($totalHours, 1),
+            'activeClasses' => count($uniqueClasses),
+            'totalStudents' => $totalStudents,
+            'todayCount' => count($todaySchedules),
         ]);
+    }
+    
+    /**
+     * Get all day patterns that include the given day
+     */
+    private function getDayPatternsForDay(string $dayOfWeek): array
+    {
+        $patterns = [];
+        
+        switch ($dayOfWeek) {
+            case 'Monday':
+                $patterns = ['MWF', 'MTWTHF', 'MW', 'MTH'];
+                break;
+            case 'Tuesday':
+                $patterns = ['TTH', 'MTWTHF', 'TF'];
+                break;
+            case 'Wednesday':
+                $patterns = ['MWF', 'MTWTHF', 'MW', 'WF'];
+                break;
+            case 'Thursday':
+                $patterns = ['TTH', 'MTWTHF', 'MTH'];
+                break;
+            case 'Friday':
+                $patterns = ['MWF', 'MTWTHF', 'WF', 'TF'];
+                break;
+            case 'Saturday':
+                $patterns = ['SAT'];
+                break;
+            case 'Sunday':
+                $patterns = ['SUN'];
+                break;
+        }
+        
+        return $patterns;
     }
 
     #[Route('/schedule', name: 'schedule')]
@@ -139,10 +252,74 @@ class FacultyController extends AbstractController
     }
 
     #[Route('/classes', name: 'classes')]
-    public function classes(): Response
+    public function classes(Request $request): Response
     {
+        /** @var User $user */
+        $user = $this->getUser();
+        
+        // Get current academic year
+        $currentAcademicYear = $this->entityManager->getRepository(AcademicYear::class)
+            ->findOneBy(['isCurrent' => true]);
+        
+        // Get selected semester filter
+        $selectedSemester = $request->query->get('semester', $user->getPreferredSemesterFilter() ?? '1st Semest');
+        
+        // Fetch schedules for the faculty with subject and enrollment data
+        $schedules = $this->entityManager->getRepository(Schedule::class)
+            ->createQueryBuilder('s')
+            ->leftJoin('s.subject', 'sub')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.academicYear', 'ay')
+            ->where('s.faculty = :faculty')
+            ->andWhere('s.status = :status')
+            ->andWhere('ay.isCurrent = :isCurrent')
+            ->andWhere('s.semester = :semester')
+            ->setParameter('faculty', $user)
+            ->setParameter('status', 'active')
+            ->setParameter('isCurrent', true)
+            ->setParameter('semester', $selectedSemester)
+            ->orderBy('s.startTime', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        // Calculate stats
+        $totalClasses = count($schedules);
+        $totalStudents = 0;
+        $totalHours = 0;
+        $pendingTasks = 0; // Can be calculated based on assignments, grades, etc.
+        
+        foreach ($schedules as $schedule) {
+            // Note: Student enrollment tracking would need to be added if needed
+            // For now, we'll set student count to 0 or use enrolledStudents field if available
+            if (method_exists($schedule, 'getEnrolledStudents')) {
+                $totalStudents += $schedule->getEnrolledStudents() ?? 0;
+            }
+            
+            // Calculate hours for this class
+            if ($schedule->getStartTime() && $schedule->getEndTime()) {
+                $start = $schedule->getStartTime();
+                $end = $schedule->getEndTime();
+                $hours = ($end->getTimestamp() - $start->getTimestamp()) / 3600;
+                
+                // Count number of days per week
+                $days = $schedule->getDaysFromPattern();
+                $totalHours += $hours * count($days);
+            }
+        }
+        
+        $stats = [
+            'total_classes' => $totalClasses,
+            'total_students' => $totalStudents,
+            'teaching_hours' => round($totalHours, 1),
+            'pending_tasks' => $pendingTasks
+        ];
+
         return $this->render('faculty/classes.html.twig', [
             'page_title' => 'My Classes',
+            'schedules' => $schedules,
+            'stats' => $stats,
+            'selectedSemester' => $selectedSemester,
+            'currentAcademicYear' => $currentAcademicYear,
         ]);
     }
 
@@ -155,10 +332,29 @@ class FacultyController extends AbstractController
     }
 
     #[Route('/profile', name: 'profile')]
-    public function profile(): Response
+    public function profile(Request $request): Response
     {
+        /** @var User $user */
+        $user = $this->getUser();
+        
+        $form = $this->createForm(FacultyProfileFormType::class, $user);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            try {
+                $this->entityManager->flush();
+                $this->addFlash('success', 'Profile updated successfully!');
+                
+                return $this->redirectToRoute('faculty_profile');
+            } catch (\Exception $e) {
+                $this->addFlash('error', 'An error occurred while updating your profile. Please try again.');
+            }
+        }
+
         return $this->render('faculty/profile.html.twig', [
             'page_title' => 'Profile & Settings',
+            'form' => $form->createView(),
+            'user' => $user,
         ]);
     }
 

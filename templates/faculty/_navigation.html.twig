@@ -18,13 +18,6 @@
                 Teaching Schedule
             </a>
             
-            <a href="{{ path('faculty_office_hours') }}" class="nav-item {% if app.request.get('_route') == 'faculty_office_hours' %}bg-blue-50 border-blue-500 text-blue-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} border-l-4 {% if app.request.get('_route') != 'faculty_office_hours' %}border-transparent{% endif %} group flex items-center px-3 py-3 text-sm font-medium rounded-r-lg">
-                <svg class="{% if app.request.get('_route') == 'faculty_office_hours' %}text-blue-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %} mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                Office Hours
-            </a>
-            
             <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent group flex items-center px-3 py-3 text-sm font-medium rounded-r-lg">
                 <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>

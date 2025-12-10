@@ -21,7 +21,37 @@ class RoomService
      */
     public function getRooms(array $filters = []): array
     {
-        $queryBuilder = $this->roomRepository->createQueryBuilder('r');
+        $queryBuilder = $this->roomRepository->createQueryBuilder('r')
+            ->leftJoin('r.department', 'd')
+            ->leftJoin('r.departmentGroup', 'dg')
+            ->leftJoin('d.departmentGroup', 'dept_group');
+
+        // Department filter - filter by department and its group
+        if (!empty($filters['department'])) {
+            $department = $filters['department'];
+            $departmentGroup = $department->getDepartmentGroup();
+            
+            if ($departmentGroup) {
+                // Room is accessible if:
+                // 1. Room belongs directly to this department, OR
+                // 2. Room is assigned to the department group, OR
+                // 3. Room's department is in the same group
+                $queryBuilder->andWhere(
+                    $queryBuilder->expr()->orX(
+                        $queryBuilder->expr()->eq('r.department', ':department'),
+                        $queryBuilder->expr()->eq('r.departmentGroup', ':departmentGroup'),
+                        $queryBuilder->expr()->eq('dept_group.id', ':groupId')
+                    )
+                )
+                ->setParameter('department', $department)
+                ->setParameter('departmentGroup', $departmentGroup)
+                ->setParameter('groupId', $departmentGroup->getId());
+            } else {
+                // No group, only show rooms owned by this department
+                $queryBuilder->andWhere('r.department = :department')
+                    ->setParameter('department', $department);
+            }
+        }
 
         // Search filter
         if (!empty($filters['search'])) {
@@ -142,26 +172,60 @@ class RoomService
     /**
      * Get room statistics
      */
-    public function getRoomStatistics(): array
+    public function getRoomStatistics(array $filters = []): array
     {
-        $total = $this->roomRepository->count([]);
-        $active = $this->roomRepository->count(['isActive' => true]);
-        $inactive = $this->roomRepository->count(['isActive' => false]);
+        $queryBuilder = $this->roomRepository->createQueryBuilder('r')
+            ->leftJoin('r.department', 'd')
+            ->leftJoin('r.departmentGroup', 'dg')
+            ->leftJoin('d.departmentGroup', 'dept_group');
+
+        // Apply department filter if provided
+        if (!empty($filters['department'])) {
+            $department = $filters['department'];
+            $departmentGroup = $department->getDepartmentGroup();
+            
+            if ($departmentGroup) {
+                $queryBuilder->where(
+                    $queryBuilder->expr()->orX(
+                        $queryBuilder->expr()->eq('r.department', ':department'),
+                        $queryBuilder->expr()->eq('r.departmentGroup', ':departmentGroup'),
+                        $queryBuilder->expr()->eq('dept_group.id', ':groupId')
+                    )
+                )
+                ->setParameter('department', $department)
+                ->setParameter('departmentGroup', $departmentGroup)
+                ->setParameter('groupId', $departmentGroup->getId());
+            } else {
+                $queryBuilder->where('r.department = :department')
+                    ->setParameter('department', $department);
+            }
+        }
+
+        $total = (clone $queryBuilder)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult();
+        
+        $active = (clone $queryBuilder)
+            ->select('COUNT(r.id)')
+            ->andWhere('r.isActive = true')
+            ->getQuery()
+            ->getSingleScalarResult();
+        
+        $inactive = $total - $active;
         
         // Get rooms created in last 7 days
         $sevenDaysAgo = new \DateTime('-7 days');
-        $queryBuilder = $this->roomRepository->createQueryBuilder('r');
-        $recent = $queryBuilder
+        $recent = (clone $queryBuilder)
             ->select('COUNT(r.id)')
-            ->where('r.createdAt >= :date')
+            ->andWhere('r.createdAt >= :date')
             ->setParameter('date', $sevenDaysAgo)
             ->getQuery()
             ->getSingleScalarResult();
 
         // Get room type counts
-        $typeStats = $this->entityManager->createQuery(
-            'SELECT r.type, COUNT(r.id) as count FROM App\Entity\Room r WHERE r.isActive = true GROUP BY r.type'
-        )->getResult();
+        $typeStatsQb = (clone $queryBuilder)
+            ->select('r.type, COUNT(r.id) as count')
+            ->andWhere('r.isActive = true')
+            ->groupBy('r.type');
+        $typeStats = $typeStatsQb->getQuery()->getResult();
 
         $typeCounts = [];
         foreach ($typeStats as $stat) {
@@ -169,9 +233,12 @@ class RoomService
         }
 
         // Get building counts
-        $buildingStats = $this->entityManager->createQuery(
-            'SELECT r.building, COUNT(r.id) as count FROM App\Entity\Room r WHERE r.isActive = true AND r.building IS NOT NULL GROUP BY r.building'
-        )->getResult();
+        $buildingStatsQb = (clone $queryBuilder)
+            ->select('r.building, COUNT(r.id) as count')
+            ->andWhere('r.isActive = true')
+            ->andWhere('r.building IS NOT NULL')
+            ->groupBy('r.building');
+        $buildingStats = $buildingStatsQb->getQuery()->getResult();
 
         $buildingCounts = [];
         foreach ($buildingStats as $stat) {
@@ -179,9 +246,12 @@ class RoomService
         }
 
         // Total capacity
-        $totalCapacity = $this->entityManager->createQuery(
-            'SELECT SUM(r.capacity) FROM App\Entity\Room r WHERE r.isActive = true AND r.capacity IS NOT NULL'
-        )->getSingleScalarResult() ?? 0;
+        $totalCapacity = (clone $queryBuilder)
+            ->select('SUM(r.capacity)')
+            ->andWhere('r.isActive = true')
+            ->andWhere('r.capacity IS NOT NULL')
+            ->getQuery()
+            ->getSingleScalarResult() ?? 0;
 
         return [
             'total' => $total,
@@ -197,12 +267,38 @@ class RoomService
     /**
      * Get all unique buildings
      */
-    public function getAllBuildings(): array
+    public function getAllBuildings(array $filters = []): array
     {
-        $queryBuilder = $this->roomRepository->createQueryBuilder('r');
+        $queryBuilder = $this->roomRepository->createQueryBuilder('r')
+            ->leftJoin('r.department', 'd')
+            ->leftJoin('r.departmentGroup', 'dg')
+            ->leftJoin('d.departmentGroup', 'dept_group');
+
+        // Apply department filter if provided
+        if (!empty($filters['department'])) {
+            $department = $filters['department'];
+            $departmentGroup = $department->getDepartmentGroup();
+            
+            if ($departmentGroup) {
+                $queryBuilder->where(
+                    $queryBuilder->expr()->orX(
+                        $queryBuilder->expr()->eq('r.department', ':department'),
+                        $queryBuilder->expr()->eq('r.departmentGroup', ':departmentGroup'),
+                        $queryBuilder->expr()->eq('dept_group.id', ':groupId')
+                    )
+                )
+                ->setParameter('department', $department)
+                ->setParameter('departmentGroup', $departmentGroup)
+                ->setParameter('groupId', $departmentGroup->getId());
+            } else {
+                $queryBuilder->where('r.department = :department')
+                    ->setParameter('department', $department);
+            }
+        }
+
         $buildings = $queryBuilder
             ->select('DISTINCT r.building')
-            ->where('r.building IS NOT NULL')
+            ->andWhere('r.building IS NOT NULL')
             ->orderBy('r.building', 'ASC')
             ->getQuery()
             ->getResult();

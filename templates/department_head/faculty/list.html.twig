@@ -171,45 +171,70 @@
                             @click="sortBy('fullName')">
                             <div class="flex items-center gap-2">
                                 <span>Faculty Member</span>
-                                <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'fullName' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-                                </svg>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'fullName' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                    </svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'fullName' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                </span>
                             </div>
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             @click="sortBy('employeeId')">
                             <div class="flex items-center gap-2">
                                 <span>Employee ID</span>
-                                <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'employeeId' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-                                </svg>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'employeeId' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                    </svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'employeeId' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                </span>
                             </div>
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             @click="sortBy('position')">
                             <div class="flex items-center gap-2">
                                 <span>Position</span>
-                                <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'position' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-                                </svg>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'position' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                    </svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'position' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                </span>
                             </div>
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             @click="sortBy('isActive')">
                             <div class="flex items-center gap-2">
                                 <span>Status</span>
-                                <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'isActive' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-                                </svg>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'isActive' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                    </svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'isActive' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                </span>
                             </div>
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             @click="sortBy('createdAt')">
                             <div class="flex items-center gap-2">
                                 <span>Date Added</span>
-                                <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'createdAt' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
-                                </svg>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'createdAt' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                    </svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'createdAt' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                    </svg>
+                                </span>
                             </div>
                         </th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -236,10 +261,13 @@
                         <tr class="hover:bg-gray-50 transition-colors duration-150">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="flex-shrink-0 h-10 w-10 relative">
                                         <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
                                             <span x-text="user.initials"></span>
                                         </div>
+                                        <template x-if="user.schedulesCount && user.schedulesCount > 0">
+                                            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full" x-text="user.schedulesCount" :title="user.schedulesCount + ' schedule(s) assigned'"></span>
+                                        </template>
                                     </div>
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900" x-text="user.fullName"></div>

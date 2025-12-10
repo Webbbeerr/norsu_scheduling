@@ -355,8 +355,6 @@ class CurriculumUploadService
         $termCache = []; // Cache for terms created in this transaction
         $errors = [];
 
-        $this->entityManager->beginTransaction();
-
         try {
             foreach ($subjects as $subjectData) {
                 $rowNum = $subjectData['row_number'] ?? 0;
@@ -383,7 +381,7 @@ class CurriculumUploadService
                         $subject->setLectureHours($subjectData['lec']);
                         $subject->setLabHours($subjectData['lab']);
                         $subject->setType($subjectData['type']);
-                        $subject->setDepartmentId($curriculum->getDepartment()->getId());
+                        $subject->setDepartment($curriculum->getDepartment());
                         $subject->setIsActive(true);
                         $subject->setCreatedAt(new \DateTimeImmutable());
                         $subject->setUpdatedAt(new \DateTimeImmutable());
@@ -444,9 +442,8 @@ class CurriculumUploadService
                 }
             }
 
-            // Flush all changes
+            // Flush all changes (transaction will be committed by the controller)
             $this->entityManager->flush();
-            $this->entityManager->commit();
 
             return [
                 'success' => true,
@@ -460,7 +457,6 @@ class CurriculumUploadService
             ];
 
         } catch (\Exception $e) {
-            $this->entityManager->rollback();
             return [
                 'success' => false,
                 'message' => 'Error saving curriculum: ' . $e->getMessage()

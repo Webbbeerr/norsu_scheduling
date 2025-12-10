@@ -110,7 +110,19 @@
                 <h3 class="text-lg font-semibold text-gray-900">Rooms Directory</h3>
                 
                 <div class="flex items-center gap-3" id="filtersContainer">
-                    <!-- Search will be inserted here by JavaScript -->
+                    
+                    <!-- Department Filter -->
+                    <div class="filter-group">
+                        <label for="departmentFilter" class="sr-only">Filter by department</label>
+                        <select id="departmentFilter" class="w-48 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 pr-8 bg-white hover:bg-gray-50 transition-colors">
+                            <option value="">All Departments</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept.id }}">
+                                    {{ dept.code }} - {{ dept.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     
                     <!-- Type Filter -->
                     <div class="filter-group">
@@ -152,6 +164,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Room Info</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Building/Floor</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capacity</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -161,7 +174,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% if rooms is empty %}
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <p class="text-gray-500">No rooms found</p>
                                 <a href="{{ path('admin_rooms_create') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                                     Add New Room
@@ -186,6 +199,19 @@
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ room.typeBadgeClass }}">
                                         {{ room.type|default('N/A')|capitalize }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">{{ room.department ? room.department.code : 'N/A' }}</div>
+                                    {% if room.departmentGroup %}
+                                        <div class="text-xs text-blue-600 mt-1" title="Shared via department group">
+                                            <span class="inline-flex items-center">
+                                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                </svg>
+                                                {{ room.departmentGroup.name }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="text-sm text-gray-900">{{ room.building|default('N/A') }}</div>
@@ -253,59 +279,191 @@
 
 <script>
 $(document).ready(function() {
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    
     {% if rooms is not empty %}
+    // Destroy existing DataTable if it exists
     if ($.fn.DataTable.isDataTable('#roomsTable')) {
         $('#roomsTable').DataTable().destroy();
     }
     
+    // Get sort order from URL or use default
+    const sortCol = parseInt(urlParams.get('sort_col')) || 0;
+    const sortDir = urlParams.get('sort_dir') || 'asc';
+    
+    // Initialize DataTable
     const table = $('#roomsTable').DataTable({
         paging: false,
         info: false,
         lengthChange: false,
-        order: [[0, 'asc']],
-        columnDefs: [{ orderable: false, targets: 5 }],
+        order: [[sortCol, sortDir]],
+        columnDefs: [{ orderable: false, targets: 6 }],
         dom: 'frt',
         language: {
             search: "_INPUT_",
             searchPlaceholder: "Search rooms..."
+        },
+        drawCallback: function() {
+            // Ensure search box is properly styled after any redraw
+            $('.dataTables_filter input').addClass('w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors');
         }
     });
-
-    // Move search to filters container and style it
+    
+    // Move and style search box
     $('.dataTables_filter').prependTo('#filtersContainer');
-    $('.dataTables_filter input').addClass('w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors');
     $('.dataTables_filter').addClass('relative').prepend('<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>');
-
-    // Reset filter values
-    $('#typeFilter').val('');
-    $('#statusFilter').val('');
-
-    // Type filter
+    $('.dataTables_filter input').addClass('w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors');
+    
+    // Restore search from URL
+    const searchParam = urlParams.get('search');
+    if (searchParam) {
+        $('.dataTables_filter input').val(searchParam);
+        table.search(searchParam).draw();
+    }
+    
+    // Custom search function for department filtering
+    let currentDeptFilter = '';
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex) {
+            if (!currentDeptFilter) {
+                return true; // Show all if no filter
+            }
+            const deptColumn = data[2]; // Column 2 is department
+            // Check if department code appears in the column
+            return deptColumn.includes(currentDeptFilter);
+        }
+    );
+    
+    // Restore department filter from URL
+    const deptParam = urlParams.get('department_id');
+    if (deptParam) {
+        $('#departmentFilter').val(deptParam);
+        const selectedDept = $('#departmentFilter option:selected').text();
+        if (selectedDept && selectedDept !== 'All Departments') {
+            currentDeptFilter = selectedDept.split(' - ')[0].trim();
+            table.draw();
+        }
+    }
+    
+    // Restore type filter from URL
+    const typeParam = urlParams.get('type');
+    if (typeParam) {
+        $('#typeFilter').val(typeParam);
+        table.column(1).search(typeParam).draw();
+    }
+    
+    // Restore status filter from URL
+    const statusParam = urlParams.get('is_active');
+    if (statusParam) {
+        const statusValue = statusParam === '1' ? 'Active' : 'Inactive';
+        $('#statusFilter').val(statusValue);
+        table.column(5).search(statusValue).draw();
+    }
+    
+    // ===== EVENT HANDLERS =====
+    
+    // Save sort order to URL when clicking column headers
+    table.on('order.dt', function() {
+        const order = table.order();
+        if (order.length > 0) {
+            const url = new URL(window.location);
+            url.searchParams.set('sort_col', order[0][0]);
+            url.searchParams.set('sort_dir', order[0][1]);
+            window.history.replaceState({}, '', url);
+        }
+    });
+    
+    // Update URL when search changes (debounced)
+    let searchTimeout;
+    $(document).on('keyup search', '.dataTables_filter input', function() {
+        clearTimeout(searchTimeout);
+        const searchValue = $(this).val();
+        searchTimeout = setTimeout(function() {
+            const url = new URL(window.location);
+            if (searchValue) {
+                url.searchParams.set('search', searchValue);
+            } else {
+                url.searchParams.delete('search');
+            }
+            window.history.replaceState({}, '', url);
+        }, 300);
+    });
+    
+    // Department filter (client-side, NO page reload!)
+    $('#departmentFilter').on('change', function() {
+        const departmentId = $(this).val();
+        const selectedText = $(this).find('option:selected').text();
+        
+        if (departmentId) {
+            // Extract department code (e.g., "BSIT" from "BSIT - Information Technology")
+            currentDeptFilter = selectedText.split(' - ')[0].trim();
+        } else {
+            // Clear department filter
+            currentDeptFilter = '';
+        }
+        
+        table.draw();
+        
+        // Update URL without reload
+        const url = new URL(window.location);
+        if (departmentId) {
+            url.searchParams.set('department_id', departmentId);
+        } else {
+            url.searchParams.delete('department_id');
+        }
+        window.history.replaceState({}, '', url);
+    });
+    
+    // Type filter (client-side)
     $('#typeFilter').on('change', function() {
-        table.column(1).search($(this).val()).draw();
+        const typeValue = $(this).val();
+        table.column(1).search(typeValue).draw();
+        
+        const url = new URL(window.location);
+        if (typeValue) {
+            url.searchParams.set('type', typeValue);
+        } else {
+            url.searchParams.delete('type');
+        }
+        window.history.replaceState({}, '', url);
     });
-
-    // Status filter
+    
+    // Status filter (client-side)
     $('#statusFilter').on('change', function() {
-        table.column(4).search($(this).val()).draw();
+        const statusValue = $(this).val();
+        table.column(5).search(statusValue).draw();
+        
+        const url = new URL(window.location);
+        if (statusValue) {
+            url.searchParams.set('is_active', statusValue === 'Active' ? '1' : '0');
+        } else {
+            url.searchParams.delete('is_active');
+        }
+        window.history.replaceState({}, '', url);
     });
-
+    
     // Clear all filters
     $('#clearFilters').on('click', function() {
+        $('#departmentFilter').val('');
         $('#typeFilter').val('');
         $('#statusFilter').val('');
         table.search('').columns().search('').draw();
         $('.dataTables_filter input').val('');
+        
+        // Clear URL parameters
+        window.history.replaceState({}, '', '{{ path("admin_rooms") }}');
     });
-
-    // Prevent Enter key from submitting forms (global handler for all inputs except submit buttons)
+    
+    {% endif %}
+    
+    // Prevent Enter key from submitting forms
     $('body').on('keypress', 'input:not([type="submit"])', function(e) {
         if (e.which === 13) {
             e.preventDefault();
             return false;
         }
     });
-    {% endif %}
 });
 </script>
 {% endblock %}

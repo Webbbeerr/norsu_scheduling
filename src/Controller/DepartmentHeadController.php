@@ -518,25 +518,38 @@ class DepartmentHeadController extends AbstractController
                 return new JsonResponse(['success' => false, 'message' => 'Invalid file format. Supported: CSV, XLSX, XLS'], 400);
             }
 
-            // Create curriculum
-            $curriculum = new \App\Entity\Curriculum();
-            $curriculum->setName($curriculumName);
-            $curriculum->setVersion((int)$version);
-            $curriculum->setDepartment($department);
-            $curriculum->setIsPublished(false);
-            $curriculum->setCreatedAt(new \DateTimeImmutable());
-            $curriculum->setUpdatedAt(new \DateTimeImmutable());
-            $entityManager->persist($curriculum);
-            $entityManager->flush();
-
-            // Process upload using service
-            $result = $uploadService->processUpload($file, $curriculum, $autoCreateTerms);
-
-            if (!$result['success']) {
-                // Delete the curriculum if upload failed
-                $entityManager->remove($curriculum);
+            // Start transaction to ensure curriculum is only created if upload succeeds
+            $entityManager->beginTransaction();
+            
+            try {
+                // Create curriculum
+                $curriculum = new \App\Entity\Curriculum();
+                $curriculum->setName($curriculumName);
+                $curriculum->setVersion((int)$version);
+                $curriculum->setDepartment($department);
+                $curriculum->setIsPublished(false);
+                $curriculum->setCreatedAt(new \DateTimeImmutable());
+                $curriculum->setUpdatedAt(new \DateTimeImmutable());
+                $entityManager->persist($curriculum);
                 $entityManager->flush();
-                return new JsonResponse($result, 400);
+
+                // Process upload using service
+                $result = $uploadService->processUpload($file, $curriculum, $autoCreateTerms);
+
+                if (!$result['success']) {
+                    // Rollback transaction if upload failed
+                    $entityManager->rollback();
+                    return new JsonResponse($result, 400);
+                }
+                
+                // Commit transaction - curriculum and all subjects/terms are saved
+                $entityManager->commit();
+            } catch (\Exception $uploadException) {
+                // Rollback on any error
+                if ($entityManager->getConnection()->isTransactionActive()) {
+                    $entityManager->rollback();
+                }
+                throw $uploadException;
             }
 
             // If subjects were created but no terms were generated, warn the user
@@ -825,9 +838,26 @@ class DepartmentHeadController extends AbstractController
         // Get all schedules for the department
         $schedules = $this->scheduleRepository->findByDepartment($department->getId());
 
+        // Group schedules by subject code
+        $groupedSchedules = [];
+        foreach ($schedules as $schedule) {
+            $subjectCode = $schedule->getSubject()->getCode();
+            if (!isset($groupedSchedules[$subjectCode])) {
+                $groupedSchedules[$subjectCode] = [
+                    'subject' => $schedule->getSubject(),
+                    'schedules' => []
+                ];
+            }
+            $groupedSchedules[$subjectCode]['schedules'][] = $schedule;
+        }
+
+        // Sort by subject code
+        ksort($groupedSchedules);
+
         return $this->render('department_head/schedules/list.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Department Schedules',
             'schedules' => $schedules,
+            'groupedSchedules' => $groupedSchedules,
         ]));
     }
 

@@ -6,42 +6,67 @@
 
 {% block main_content %}
     <div class="max-w-5xl mx-auto">
+        <!-- Flash Messages -->
+        {% for message in app.flashes('success') %}
+            <div class="mb-4 rounded-lg bg-green-50 p-4 border border-green-200">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-green-800">{{ message }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+        {% for message in app.flashes('error') %}
+            <div class="mb-4 rounded-lg bg-red-50 p-4 border border-red-200">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-red-800">{{ message }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        
         <!-- Profile Header -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
             <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
                 <div class="w-24 h-24 gradient-primary rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                    {{ app.user.firstName[:1] }}{{ app.user.middleName ? app.user.middleName[:1] : '' }}{{ app.user.lastName[:1] }}
+                    {{ app.user.firstName[:1] }}{{ app.user.lastName[:1] }}
                 </div>
                 <div class="flex-1">
                     <h1 class="text-2xl font-bold text-gray-900">{{ app.user.fullName }}</h1>
                     <p class="text-gray-600 mt-1">{{ app.user.email }}</p>
                     <div class="flex flex-wrap gap-2 mt-3">
                         <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">Faculty Member</span>
-                        <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">Active</span>
-                        <span class="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full">Department of Computer Science</span>
+                        <span class="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">{{ app.user.isActive ? 'Active' : 'Inactive' }}</span>
+                        {% if app.user.department %}
+                            <span class="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full">{{ app.user.department.name }}</span>
+                        {% endif %}
                     </div>
                 </div>
-                <button class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                    Edit Profile
-                </button>
             </div>
         </div>
 
         <!-- Tabs -->
+        {{ form_start(form, {'attr': {'class': 'space-y-6'}}) }}
         <div class="mb-6" x-data="{ activeTab: 'personal' }">
             <div class="border-b border-gray-200">
                 <nav class="-mb-px flex space-x-8">
-                    <button @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <button type="button" @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         Personal Information
                     </button>
-                    <button @click="activeTab = 'academic'" :class="activeTab === 'academic' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <button type="button" @click="activeTab = 'academic'" :class="activeTab === 'academic' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
                         Academic Info
-                    </button>
-                    <button @click="activeTab = 'settings'" :class="activeTab === 'settings' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                        Settings
-                    </button>
-                    <button @click="activeTab = 'security'" :class="activeTab === 'security' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                        Security
                     </button>
                 </nav>
             </div>
@@ -50,387 +75,75 @@
             <div x-show="activeTab === 'personal'" class="mt-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-6">Personal Information</h2>
-                    <form class="space-y-6">
+                    <div class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                                <input type="text" value="{{ app.user.firstName }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                {{ form_label(form.firstName, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                                {{ form_widget(form.firstName) }}
+                                {{ form_errors(form.firstName) }}
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
-                                <input type="text" value="{{ app.user.middleName }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional">
+                                {{ form_label(form.middleName, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                                {{ form_widget(form.middleName) }}
+                                {{ form_errors(form.middleName) }}
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                                <input type="text" value="{{ app.user.lastName }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                {{ form_label(form.lastName, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                                {{ form_widget(form.lastName) }}
+                                {{ form_errors(form.lastName) }}
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                            <input type="email" value="{{ app.user.email }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                <input type="tel" value="+63 912 345 6789" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                                <input type="date" value="1985-06-15" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
+                            {{ form_label(form.email, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                            {{ form_widget(form.email) }}
+                            {{ form_errors(form.email) }}
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                            <textarea rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">123 University Street, Dumaguete City, Negros Oriental 6200</textarea>
+                            {{ form_label(form.address, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                            {{ form_widget(form.address) }}
+                            {{ form_errors(form.address) }}
                         </div>
-
-                        <div class="flex justify-end gap-3 pt-4">
-                            <button type="button" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                                Cancel
-                            </button>
-                            <button type="submit" class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                                Save Changes
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
 
             <!-- Academic Information Tab -->
             <div x-show="activeTab === 'academic'" class="mt-6">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Academic Credentials</h2>
-                    <form class="space-y-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Academic Information</h2>
+                    <div class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Faculty ID</label>
-                                <input type="text" value="FAC-2024-001" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                                <input type="text" value="{{ app.user.employeeId ?? 'Not set' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option selected>Computer Science</option>
-                                    <option>Information Technology</option>
-                                    <option>Engineering</option>
-                                    <option>Mathematics</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Position</label>
-                                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option selected>Associate Professor</option>
-                                    <option>Assistant Professor</option>
-                                    <option>Full Professor</option>
-                                    <option>Instructor</option>
-                                    <option>Lecturer</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Employment Status</label>
-                                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                    <option selected>Full-time</option>
-                                    <option>Part-time</option>
-                                    <option>Visiting</option>
-                                </select>
+                                <input type="text" value="{{ app.user.department ? app.user.department.name : 'Not assigned' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
-                            <input type="text" value="Software Engineering, Database Systems" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            {{ form_label(form.position, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700 mb-2'}}) }}
+                            {{ form_widget(form.position) }}
+                            {{ form_errors(form.position) }}
                         </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Office Location</label>
-                                <input type="text" value="Room 305, CS Building" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Extension Number</label>
-                                <input type="text" value="305" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Educational Background -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-semibold text-gray-900">Educational Background</h2>
-                        <button class="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
-                            + Add Degree
-                        </button>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="p-4 border border-gray-200 rounded-xl">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-gray-900">Ph.D. in Computer Science</h3>
-                                    <p class="text-sm text-gray-600 mt-1">University of the Philippines Diliman</p>
-                                    <p class="text-sm text-gray-500 mt-1">2015 - 2019</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    <button class="text-gray-400 hover:text-red-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-gray-200 rounded-xl">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-gray-900">M.S. in Computer Science</h3>
-                                    <p class="text-sm text-gray-600 mt-1">De La Salle University</p>
-                                    <p class="text-sm text-gray-500 mt-1">2012 - 2015</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    <button class="text-gray-400 hover:text-red-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-gray-200 rounded-xl">
-                            <div class="flex items-start justify-between">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-gray-900">B.S. in Computer Science</h3>
-                                    <p class="text-sm text-gray-600 mt-1">University of San Carlos</p>
-                                    <p class="text-sm text-gray-500 mt-1">2008 - 2012</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="text-gray-400 hover:text-blue-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    <button class="text-gray-400 hover:text-red-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-                        <button type="button" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                            Save Changes
-                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Settings Tab -->
-            <div x-show="activeTab === 'settings'" class="mt-6">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Notification Preferences</h2>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">Email Notifications</p>
-                                <p class="text-xs text-gray-500 mt-1">Receive email updates about classes and announcements</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">Class Reminders</p>
-                                <p class="text-xs text-gray-500 mt-1">Get reminders 30 minutes before each class</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">Grade Submission Reminders</p>
-                                <p class="text-xs text-gray-500 mt-1">Reminders for pending grade submissions</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        <div class="flex items-center justify-between py-3 border-b border-gray-100">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">Student Messages</p>
-                                <p class="text-xs text-gray-500 mt-1">Notifications for new student messages</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-
-                        <div class="flex items-center justify-between py-3">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">Department Announcements</p>
-                                <p class="text-xs text-gray-500 mt-1">Updates from your department</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Display Preferences</h2>
-                    <div class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Time Zone</label>
-                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option selected>Asia/Manila (GMT+8)</option>
-                                <option>Asia/Tokyo (GMT+9)</option>
-                                <option>America/New_York (GMT-5)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
-                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option selected>MM/DD/YYYY</option>
-                                <option>DD/MM/YYYY</option>
-                                <option>YYYY-MM-DD</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                            <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option selected>English</option>
-                                <option>Filipino</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-                        <button type="button" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                            Cancel
-                        </button>
-                        <button type="submit" class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Security Tab -->
-            <div x-show="activeTab === 'security'" class="mt-6">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Change Password</h2>
-                    <form class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                            <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                            <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">Password must be at least 8 characters long</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                            <input type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-
-                        <div class="flex justify-end gap-3 pt-4">
-                            <button type="button" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                                Cancel
-                            </button>
-                            <button type="submit" class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                                Update Password
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Two-Factor Authentication</h2>
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <p class="text-sm text-gray-700">Add an extra layer of security to your account by enabling two-factor authentication.</p>
-                            <p class="text-xs text-gray-500 mt-2">Status: <span class="text-red-600 font-medium">Not Enabled</span></p>
-                        </div>
-                        <button class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
-                            Enable 2FA
-                        </button>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-6">Active Sessions</h2>
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                            <div class="flex items-start gap-4">
-                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">Windows PC - Chrome</p>
-                                    <p class="text-xs text-gray-500">Dumaguete City, Negros Oriental</p>
-                                    <p class="text-xs text-green-600 mt-1">Current Session</p>
-                                </div>
-                            </div>
-                            <span class="text-xs text-gray-500">Active now</span>
-                        </div>
-
-                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                            <div class="flex items-start gap-4">
-                                <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-gray-900">iPhone - Safari</p>
-                                    <p class="text-xs text-gray-500">Dumaguete City, Negros Oriental</p>
-                                </div>
-                            </div>
-                            <button class="text-xs text-red-600 hover:text-red-700 font-medium">Revoke</button>
-                        </div>
-                    </div>
-                </div>
+            <!-- Form Actions -->
+            <div class="flex justify-end gap-3 pt-4">
+                <a href="{{ path('faculty_dashboard') }}" class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2 gradient-primary text-white rounded-lg hover:opacity-90 transition-opacity">
+                    Save Changes
+                </button>
             </div>
         </div>
+        {{ form_end(form) }}
     </div>
 {% endblock %}

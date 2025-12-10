@@ -27,11 +27,28 @@
         <div class="lg:col-span-1">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex flex-col items-center">
-                    <div class="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                    {% set yearLevel = schedule.subject.code|slice(4, 1) %}
+                    {% if yearLevel == '1' or yearLevel == '0' %}
+                        {% set avatarColor = 'from-blue-400 to-blue-600' %}
+                        {% set textColor = 'text-blue-600' %}
+                    {% elseif yearLevel == '2' %}
+                        {% set avatarColor = 'from-green-400 to-green-600' %}
+                        {% set textColor = 'text-green-600' %}
+                    {% elseif yearLevel == '3' %}
+                        {% set avatarColor = 'from-orange-400 to-orange-600' %}
+                        {% set textColor = 'text-orange-600' %}
+                    {% elseif yearLevel == '4' %}
+                        {% set avatarColor = 'from-red-400 to-red-600' %}
+                        {% set textColor = 'text-red-600' %}
+                    {% else %}
+                        {% set avatarColor = 'from-indigo-400 to-indigo-600' %}
+                        {% set textColor = 'text-indigo-600' %}
+                    {% endif %}
+                    <div class="h-24 w-24 rounded-full bg-gradient-to-br {{ avatarColor }} flex items-center justify-center text-white font-bold text-2xl shadow-lg">
                         {{ schedule.subject.code[:3] }}
                     </div>
-                    <h2 class="mt-4 text-xl font-bold text-gray-900 text-center">{{ schedule.subject.title }}</h2>
-                    <p class="text-gray-600 text-center text-sm">{{ schedule.subject.code }}-{{ schedule.section }}</p>
+                    <h2 class="mt-4 text-2xl font-bold {{ textColor }} text-center">{{ schedule.subject.code }}-{{ schedule.section }}</h2>
+                    <p class="text-gray-600 text-center text-sm">{{ schedule.subject.title }}</p>
                     
                     <div class="mt-4 w-full">
                         {% if schedule.status == 'active' %}

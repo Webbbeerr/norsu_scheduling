@@ -29,22 +29,28 @@ class SubjectService
 
         // Filter by semester if provided
         $semesterJoinAdded = false;
+        $curriculumJoinAdded = false;
+        
         if (!empty($filters['semester'])) {
             $qb->innerJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s.id')
                ->innerJoin('cs.curriculumTerm', 'ct')
+               ->innerJoin('cs.curriculum', 'c')
                ->andWhere('ct.semester = :semester')
                ->setParameter('semester', $filters['semester'])
                ->groupBy('s.id');
             $semesterJoinAdded = true;
+            $curriculumJoinAdded = true;
         }
 
         // Filter by published curricula only if requested
         if (!empty($filters['published_only'])) {
             if (!$semesterJoinAdded) {
-                $qb->innerJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s.id')
-                   ->innerJoin('cs.curriculum', 'c');
-            } else {
+                $qb->innerJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s.id');
+                $semesterJoinAdded = true;
+            }
+            if (!$curriculumJoinAdded) {
                 $qb->innerJoin('cs.curriculum', 'c');
+                $curriculumJoinAdded = true;
             }
             $qb->andWhere('c.isPublished = :published')
                ->setParameter('published', true);
@@ -60,8 +66,26 @@ class SubjectService
         }
 
         if (isset($filters['department_id']) && $filters['department_id'] !== '') {
-            $qb->andWhere('s.department = :departmentId')
-               ->setParameter('departmentId', $filters['department_id']);
+            // Include subjects that either:
+            // 1. Belong to the department directly, OR
+            // 2. Are part of curricula in this department (includes GE/shared subjects)
+            if (!$semesterJoinAdded) {
+                $qb->leftJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s.id');
+                $semesterJoinAdded = true;
+            }
+            if (!$curriculumJoinAdded) {
+                $qb->leftJoin('cs.curriculum', 'c');
+                $curriculumJoinAdded = true;
+            }
+            
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    's.department = :departmentId',
+                    'c.department = :departmentId'
+                )
+            )
+            ->setParameter('departmentId', $filters['department_id'])
+            ->groupBy('s.id');
         }
 
         if (isset($filters['type']) && $filters['type'] !== '') {

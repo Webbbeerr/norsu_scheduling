@@ -33,12 +33,12 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Teaching Load</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">21 hrs</p>
-                        <p class="text-sm text-blue-600 mt-2 flex items-center">
+                        <p class="text-3xl font-bold text-gray-900 mt-1">{{ totalHours }} hrs</p>
+                        <p class="text-sm {% if totalHours <= 24 %}text-blue-600{% else %}text-amber-600{% endif %} mt-2 flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            Within limit
+                            {% if totalHours <= 24 %}Within limit{% else %}Above normal{% endif %}
                         </p>
                     </div>
                     <div class="gradient-primary p-4 rounded-xl">
@@ -57,12 +57,12 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Active Classes</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">5</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">{{ activeClasses }}</p>
                         <p class="text-sm text-green-600 mt-2 flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                             </svg>
-                            127 students
+                            {{ totalStudents }} students
                         </p>
                     </div>
                     <div class="gradient-success p-4 rounded-xl">
@@ -81,41 +81,21 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600">Today's Classes</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">3</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">{{ todayCount }}</p>
                         <p class="text-sm text-amber-600 mt-2 flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            Next at 10:00 AM
+                            {% if todaySchedules|length > 0 %}
+                                Next at {{ todaySchedules[0].startTime|date('g:i A') }}
+                            {% else %}
+                                No classes today
+                            {% endif %}
                         </p>
                     </div>
                     <div class="gradient-warning p-4 rounded-xl">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Office Hours -->
-        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
-            <div class="gradient-primary absolute inset-0 opacity-5"></div>
-            <div class="relative">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Office Hours</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1">10 hrs</p>
-                        <p class="text-sm text-purple-600 mt-2 flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                            per week
-                        </p>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);" class="p-4 rounded-xl">
-                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                         </svg>
                     </div>
                 </div>
@@ -134,121 +114,211 @@
                     <a href="{{ path('faculty_schedule') }}" class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">View Full Schedule</a>
                 </div>
 
-                <div class="space-y-4">
-                    <!-- Class 1 -->
-                    <div class="flex items-start p-4 bg-blue-50 border border-blue-100 rounded-xl hover:shadow-md transition-shadow">
-                        <div class="flex-shrink-0 w-16 text-center">
-                            <div class="text-sm font-semibold text-blue-600">08:00</div>
-                            <div class="text-xs text-gray-500">10:00</div>
-                        </div>
-                        <div class="flex-1 ml-4">
-                            <h4 class="text-sm font-semibold text-gray-900">CS 101 - Introduction to Programming</h4>
-                            <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                {% if todaySchedules|length > 0 %}
+                    {% set now = "now"|date('H:i') %}
+                    {% set upcomingSchedules = [] %}
+                    {% set inProgressSchedules = [] %}
+                    {% set completedSchedules = [] %}
+                    
+                    {# Categorize schedules based on time #}
+                    {% for schedule in todaySchedules %}
+                        {% set startTime = schedule.startTime|date('H:i') %}
+                        {% set endTime = schedule.endTime|date('H:i') %}
+                        
+                        {% if startTime > now %}
+                            {% set upcomingSchedules = upcomingSchedules|merge([schedule]) %}
+                        {% elseif startTime <= now and endTime > now %}
+                            {% set inProgressSchedules = inProgressSchedules|merge([schedule]) %}
+                        {% else %}
+                            {% set completedSchedules = completedSchedules|merge([schedule]) %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div class="space-y-6">
+                        {# In Progress Classes #}
+                        {% if inProgressSchedules|length > 0 %}
+                            <div>
+                                <h3 class="text-sm font-semibold text-blue-600 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2"/>
+                                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
                                     </svg>
-                                    45 students
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
-                                    Room 301
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                    Lecture
-                                </span>
+                                    In Progress
+                                </h3>
+                                <div class="space-y-3">
+                                    {% for schedule in inProgressSchedules %}
+                                        <div class="flex items-start p-4 bg-blue-50 border-2 border-blue-400 rounded-xl hover:shadow-md transition-shadow relative">
+                                            <div class="absolute -top-2 -right-2">
+                                                <span class="flex h-5 w-5">
+                                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                    <span class="relative inline-flex rounded-full h-5 w-5 bg-blue-500"></span>
+                                                </span>
+                                            </div>
+                                            <div class="flex-shrink-0 w-20 text-center">
+                                                <div class="text-sm font-semibold text-blue-600">{{ schedule.startTime|date('g:i A') }}</div>
+                                                <div class="text-xs text-gray-500">{{ schedule.endTime|date('g:i A') }}</div>
+                                            </div>
+                                            <div class="flex-1 ml-4">
+                                                <h4 class="text-sm font-semibold text-gray-900">
+                                                    {{ schedule.subject.code }} - {{ schedule.subject.title }}
+                                                </h4>
+                                                <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                        </svg>
+                                                        {{ schedule.enrolledStudents }} students
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                                        </svg>
+                                                        {{ schedule.room.name }}
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        {{ schedule.room.type|capitalize }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0 ml-4">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                                        <circle cx="12" cy="12" r="10"/>
+                                                    </svg>
+                                                    In Progress
+                                                </span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex-shrink-0 ml-4">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Upcoming
-                            </span>
-                        </div>
-                    </div>
+                        {% endif %}
 
-                    <!-- Class 2 -->
-                    <div class="flex items-start p-4 bg-green-50 border border-green-100 rounded-xl hover:shadow-md transition-shadow">
-                        <div class="flex-shrink-0 w-16 text-center">
-                            <div class="text-sm font-semibold text-green-600">10:30</div>
-                            <div class="text-xs text-gray-500">12:00</div>
-                        </div>
-                        <div class="flex-1 ml-4">
-                            <h4 class="text-sm font-semibold text-gray-900">CS 201 - Data Structures</h4>
-                            <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        {# Upcoming Classes #}
+                        {% if upcomingSchedules|length > 0 %}
+                            <div>
+                                <h3 class="text-sm font-semibold text-green-600 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
-                                    32 students
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
-                                    Lab 102
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                    </svg>
-                                    Lab
-                                </span>
+                                    Upcoming
+                                </h3>
+                                <div class="space-y-3">
+                                    {% for schedule in upcomingSchedules %}
+                                        <div class="flex items-start p-4 bg-green-50 border border-green-200 rounded-xl hover:shadow-md transition-shadow">
+                                            <div class="flex-shrink-0 w-20 text-center">
+                                                <div class="text-sm font-semibold text-green-600">{{ schedule.startTime|date('g:i A') }}</div>
+                                                <div class="text-xs text-gray-500">{{ schedule.endTime|date('g:i A') }}</div>
+                                            </div>
+                                            <div class="flex-1 ml-4">
+                                                <h4 class="text-sm font-semibold text-gray-900">
+                                                    {{ schedule.subject.code }} - {{ schedule.subject.title }}
+                                                </h4>
+                                                <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                        </svg>
+                                                        {{ schedule.enrolledStudents }} students
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                                        </svg>
+                                                        {{ schedule.room.name }}
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        {{ schedule.room.type|capitalize }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0 ml-4">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    Upcoming
+                                                </span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex-shrink-0 ml-4">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                Later
-                            </span>
-                        </div>
-                    </div>
+                        {% endif %}
 
-                    <!-- Class 3 -->
-                    <div class="flex items-start p-4 bg-purple-50 border border-purple-100 rounded-xl hover:shadow-md transition-shadow">
-                        <div class="flex-shrink-0 w-16 text-center">
-                            <div class="text-sm font-semibold text-purple-600">14:00</div>
-                            <div class="text-xs text-gray-500">16:00</div>
-                        </div>
-                        <div class="flex-1 ml-4">
-                            <h4 class="text-sm font-semibold text-gray-900">CS 301 - Database Systems</h4>
-                            <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-600">
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        {# Completed Classes #}
+                        {% if completedSchedules|length > 0 %}
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-500 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
-                                    28 students
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
-                                    Room 205
-                                </span>
-                                <span class="flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                    Lecture
-                                </span>
+                                    Completed
+                                </h3>
+                                <div class="space-y-3">
+                                    {% for schedule in completedSchedules %}
+                                        <div class="flex items-start p-4 bg-gray-50 border border-gray-200 rounded-xl opacity-75 hover:opacity-100 transition-opacity">
+                                            <div class="flex-shrink-0 w-20 text-center">
+                                                <div class="text-sm font-semibold text-gray-500">{{ schedule.startTime|date('g:i A') }}</div>
+                                                <div class="text-xs text-gray-400">{{ schedule.endTime|date('g:i A') }}</div>
+                                            </div>
+                                            <div class="flex-1 ml-4">
+                                                <h4 class="text-sm font-semibold text-gray-700">
+                                                    {{ schedule.subject.code }} - {{ schedule.subject.title }}
+                                                </h4>
+                                                <div class="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                                        </svg>
+                                                        {{ schedule.enrolledStudents }} students
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                                        </svg>
+                                                        {{ schedule.room.name }}
+                                                    </span>
+                                                    <span class="flex items-center">
+                                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                        </svg>
+                                                        {{ schedule.room.type|capitalize }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0 ml-4">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                    Completed
+                                                </span>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex-shrink-0 ml-4">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Afternoon
-                            </span>
-                        </div>
+                        {% endif %}
                     </div>
-                </div>
+                {% else %}
+                    <div class="text-center py-12">
+                        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-gray-500 text-lg font-medium">No Classes Today</p>
+                        <p class="text-gray-400 text-sm mt-2">Enjoy your day off!</p>
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Quick Actions -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 <h2 class="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                     <a href="{{ path('faculty_schedule') }}" class="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-200 hover:shadow-md">
                         <div class="gradient-primary p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
                             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,26 +337,6 @@
                         </div>
                         <h3 class="font-semibold text-gray-900 mb-2">My Classes</h3>
                         <p class="text-sm text-gray-600">Manage your classes</p>
-                    </a>
-
-                    <a href="{{ path('faculty_office_hours') }}" class="group p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100 hover:border-purple-200 transition-all duration-200 hover:shadow-md">
-                        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);" class="p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Office Hours</h3>
-                        <p class="text-sm text-gray-600">Update your availability</p>
-                    </a>
-
-                    <a href="#" class="group p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 hover:border-amber-200 transition-all duration-200 hover:shadow-md">
-                        <div class="gradient-warning p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Take Attendance</h3>
-                        <p class="text-sm text-gray-600">Record student attendance</p>
                     </a>
 
                     <a href="{{ path('faculty_performance') }}" class="group p-6 bg-gradient-to-br from-rose-50 to-red-50 rounded-xl border border-rose-100 hover:border-rose-200 transition-all duration-200 hover:shadow-md">
@@ -437,14 +487,6 @@
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2">
                         <div class="bg-blue-600 h-2 rounded-full" style="width: 80%"></div>
-                    </div>
-
-                    <div class="flex items-center justify-between mt-4">
-                        <span class="text-sm text-gray-600">Office Hours</span>
-                        <span class="text-lg font-semibold text-gray-900">8/10 hrs</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-green-600 h-2 rounded-full" style="width: 80%"></div>
                     </div>
 
                     <div class="flex items-center justify-between mt-4">

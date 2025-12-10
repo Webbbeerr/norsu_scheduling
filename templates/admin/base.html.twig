@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block head_meta %}{% endblock %}
     <title>{% block title %}Admin Dashboard - Smart Scheduling System{% endblock %}</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>📅</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/norsu-logo.svg') }}">
     
     <!-- Tailwind CSS - Local -->
     <script src="{{ asset('vendor/js/tailwind.min.js') }}"></script>
@@ -306,8 +306,8 @@
                 <!-- Close Button -->
                 <div class="flex items-center justify-between px-6 mb-4">
                     <div class="flex items-center">
-                        <div class="bg-white p-1 rounded-2xl shadow-lg border-2 border-gray-100">
-                            <img src="{{ asset('images/NORSU.png') }}" alt="NORSU Logo" class="w-12 h-12 object-contain">
+                        <div class="bg-white p-1 rounded-2xl shadow-lg">
+                            <img src="{{ asset('images/norsu-logo.svg') }}" alt="NORSU Logo" class="w-12 h-12 object-contain">
                         </div>
                         <div class="ml-3">
                             <h1 class="text-xl font-bold text-gray-900">Smart Schedule</h1>
@@ -454,24 +454,33 @@
                             Analytics
                         </h3>
                         <div class="space-y-1">
-                            <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                 </svg>
-                                Usage Reports
-                            </a>
-                            <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span class="flex items-center gap-2">
+                                    Usage Reports
+                                    <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                </span>
+                            </div>
+                            <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                 </svg>
-                                Performance
-                            </a>
-                            <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span class="flex items-center gap-2">
+                                    Performance
+                                    <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                </span>
+                            </div>
+                            <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
-                                Schedule Analytics
-                            </a>
+                                <span class="flex items-center gap-2">
+                                    Schedule Analytics
+                                    <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </nav>
@@ -485,8 +494,8 @@
                     <!-- Logo and Brand -->
                     <div class="flex items-center flex-shrink-0 px-6 mb-2">
                         <div class="flex items-center">
-                            <div class="bg-white p-1 rounded-2xl shadow-lg border-2 border-gray-100">
-                                <img src="{{ asset('images/NORSU.png') }}" alt="NORSU Logo" class="w-12 h-12 object-contain">
+                            <div class="bg-white p-1 rounded-2xl shadow-lg">
+                                <img src="{{ asset('images/norsu-logo.svg') }}" alt="NORSU Logo" class="w-12 h-12 object-contain">
                             </div>
                             <div class="ml-3">
                                 <h1 class="text-xl font-bold text-gray-900">Smart Schedule</h1>
@@ -627,24 +636,33 @@
                                 Analytics
                             </h3>
                             <div class="space-y-1">
-                                <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                    <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                    <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                                     </svg>
-                                    Usage Reports
-                                </a>
-                                <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                    <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span class="flex items-center gap-2">
+                                        Usage Reports
+                                        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                    </span>
+                                </div>
+                                <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                    <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                     </svg>
-                                    Performance
-                                </a>
-                                <a href="#" class="nav-item text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
-                                    <svg class="text-gray-400 group-hover:text-gray-500 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span class="flex items-center gap-2">
+                                        Performance
+                                        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                    </span>
+                                </div>
+                                <div class="nav-item text-gray-400 cursor-not-allowed group flex items-center px-3 py-3 text-sm font-medium rounded-lg">
+                                    <svg class="text-gray-300 mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
-                                    Schedule Analytics
-                                </a>
+                                    <span class="flex items-center gap-2">
+                                        Schedule Analytics
+                                        <span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">Soon</span>
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -751,7 +769,7 @@
                                     </div>
                                     
                                     <!-- Menu items -->
-                                    <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200">
+                                    <a href="#" @click.prevent="$dispatch('open-profile-modal')" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200">
                                         <div class="flex items-center">
                                             <svg class="mr-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -760,7 +778,7 @@
                                         </div>
                                     </a>
                                     
-                                    <a href="#" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200">
+                                    <a href="{{ path('app_profile') }}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200">
                                         <div class="flex items-center">
                                             <svg class="mr-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -1213,5 +1231,8 @@
     </div>
 
     {% endblock %}
+
+    <!-- Include Profile Modal -->
+    {% include 'components/profile_modal.html.twig' %}
 </body>
 </html>

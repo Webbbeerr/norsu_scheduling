@@ -30,6 +30,12 @@ class ScheduleConflictDetector
     {
         $conflicts = [];
 
+        // Ensure we have a room before checking
+        if (!$schedule->getRoom()) {
+            error_log('ScheduleConflictDetector: No room set on schedule');
+            return $conflicts;
+        }
+
         // Get all schedules for the same room (removed day pattern filter to check overlapping days)
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('s')
@@ -50,12 +56,36 @@ class ScheduleConflictDetector
         }
 
         $existingSchedules = $qb->getQuery()->getResult();
+        
+        // Log the check
+        error_log(sprintf(
+            'ScheduleConflictDetector: Checking room %s (ID: %d) on %s from %s to %s - Found %d existing schedules',
+            $schedule->getRoom()->getName(),
+            $schedule->getRoom()->getId(),
+            $schedule->getDayPattern(),
+            $schedule->getStartTime()->format('H:i'),
+            $schedule->getEndTime()->format('H:i'),
+            count($existingSchedules)
+        ));
 
         // Check for time overlaps AND day pattern overlaps
         foreach ($existingSchedules as $existing) {
+            $hasDayOverlap = $this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern());
+            $hasTimeOverlap = $this->hasTimeOverlap($schedule, $existing);
+            
+            // Log each check
+            error_log(sprintf(
+                '  - Existing: %s %s %s-%s | Day overlap: %s, Time overlap: %s',
+                $existing->getSubject()->getCode(),
+                $existing->getDayPattern(),
+                $existing->getStartTime()->format('H:i'),
+                $existing->getEndTime()->format('H:i'),
+                $hasDayOverlap ? 'YES' : 'NO',
+                $hasTimeOverlap ? 'YES' : 'NO'
+            ));
+            
             // Check if day patterns overlap AND times overlap
-            if ($this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern()) 
-                && $this->hasTimeOverlap($schedule, $existing)) {
+            if ($hasDayOverlap && $hasTimeOverlap) {
                 $conflicts[] = [
                     'type' => 'room_time_conflict',
                     'schedule' => $existing,
@@ -124,9 +154,21 @@ class ScheduleConflictDetector
         // Extract days from pattern1
         $days1 = $this->extractDays($pattern1);
         $days2 = $this->extractDays($pattern2);
+        
+        $overlap = array_intersect($days1, $days2);
+        
+        // Log the day extraction
+        error_log(sprintf(
+            '  Day check: "%s" -> [%s] vs "%s" -> [%s] | Overlap: [%s]',
+            $pattern1,
+            implode(', ', $days1),
+            $pattern2,
+            implode(', ', $days2),
+            implode(', ', $overlap)
+        ));
 
         // Check if there's any overlap
-        return !empty(array_intersect($days1, $days2));
+        return !empty($overlap);
     }
 
     /**

@@ -216,38 +216,54 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <template x-for="schedule in paginatedData()" :key="schedule.id">
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900" x-text="schedule.subject"></div>
-                                <div class="text-sm text-gray-500" x-text="schedule.subjectCode + '-' + schedule.section"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900" x-text="schedule.section"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900" x-text="schedule.room"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900" x-text="schedule.faculty"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900" x-text="schedule.dayPattern"></div>
-                                <div class="text-sm text-gray-500" x-text="schedule.time"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900" x-text="schedule.semester"></div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span 
-                                    x-text="schedule.status === 'active' ? 'Active' : 'Inactive'"
-                                    :class="schedule.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                    class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                ></span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div class="flex items-center justify-end gap-2">
+                <tbody class="bg-white">
+                    <template x-for="(group, subjectCode) in getGroupedPaginatedData()" :key="subjectCode">
+                        <template x-data="{ groupExpanded: true }">
+                            <!-- Subject Group Header -->
+                            <tr class="bg-gray-100 border-t-2 border-gray-300">
+                                <td colspan="8" class="px-6 py-3">
+                                    <button @click="groupExpanded = !groupExpanded" class="flex items-center gap-2 w-full text-left">
+                                        <svg class="w-5 h-5 transition-transform" :class="{'rotate-90': groupExpanded}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                        <span class="font-bold text-base" :class="getYearColor(subjectCode)" x-text="subjectCode"></span>
+                                        <span class="text-sm text-gray-600" x-text="'- ' + group.subjectTitle"></span>
+                                        <span class="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full" x-text="group.schedules.length + ' section(s)'"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- Schedule Rows for this Subject -->
+                            <template x-show="groupExpanded" x-for="schedule in group.schedules" :key="schedule.id">
+                                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-200">
+                                    <td class="px-6 py-4 whitespace-nowrap pl-16">
+                                        <div class="text-sm font-bold" :class="getYearColor(schedule.subjectCode)" x-text="schedule.subjectCode + '-' + schedule.section"></div>
+                                        <div class="text-sm text-gray-600" x-text="schedule.subject"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900" x-text="schedule.section"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900" x-text="schedule.room"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900" x-text="schedule.faculty"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900" x-text="schedule.dayPattern"></div>
+                                        <div class="text-sm text-gray-500" x-text="schedule.time"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900" x-text="schedule.semester"></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span 
+                                            x-text="schedule.status === 'active' ? 'Active' : 'Inactive'"
+                                            :class="schedule.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                        ></span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div class="flex items-center justify-end gap-2">
                                     <a 
                                         :href="`{{ path('department_head_schedules_view', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
                                         class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
@@ -301,7 +317,9 @@
                             </td>
                         </tr>
                     </template>
-                    <template x-if="paginatedData().length === 0">
+                        </template>
+                    </template>
+                    <template x-if="Object.keys(getGroupedPaginatedData()).length === 0">
                         <tr>
                             <td colspan="8" class="px-6 py-12 text-center">
                                 <div class="text-gray-500">
@@ -421,6 +439,17 @@ function schedulesTable() {
             this.filteredData = [...this.allData];
         },
 
+        getYearColor(subjectCode) {
+            const match = subjectCode.match(/\d+/);
+            if (!match) return 'text-gray-900';
+            const num = parseInt(match[0]);
+            if (num >= 100 && num < 200) return 'text-blue-600';
+            if (num >= 200 && num < 300) return 'text-green-600';
+            if (num >= 300 && num < 400) return 'text-orange-600';
+            if (num >= 400) return 'text-red-600';
+            return 'text-gray-900';
+        },
+
         filterData() {
             this.filteredData = this.allData.filter(schedule => {
                 // Search filter
@@ -482,6 +511,31 @@ function schedulesTable() {
             const start = (this.currentPage - 1) * this.perPage;
             const end = start + this.perPage;
             return this.filteredData.slice(start, end);
+        },
+
+        getGroupedPaginatedData() {
+            const paginated = this.paginatedData();
+            const grouped = {};
+            
+            paginated.forEach(schedule => {
+                const code = schedule.subjectCode;
+                if (!grouped[code]) {
+                    grouped[code] = {
+                        subjectTitle: schedule.subject,
+                        schedules: []
+                    };
+                }
+                grouped[code].schedules.push(schedule);
+            });
+
+            // Sort schedules within each group by section
+            Object.values(grouped).forEach(group => {
+                group.schedules.sort((a, b) => {
+                    return a.section.localeCompare(b.section);
+                });
+            });
+
+            return grouped;
         },
 
         totalPages() {

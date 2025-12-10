@@ -105,6 +105,8 @@
                             </label>
                             <select id="subject" name="subject" required 
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
+                                    style="max-height: 300px; overflow-y: auto;"
+                                    size="1"
                                     onchange="onSubjectChange(this)">
                                 <option value="">Choose a subject...</option>
                                 {% for subject in subjects %}
@@ -116,7 +118,7 @@
                                     </option>
                                 {% endfor %}
                             </select>
-                            <p class="mt-1 text-xs text-gray-500">Select the subject for this schedule (department subjects only)</p>
+                            <p class="mt-1 text-xs text-gray-500">Select the subject for this schedule (scroll to see all department subjects)</p>
                         </div>
 
                         <!-- Existing Sections Info -->

@@ -2060,18 +2060,23 @@ class AdminController extends AbstractController
     #[Route('/rooms', name: 'rooms', methods: ['GET'])]
     public function rooms(Request $request, \App\Service\RoomService $roomService): Response
     {
+        // Load ALL rooms for client-side filtering
         $filters = [
-            'search' => $request->query->get('search', ''),
-            'is_active' => $request->query->get('is_active', ''),
-            'type' => $request->query->get('type', ''),
-            'building' => $request->query->get('building', ''),
-            'page' => $request->query->getInt('page', 1),
-            'limit' => 10,
+            'search' => '',
+            'is_active' => '',
+            'type' => '',
+            'building' => '',
+            'department' => null,
+            'page' => 1,
+            'limit' => 10000, // Load all rooms
         ];
 
         $result = $roomService->getPaginatedRooms($filters);
-        $statistics = $roomService->getRoomStatistics();
-        $buildings = $roomService->getAllBuildings();
+        $statistics = $roomService->getRoomStatistics([]);
+        $buildings = $roomService->getAllBuildings([]);
+        
+        // Get all departments for the filter dropdown
+        $departments = $this->departmentRepository->findBy(['deletedAt' => null], ['name' => 'ASC']);
 
         return $this->render('admin/rooms.html.twig', [
             'rooms' => $result['rooms'],
@@ -2079,6 +2084,8 @@ class AdminController extends AbstractController
             'filters' => $filters,
             'statistics' => $statistics,
             'buildings' => $buildings,
+            'departments' => $departments,
+            'selected_department' => null,
         ]);
     }
 
@@ -2570,25 +2577,38 @@ class AdminController extends AbstractController
                 return new JsonResponse(['success' => false, 'message' => 'Department not found.'], 404);
             }
 
-            // Create curriculum
-            $curriculum = new \App\Entity\Curriculum();
-            $curriculum->setName($curriculumName);
-            $curriculum->setVersion((int)$version);
-            $curriculum->setDepartment($department);
-            $curriculum->setIsPublished(false);
-            $curriculum->setCreatedAt(new \DateTimeImmutable());
-            $curriculum->setUpdatedAt(new \DateTimeImmutable());
-            $entityManager->persist($curriculum);
-            $entityManager->flush(); // Flush to get curriculum ID
+            // Start transaction to ensure curriculum is only created if upload succeeds
+            $entityManager->beginTransaction();
+            
+            try {
+                // Create curriculum
+                $curriculum = new \App\Entity\Curriculum();
+                $curriculum->setName($curriculumName);
+                $curriculum->setVersion((int)$version);
+                $curriculum->setDepartment($department);
+                $curriculum->setIsPublished(false);
+                $curriculum->setCreatedAt(new \DateTimeImmutable());
+                $curriculum->setUpdatedAt(new \DateTimeImmutable());
+                $entityManager->persist($curriculum);
+                $entityManager->flush(); // Flush to get curriculum ID
 
-            // Process upload using service
-            $result = $uploadService->processUpload($file, $curriculum, $autoCreateTerms);
+                // Process upload using service
+                $result = $uploadService->processUpload($file, $curriculum, $autoCreateTerms);
 
-            if (!$result['success']) {
-                // Delete the curriculum if upload failed
-                $entityManager->remove($curriculum);
-                $entityManager->flush();
-                return new JsonResponse($result, 400);
+                if (!$result['success']) {
+                    // Rollback transaction if upload failed
+                    $entityManager->rollback();
+                    return new JsonResponse($result, 400);
+                }
+                
+                // Commit transaction - curriculum and all subjects/terms are saved
+                $entityManager->commit();
+            } catch (\Exception $uploadException) {
+                // Rollback on any error
+                if ($entityManager->getConnection()->isTransactionActive()) {
+                    $entityManager->rollback();
+                }
+                throw $uploadException;
             }
 
             // If subjects were created but no terms were generated, warn the user
