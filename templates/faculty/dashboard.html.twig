@@ -87,7 +87,21 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             {% if todaySchedules|length > 0 %}
-                                Next at {{ todaySchedules[0].startTime|date('g:i A') }}
+                                {% set now = "now"|date('H:i') %}
+                                {% set nextClass = null %}
+                                {% for schedule in todaySchedules %}
+                                    {% set startTime = schedule.startTime|date('H:i') %}
+                                    {% set endTime = schedule.endTime|date('H:i') %}
+                                    {# Find the next upcoming class (hasn't started yet) #}
+                                    {% if startTime > now and nextClass is null %}
+                                        {% set nextClass = schedule %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if nextClass %}
+                                    Next at {{ nextClass.startTime|date('g:i A') }}
+                                {% else %}
+                                    All classes done
+                                {% endif %}
                             {% else %}
                                 No classes today
                             {% endif %}
@@ -101,12 +115,89 @@
                 </div>
             </div>
         </div>
+
+        <!-- Rooms Used -->
+        <div class="stats-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
+            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);" class="absolute inset-0 opacity-5"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Rooms</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1">
+                            {% set uniqueRooms = [] %}
+                            {% for schedule in todaySchedules %}
+                                {% if schedule.room and schedule.room.name not in uniqueRooms %}
+                                    {% set uniqueRooms = uniqueRooms|merge([schedule.room.name]) %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ uniqueRooms|length }}
+                        </p>
+                        <p class="text-sm text-purple-600 mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                            </svg>
+                            Different locations
+                        </p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);" class="p-4 rounded-xl">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Left Column - Today's Schedule and Quick Actions -->
-        <div class="lg:col-span-2 space-y-8">
+        <!-- Left Column - Quick Actions -->
+        <div class="lg:col-span-1">
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+                <div class="space-y-4">
+                    <a href="{{ path('faculty_schedule') }}" class="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-200 hover:shadow-md flex items-center">
+                        <div class="gradient-primary p-3 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold text-gray-900 mb-1">View Schedule</h3>
+                            <p class="text-xs text-gray-600">See your complete teaching schedule</p>
+                        </div>
+                    </a>
+
+                    <a href="{{ path('faculty_classes') }}" class="group p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:border-green-200 transition-all duration-200 hover:shadow-md flex items-center">
+                        <div class="gradient-success p-3 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold text-gray-900 mb-1">My Classes</h3>
+                            <p class="text-xs text-gray-600">Manage your classes</p>
+                        </div>
+                    </a>
+
+                    <a href="{{ path('faculty_profile') }}" class="group p-6 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 hover:border-cyan-200 transition-all duration-200 hover:shadow-md flex items-center">
+                        <div style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);" class="p-3 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold text-gray-900 mb-1">My Profile</h3>
+                            <p class="text-xs text-gray-600">Update your information</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Today's Schedule -->
+        <div class="lg:col-span-2">
             <!-- Today's Schedule -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 <div class="flex items-center justify-between mb-6">
@@ -313,190 +404,6 @@
                         <p class="text-gray-400 text-sm mt-2">Enjoy your day off!</p>
                     </div>
                 {% endif %}
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                <h2 class="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                    <a href="{{ path('faculty_schedule') }}" class="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-200 hover:shadow-md">
-                        <div class="gradient-primary p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">View Schedule</h3>
-                        <p class="text-sm text-gray-600">See your complete teaching schedule</p>
-                    </a>
-
-                    <a href="{{ path('faculty_classes') }}" class="group p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:border-green-200 transition-all duration-200 hover:shadow-md">
-                        <div class="gradient-success p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">My Classes</h3>
-                        <p class="text-sm text-gray-600">Manage your classes</p>
-                    </a>
-
-                    <a href="{{ path('faculty_performance') }}" class="group p-6 bg-gradient-to-br from-rose-50 to-red-50 rounded-xl border border-rose-100 hover:border-rose-200 transition-all duration-200 hover:shadow-md">
-                        <div class="gradient-danger p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">Performance</h3>
-                        <p class="text-sm text-gray-600">View your analytics</p>
-                    </a>
-
-                    <a href="{{ path('faculty_profile') }}" class="group p-6 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-100 hover:border-cyan-200 transition-all duration-200 hover:shadow-md">
-                        <div style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);" class="p-3 rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 mb-2">My Profile</h3>
-                        <p class="text-sm text-gray-600">Update your information</p>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column - Upcoming Tasks and Announcements -->
-        <div class="space-y-8">
-            <!-- Upcoming Tasks -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Upcoming Tasks</h3>
-                <div class="space-y-4">
-                    <div class="flex items-start p-3 bg-red-50 border border-red-100 rounded-lg">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <p class="text-sm font-medium text-gray-900">Grade Submission</p>
-                            <p class="text-xs text-gray-500 mt-1">CS 201 Midterm - Due Tomorrow</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <p class="text-sm font-medium text-gray-900">Lesson Plan</p>
-                            <p class="text-xs text-gray-500 mt-1">Week 8 - Due in 3 days</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <p class="text-sm font-medium text-gray-900">Department Meeting</p>
-                            <p class="text-xs text-gray-500 mt-1">Friday, 2:00 PM</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start p-3 bg-green-50 border border-green-100 rounded-lg">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1">
-                            <p class="text-sm font-medium text-gray-900">Class Observation</p>
-                            <p class="text-xs text-gray-500 mt-1">CS 301 - Next Week</p>
-                        </div>
-                    </div>
-                </div>
-                <button class="mt-4 w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
-                    View All Tasks
-                </button>
-            </div>
-
-            <!-- Announcements -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Announcements</h3>
-                <div class="space-y-4">
-                    <div class="pb-4 border-b border-gray-100">
-                        <div class="flex items-start">
-                            <div class="flex-shrink-0">
-                                <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-gray-900">New Academic Calendar</p>
-                                <p class="text-xs text-gray-500 mt-1">The updated academic calendar for next semester is now available.</p>
-                                <p class="text-xs text-gray-400 mt-2">2 hours ago</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pb-4 border-b border-gray-100">
-                        <div class="flex items-start">
-                            <div class="flex-shrink-0">
-                                <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-gray-900">Training Workshop</p>
-                                <p class="text-xs text-gray-500 mt-1">Faculty development workshop on teaching methodologies.</p>
-                                <p class="text-xs text-gray-400 mt-2">1 day ago</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pb-4">
-                        <div class="flex items-start">
-                            <div class="flex-shrink-0">
-                                <div class="w-2 h-2 bg-amber-500 rounded-full mt-2"></div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-gray-900">System Maintenance</p>
-                                <p class="text-xs text-gray-500 mt-1">Scheduled maintenance on Saturday 10PM - 2AM.</p>
-                                <p class="text-xs text-gray-400 mt-2">2 days ago</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <button class="mt-4 w-full px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
-                    View All Announcements
-                </button>
-            </div>
-
-            <!-- Teaching Statistics -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">This Week</h3>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Classes Taught</span>
-                        <span class="text-lg font-semibold text-gray-900">12</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-blue-600 h-2 rounded-full" style="width: 80%"></div>
-                    </div>
-
-                    <div class="flex items-center justify-between mt-4">
-                        <span class="text-sm text-gray-600">Attendance Rate</span>
-                        <span class="text-lg font-semibold text-gray-900">92%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-purple-600 h-2 rounded-full" style="width: 92%"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

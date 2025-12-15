@@ -1,0 +1,388 @@
+    {% extends 'admin/base.html.twig' %}
+
+{% block title %}System Settings - Smart Scheduling System{% endblock %}
+
+{% block main_content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+        <!-- Page Header -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
+            <p class="mt-1 text-sm text-gray-600">Manage system-wide configuration and active semester</p>
+        </div>
+
+        <!-- Active Semester Status Card -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center">
+                        <svg class="h-8 w-8 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <div>
+                            <h2 class="text-lg font-medium text-white">Current Active Semester</h2>
+                            <p class="text-blue-100 text-sm">All schedule operations are performed in this semester</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    {% if hasActiveSemester %}
+                        <div class="text-2xl font-bold text-white">{{ activeSemesterDisplay }}</div>
+                        <div class="flex items-center justify-end mt-1">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Active
+                            </span>
+                        </div>
+                    {% else %}
+                        <div class="text-xl font-medium text-white">No Active Semester Set</div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 mt-1">
+                            <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            Configuration Required
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Active Semester Section -->
+        <div class="bg-white shadow-md rounded-xl overflow-hidden mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-900">Change Active Semester</h3>
+                <p class="text-sm text-gray-600 mt-1">Select the academic year and semester to activate</p>
+            </div>
+            
+            <div class="p-6">
+                <form id="semesterChangeForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Academic Year Selection -->
+                        <div>
+                            <label for="academic_year" class="block text-sm font-medium text-gray-700 mb-2">
+                                Academic Year <span class="text-red-500">*</span>
+                            </label>
+                            <select id="academic_year" name="academic_year_id" 
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                <option value="">Select Academic Year</option>
+                                {% for year in academic_years %}
+                                    <option value="{{ year.id }}" {% if active_year and active_year.id == year.id %}selected{% endif %}>
+                                        {{ year.year }}{% if year.isCurrent %} (Current){% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Semester Selection -->
+                        <div>
+                            <label for="semester" class="block text-sm font-medium text-gray-700 mb-2">
+                                Semester <span class="text-red-500">*</span>
+                            </label>
+                            <select id="semester" name="semester" 
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                <option value="">Select Semester</option>
+                                {% for sem in available_semesters %}
+                                    <option value="{{ sem }}" {% if active_semester == sem %}selected{% endif %}>
+                                        {{ sem }} Semester
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Warning Message -->
+                    <div id="warningMessage" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-yellow-800">Important</h3>
+                                <div class="mt-2 text-sm text-yellow-700" id="warningContent">
+                                    <!-- Warning content will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+                        <button type="button" id="previewButton"
+                                class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            <svg class="inline-block h-5 w-5 mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            Preview Changes
+                        </button>
+                        <button type="submit" id="applyButton"
+                                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            <svg class="inline-block h-5 w-5 mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            Apply Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Information Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Current Schedules Card -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Active Schedules</p>
+                            <p class="text-2xl font-bold text-gray-900" id="currentScheduleCount">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Academic Years Card -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Academic Years</p>
+                            <p class="text-2xl font-bold text-gray-900">{{ academic_years|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status Card -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                            <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">System Status</p>
+                            <p class="text-lg font-semibold text-green-600">Operational</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mx-auto">
+                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-4">
+                Change Active Semester?
+            </h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500 text-center" id="confirmMessage">
+                    <!-- Confirmation message will be inserted here -->
+                </p>
+            </div>
+            <div class="flex items-center justify-center gap-4 px-4 py-3 mt-4">
+                <button id="cancelButton" type="button"
+                        class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmButton" type="button"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                    Confirm Change
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('semesterChangeForm');
+    const academicYearSelect = document.getElementById('academic_year');
+    const semesterSelect = document.getElementById('semester');
+    const previewButton = document.getElementById('previewButton');
+    const applyButton = document.getElementById('applyButton');
+    const warningMessage = document.getElementById('warningMessage');
+    const warningContent = document.getElementById('warningContent');
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmButton = document.getElementById('confirmButton');
+    const cancelButton = document.getElementById('cancelButton');
+    const confirmMessage = document.getElementById('confirmMessage');
+
+    // Load current schedule count
+    function loadScheduleCount() {
+        fetch('{{ path('admin_get_semester_info') }}')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('currentScheduleCount').textContent = data.schedule_count || 0;
+            })
+            .catch(error => {
+                console.error('Error loading schedule count:', error);
+                document.getElementById('currentScheduleCount').textContent = '--';
+            });
+    }
+
+    loadScheduleCount();
+
+    // Preview button handler
+    previewButton.addEventListener('click', function() {
+        const yearId = academicYearSelect.value;
+        const semester = semesterSelect.value;
+
+        if (!yearId || !semester) {
+            showNotification('Please select both academic year and semester', 'error');
+            return;
+        }
+
+        const yearText = academicYearSelect.options[academicYearSelect.selectedIndex].text;
+        const semesterText = semester + ' Semester';
+
+        warningContent.innerHTML = `
+            <p>You are about to change the active semester to:</p>
+            <p class="font-semibold mt-2">${yearText} | ${semesterText}</p>
+            <p class="mt-2">This will affect:</p>
+            <ul class="list-disc list-inside mt-1 space-y-1">
+                <li>All schedule viewing and creation</li>
+                <li>Faculty load assignments</li>
+                <li>Room availability displays</li>
+            </ul>
+        `;
+        warningMessage.classList.remove('hidden');
+    });
+
+    // Form submit handler
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const yearId = academicYearSelect.value;
+        const semester = semesterSelect.value;
+
+        if (!yearId || !semester) {
+            showNotification('Please select both academic year and semester', 'error');
+            return;
+        }
+
+        const yearText = academicYearSelect.options[academicYearSelect.selectedIndex].text;
+        const semesterText = semester + ' Semester';
+
+        confirmMessage.textContent = `Are you sure you want to change the active semester to ${yearText} | ${semesterText}?`;
+        confirmModal.classList.remove('hidden');
+    });
+
+    // Confirm button handler
+    confirmButton.addEventListener('click', function() {
+        const yearId = academicYearSelect.value;
+        const semester = semesterSelect.value;
+
+        applyButton.disabled = true;
+        applyButton.innerHTML = `
+            <svg class="inline-block animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Applying...
+        `;
+
+        fetch('{{ path('admin_set_active_semester') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                academic_year_id: yearId,
+                semester: semester
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            confirmModal.classList.add('hidden');
+            
+            if (data.success) {
+                showNotification('Active semester updated successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = '{{ path('admin_system_settings') }}';
+                }, 1500);
+            } else {
+                showNotification(data.message || 'Failed to update active semester', 'error');
+                applyButton.disabled = false;
+                applyButton.innerHTML = `
+                    <svg class="inline-block h-5 w-5 mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Apply Changes
+                `;
+            }
+        })
+        .catch(error => {
+            confirmModal.classList.add('hidden');
+            showNotification('An error occurred. Please try again.', 'error');
+            applyButton.disabled = false;
+            applyButton.innerHTML = `
+                <svg class="inline-block h-5 w-5 mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Apply Changes
+            `;
+        });
+    });
+
+    // Cancel button handler
+    cancelButton.addEventListener('click', function() {
+        confirmModal.classList.add('hidden');
+    });
+
+    // Close modal on background click
+    confirmModal.addEventListener('click', function(e) {
+        if (e.target === confirmModal) {
+            confirmModal.classList.add('hidden');
+        }
+    });
+
+    // Notification function
+    function showNotification(message, type = 'info') {
+        const colors = {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            info: 'bg-blue-500'
+        };
+
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

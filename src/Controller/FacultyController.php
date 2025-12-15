@@ -6,6 +6,7 @@ use App\Entity\Schedule;
 use App\Entity\AcademicYear;
 use App\Entity\User;
 use App\Form\FacultyProfileFormType;
+use App\Service\SystemSettingsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,10 +20,22 @@ use TCPDF;
 class FacultyController extends AbstractController
 {
     private EntityManagerInterface $entityManager;
+    private SystemSettingsService $systemSettingsService;
 
-    public function __construct(EntityManagerInterface $entityManager)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        SystemSettingsService $systemSettingsService
+    ) {
         $this->entityManager = $entityManager;
+        $this->systemSettingsService = $systemSettingsService;
+    }
+
+    private function getBaseTemplateData(): array
+    {
+        return [
+            'activeSemesterDisplay' => $this->systemSettingsService->getActiveSemesterDisplay(),
+            'hasActiveSemester' => $this->systemSettingsService->hasActiveSemester(),
+        ];
     }
 
     #[Route('/dashboard', name: 'dashboard')]
@@ -31,9 +44,11 @@ class FacultyController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         
-        // Get current academic year
+        // Get current academic year and active semester
         $currentAcademicYear = $this->entityManager->getRepository(AcademicYear::class)
             ->findOneBy(['isCurrent' => true]);
+        
+        $activeSemester = $currentAcademicYear?->getCurrentSemester();
         
         // Get today's day of week
         $today = new \DateTime();
@@ -44,7 +59,7 @@ class FacultyController extends AbstractController
         
         // Fetch today's schedules
         $todaySchedules = [];
-        if ($currentAcademicYear && !empty($dayPatterns)) {
+        if ($currentAcademicYear && $activeSemester && !empty($dayPatterns)) {
             $qb = $this->entityManager->getRepository(Schedule::class)
                 ->createQueryBuilder('s')
                 ->leftJoin('s.subject', 'sub')
@@ -54,10 +69,12 @@ class FacultyController extends AbstractController
                 ->where('s.faculty = :faculty')
                 ->andWhere('s.status = :status')
                 ->andWhere('ay.isCurrent = :isCurrent')
+                ->andWhere('s.semester = :semester')
                 ->andWhere('s.dayPattern IN (:dayPatterns)')
                 ->setParameter('faculty', $user)
                 ->setParameter('status', 'active')
                 ->setParameter('isCurrent', true)
+                ->setParameter('semester', $activeSemester)
                 ->setParameter('dayPatterns', $dayPatterns)
                 ->orderBy('s.startTime', 'ASC')
                 ->getQuery();
@@ -66,17 +83,22 @@ class FacultyController extends AbstractController
         }
         
         // Get all active schedules for statistics
-        $allSchedules = $this->entityManager->getRepository(Schedule::class)
-            ->createQueryBuilder('s')
-            ->leftJoin('s.academicYear', 'ay')
-            ->where('s.faculty = :faculty')
-            ->andWhere('s.status = :status')
-            ->andWhere('ay.isCurrent = :isCurrent')
-            ->setParameter('faculty', $user)
-            ->setParameter('status', 'active')
-            ->setParameter('isCurrent', true)
-            ->getQuery()
-            ->getResult();
+        $allSchedules = [];
+        if ($currentAcademicYear && $activeSemester) {
+            $allSchedules = $this->entityManager->getRepository(Schedule::class)
+                ->createQueryBuilder('s')
+                ->leftJoin('s.academicYear', 'ay')
+                ->where('s.faculty = :faculty')
+                ->andWhere('s.status = :status')
+                ->andWhere('ay.isCurrent = :isCurrent')
+                ->andWhere('s.semester = :semester')
+                ->setParameter('faculty', $user)
+                ->setParameter('status', 'active')
+                ->setParameter('isCurrent', true)
+                ->setParameter('semester', $activeSemester)
+                ->getQuery()
+                ->getResult();
+        }
         
         // Calculate total teaching hours per week
         $totalHours = 0;
@@ -101,14 +123,14 @@ class FacultyController extends AbstractController
             }
         }
         
-        return $this->render('faculty/dashboard.html.twig', [
+        return $this->render('faculty/dashboard.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Faculty Dashboard',
             'todaySchedules' => $todaySchedules,
             'totalHours' => round($totalHours, 1),
             'activeClasses' => count($uniqueClasses),
             'totalStudents' => $totalStudents,
             'todayCount' => count($todaySchedules),
-        ]);
+        ]));
     }
     
     /**
@@ -151,12 +173,14 @@ class FacultyController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         
-        // Get current academic year
+        // Get current academic year and active semester
         $currentAcademicYear = $this->entityManager->getRepository(AcademicYear::class)
             ->findOneBy(['isCurrent' => true]);
         
-        // Get selected semester or default to current
-        $selectedSemester = $request->query->get('semester', $user->getPreferredSemesterFilter() ?? '1st Semest');
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        
+        // Get selected semester or default to active semester
+        $selectedSemester = $request->query->get('semester', $activeSemester);
         
         // Fetch schedules for the faculty
         $schedules = $this->entityManager->getRepository(Schedule::class)
@@ -182,14 +206,14 @@ class FacultyController extends AbstractController
         // Calculate statistics
         $stats = $this->calculateScheduleStats($schedules);
 
-        return $this->render('faculty/schedule.html.twig', [
+        return $this->render('faculty/schedule.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'My Teaching Schedule',
             'schedules' => $schedules,
             'weeklySchedule' => $weeklySchedule,
             'stats' => $stats,
             'selectedSemester' => $selectedSemester,
             'currentAcademicYear' => $currentAcademicYear,
-        ]);
+        ]));
     }
 
     #[Route('/schedule/export-pdf', name: 'schedule_export_pdf')]
@@ -246,9 +270,9 @@ class FacultyController extends AbstractController
     #[Route('/office-hours', name: 'office_hours')]
     public function officeHours(): Response
     {
-        return $this->render('faculty/office_hours.html.twig', [
+        return $this->render('faculty/office_hours.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Office Hours',
-        ]);
+        ]));
     }
 
     #[Route('/classes', name: 'classes')]
@@ -257,12 +281,14 @@ class FacultyController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         
-        // Get current academic year
+        // Get current academic year and active semester
         $currentAcademicYear = $this->entityManager->getRepository(AcademicYear::class)
             ->findOneBy(['isCurrent' => true]);
         
-        // Get selected semester filter
-        $selectedSemester = $request->query->get('semester', $user->getPreferredSemesterFilter() ?? '1st Semest');
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        
+        // Get selected semester filter or default to active semester
+        $selectedSemester = $request->query->get('semester', $activeSemester);
         
         // Fetch schedules for the faculty with subject and enrollment data
         $schedules = $this->entityManager->getRepository(Schedule::class)
@@ -314,21 +340,21 @@ class FacultyController extends AbstractController
             'pending_tasks' => $pendingTasks
         ];
 
-        return $this->render('faculty/classes.html.twig', [
+        return $this->render('faculty/classes.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'My Classes',
             'schedules' => $schedules,
             'stats' => $stats,
             'selectedSemester' => $selectedSemester,
             'currentAcademicYear' => $currentAcademicYear,
-        ]);
+        ]));
     }
 
     #[Route('/performance', name: 'performance')]
     public function performance(): Response
     {
-        return $this->render('faculty/performance.html.twig', [
+        return $this->render('faculty/performance.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'My Performance',
-        ]);
+        ]));
     }
 
     #[Route('/profile', name: 'profile')]
@@ -351,11 +377,11 @@ class FacultyController extends AbstractController
             }
         }
 
-        return $this->render('faculty/profile.html.twig', [
+        return $this->render('faculty/profile.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Profile & Settings',
             'form' => $form->createView(),
             'user' => $user,
-        ]);
+        ]));
     }
 
     /**

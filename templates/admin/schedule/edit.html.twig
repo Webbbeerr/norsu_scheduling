@@ -123,8 +123,8 @@
                                         class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                                         onchange="updatePreview()">
                                     <option value="">Select semester...</option>
-                                    <option value="1st Semest" {% if schedule.semester == '1st Semest' %}selected{% endif %}>1st Semester</option>
-                                    <option value="2nd Semest" {% if schedule.semester == '2nd Semest' %}selected{% endif %}>2nd Semester</option>
+                                    <option value="1st" {% if schedule.semester == '1st' %}selected{% endif %}>1st Semester</option>
+                                    <option value="2nd" {% if schedule.semester == '2nd' %}selected{% endif %}>2nd Semester</option>
                                     <option value="Summer" {% if schedule.semester == 'Summer' %}selected{% endif %}>Summer</option>
                                 </select>
                             </div>

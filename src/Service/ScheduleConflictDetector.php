@@ -59,12 +59,14 @@ class ScheduleConflictDetector
         
         // Log the check
         error_log(sprintf(
-            'ScheduleConflictDetector: Checking room %s (ID: %d) on %s from %s to %s - Found %d existing schedules',
+            'ScheduleConflictDetector: Checking room %s (ID: %d) on %s from %s to %s for SEMESTER=%s, YEAR=%s - Found %d existing schedules',
             $schedule->getRoom()->getName(),
             $schedule->getRoom()->getId(),
             $schedule->getDayPattern(),
             $schedule->getStartTime()->format('H:i'),
             $schedule->getEndTime()->format('H:i'),
+            $schedule->getSemester(),
+            $schedule->getAcademicYear() ? $schedule->getAcademicYear()->getYear() : 'NULL',
             count($existingSchedules)
         ));
 
@@ -75,11 +77,14 @@ class ScheduleConflictDetector
             
             // Log each check
             error_log(sprintf(
-                '  - Existing: %s %s %s-%s | Day overlap: %s, Time overlap: %s',
+                '  - Comparing with: %s %s Section:%s %s-%s | Semester:%s Year:%s | Day overlap: %s, Time overlap: %s',
                 $existing->getSubject()->getCode(),
                 $existing->getDayPattern(),
+                $existing->getSection() ?? 'N/A',
                 $existing->getStartTime()->format('H:i'),
                 $existing->getEndTime()->format('H:i'),
+                $existing->getSemester(),
+                $existing->getAcademicYear() ? $existing->getAcademicYear()->getYear() : 'NULL',
                 $hasDayOverlap ? 'YES' : 'NO',
                 $hasTimeOverlap ? 'YES' : 'NO'
             ));
@@ -275,6 +280,14 @@ class ScheduleConflictDetector
             // Check if day patterns overlap AND times overlap
             if ($this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern())
                 && $this->hasTimeOverlap($schedule, $existing)) {
+                error_log(sprintf(
+                    '  - SECTION CONFLICT FOUND: %s Section:%s is conflicting on %s %s-%s (Same subject, section, semester, year)',
+                    $existing->getSubject()->getCode(),
+                    $existing->getSection(),
+                    $existing->getDayPattern(),
+                    $existing->getStartTime()->format('H:i'),
+                    $existing->getEndTime()->format('H:i')
+                ));
                 $conflicts[] = [
                     'type' => 'section_conflict',
                     'schedule' => $existing,
@@ -327,6 +340,16 @@ class ScheduleConflictDetector
         $existingSchedules = $qb->getQuery()->getResult();
 
         foreach ($existingSchedules as $existing) {
+            error_log(sprintf(
+                '  - Checking duplicate: %s Section:%s Semester:%s Year:%s Room:%s Time:%s-%s',
+                $existing->getSubject()->getCode(),
+                $existing->getSection(),
+                $existing->getSemester(),
+                $existing->getAcademicYear() ? $existing->getAcademicYear()->getYear() : 'NULL',
+                $existing->getRoom()->getName(),
+                $existing->getStartTime()->format('H:i'),
+                $existing->getEndTime()->format('H:i')
+            ));
             $conflicts[] = [
                 'type' => 'duplicate_subject_section',
                 'schedule' => $existing,
@@ -340,6 +363,10 @@ class ScheduleConflictDetector
                     $existing->getRoom()->getName()
                 )
             ];
+        }
+        
+        if (count($conflicts) > 0) {
+            error_log(sprintf('  - DUPLICATE FOUND: %d duplicate(s) for %s Section:%s', count($conflicts), $schedule->getSubject()->getCode(), $schedule->getSection()));
         }
 
         return $conflicts;
@@ -421,5 +448,107 @@ class ScheduleConflictDetector
         }
 
         return $errors;
+    }
+
+    /**
+     * Scan all schedules and update their conflict status
+     * This method checks all active schedules and marks them as conflicted if they have conflicts
+     * 
+     * @param int|null $departmentId Optional department ID to limit scanning to specific department
+     * @return array Statistics about the scan (total_scanned, conflicts_found, schedules_updated)
+     */
+    public function scanAndUpdateAllConflicts(?int $departmentId = null): array
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('s')
+            ->from(Schedule::class, 's')
+            ->where('s.status = :status')
+            ->setParameter('status', 'active');
+
+        // Filter by department if provided
+        if ($departmentId) {
+            $qb->join('s.subject', 'subj')
+               ->andWhere('subj.department = :deptId')
+               ->setParameter('deptId', $departmentId);
+        }
+
+        $allSchedules = $qb->getQuery()->getResult();
+        
+        $stats = [
+            'total_scanned' => count($allSchedules),
+            'conflicts_found' => 0,
+            'schedules_updated' => 0,
+        ];
+
+        foreach ($allSchedules as $schedule) {
+            $oldStatus = $schedule->getIsConflicted();
+            $conflicts = $this->detectConflicts($schedule, true);
+            $hasConflicts = !empty($conflicts);
+            
+            $schedule->setIsConflicted($hasConflicts);
+            
+            if ($hasConflicts) {
+                $stats['conflicts_found']++;
+            }
+            
+            // Track if status changed
+            if ($oldStatus !== $hasConflicts) {
+                $stats['schedules_updated']++;
+            }
+        }
+
+        // Persist all changes
+        $this->entityManager->flush();
+
+        return $stats;
+    }
+
+    /**
+     * Get all conflicted schedules for a department
+     * 
+     * @param int|null $departmentId Department ID to filter by
+     * @param object|null $academicYear Academic year to filter by
+     * @param string|null $semester Semester to filter by
+     * @return array Array of schedules with their conflicts
+     */
+    public function getConflictedSchedulesWithDetails(?int $departmentId = null, ?object $academicYear = null, ?string $semester = null): array
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('s')
+            ->from(Schedule::class, 's')
+            ->where('s.status = :status')
+            ->setParameter('status', 'active');
+
+        if ($departmentId) {
+            $qb->join('s.subject', 'subj')
+               ->andWhere('subj.department = :deptId')
+               ->setParameter('deptId', $departmentId);
+        }
+
+        if ($academicYear) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->setParameter('academicYear', $academicYear);
+        }
+
+        if ($semester) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semester);
+        }
+
+        $schedules = $qb->getQuery()->getResult();
+        $conflictedSchedules = [];
+
+        foreach ($schedules as $schedule) {
+            $conflicts = $this->detectConflicts($schedule, true);
+            if (!empty($conflicts)) {
+                $conflictedSchedules[] = [
+                    'schedule' => $schedule,
+                    'conflicts' => $conflicts,
+                    'conflict_count' => count($conflicts),
+                ];
+            }
+        }
+
+        return $conflictedSchedules;
     }
 }

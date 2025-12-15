@@ -11,6 +11,7 @@ use App\Repository\RoomRepository;
 use App\Repository\ScheduleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use App\Service\SystemSettingsService;
 
 class DepartmentHeadService
 {
@@ -20,6 +21,8 @@ class DepartmentHeadService
     private RoomRepository $roomRepository;
     private ScheduleRepository $scheduleRepository;
     private EntityManagerInterface $entityManager;
+    private SystemSettingsService $systemSettingsService;
+    private ScheduleConflictDetector $conflictDetector;
 
     public function __construct(
         UserRepository $userRepository,
@@ -27,7 +30,9 @@ class DepartmentHeadService
         DepartmentRepository $departmentRepository,
         RoomRepository $roomRepository,
         ScheduleRepository $scheduleRepository,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        SystemSettingsService $systemSettingsService,
+        ScheduleConflictDetector $conflictDetector
     ) {
         $this->userRepository = $userRepository;
         $this->curriculumRepository = $curriculumRepository;
@@ -35,6 +40,8 @@ class DepartmentHeadService
         $this->roomRepository = $roomRepository;
         $this->scheduleRepository = $scheduleRepository;
         $this->entityManager = $entityManager;
+        $this->systemSettingsService = $systemSettingsService;
+        $this->conflictDetector = $conflictDetector;
     }
 
     /**
@@ -50,6 +57,13 @@ class DepartmentHeadService
         }
 
         $department = $this->departmentRepository->find($departmentId);
+
+        // Get active semester for filtering
+        $activeAcademicYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
+        // Scan and update conflict status for all schedules in this department
+        $this->conflictDetector->scanAndUpdateAllConflicts($departmentId);
 
         // Get faculty count in this department
         $totalFaculty = $this->userRepository->count([
@@ -114,34 +128,55 @@ class DepartmentHeadService
             ->getQuery()
             ->getSingleScalarResult();
 
-        // Get schedule statistics for this department
-        $totalSchedules = $this->scheduleRepository->createQueryBuilder('s')
+        // Get schedule statistics for this department (filtered by active semester)
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->select('COUNT(s.id)')
             ->join('s.subject', 'subj')
             ->where('subj.department = :deptId')
-            ->setParameter('deptId', $departmentId)
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('deptId', $departmentId);
+        
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $totalSchedules = $qb->getQuery()->getSingleScalarResult();
 
-        $activeSchedules = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->select('COUNT(s.id)')
             ->join('s.subject', 'subj')
             ->where('subj.department = :deptId')
             ->andWhere('s.status = :status')
             ->setParameter('deptId', $departmentId)
-            ->setParameter('status', 'active')
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('status', 'active');
+        
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $activeSchedules = $qb->getQuery()->getSingleScalarResult();
 
-        $conflictedSchedules = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->select('COUNT(s.id)')
             ->join('s.subject', 'subj')
             ->where('subj.department = :deptId')
             ->andWhere('s.isConflicted = :conflicted')
             ->setParameter('deptId', $departmentId)
-            ->setParameter('conflicted', true)
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('conflicted', true);
+        
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $conflictedSchedules = $qb->getQuery()->getSingleScalarResult();
 
         // Get room statistics
         $totalRooms = $this->roomRepository->createQueryBuilder('r')
@@ -152,16 +187,23 @@ class DepartmentHeadService
             ->getSingleScalarResult();
 
         // Calculate room utilization (percentage of rooms with active schedules)
-        $roomsWithSchedules = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->select('COUNT(DISTINCT r.id)')
             ->join('s.room', 'r')
             ->join('s.subject', 'subj')
             ->where('subj.department = :deptId')
             ->andWhere('s.status = :status')
             ->setParameter('deptId', $departmentId)
-            ->setParameter('status', 'active')
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('status', 'active');
+        
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $roomsWithSchedules = $qb->getQuery()->getSingleScalarResult();
 
         $roomUtilization = $totalRooms > 0 ? round(($roomsWithSchedules / $totalRooms) * 100) : 0;
 
@@ -180,13 +222,20 @@ class DepartmentHeadService
         // Calculate teaching loads for all faculty
         $facultyLoads = [];
         foreach ($allFaculty as $faculty) {
-            $schedules = $this->scheduleRepository->createQueryBuilder('s')
+            $qb = $this->scheduleRepository->createQueryBuilder('s')
                 ->where('s.faculty = :facultyId')
                 ->andWhere('s.status = :status')
                 ->setParameter('facultyId', $faculty->getId())
-                ->setParameter('status', 'active')
-                ->getQuery()
-                ->getResult();
+                ->setParameter('status', 'active');
+            
+            if ($activeAcademicYear && $activeSemester) {
+                $qb->andWhere('s.academicYear = :academicYear')
+                   ->andWhere('s.semester = :semester')
+                   ->setParameter('academicYear', $activeAcademicYear)
+                   ->setParameter('semester', $activeSemester);
+            }
+            
+            $schedules = $qb->getQuery()->getResult();
 
             $totalHours = 0;
             foreach ($schedules as $schedule) {
@@ -240,11 +289,19 @@ class DepartmentHeadService
         }
 
         // Add recent schedules
-        $recentSchedules = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->join('s.subject', 'subj')
             ->where('subj.department = :deptId')
-            ->setParameter('deptId', $departmentId)
-            ->orderBy('s.createdAt', 'DESC')
+            ->setParameter('deptId', $departmentId);
+        
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $recentSchedules = $qb->orderBy('s.createdAt', 'DESC')
             ->setMaxResults(5)
             ->getQuery()
             ->getResult();
@@ -286,6 +343,13 @@ class DepartmentHeadService
         // Limit to 10 most recent activities
         $recentActivities = array_slice($recentActivities, 0, 10);
 
+        // Get detailed conflict information for active semester
+        $conflictDetails = $this->conflictDetector->getConflictedSchedulesWithDetails(
+            $departmentId,
+            $activeAcademicYear,
+            $activeSemester
+        );
+
         return [
             'department' => $department,
             'total_faculty' => $totalFaculty,
@@ -300,6 +364,7 @@ class DepartmentHeadService
             'total_schedules' => $totalSchedules,
             'active_schedules' => $activeSchedules,
             'conflicted_schedules' => $conflictedSchedules,
+            'conflict_details' => $conflictDetails,
             'pending_schedules' => $totalSchedules - $activeSchedules,
             'total_rooms' => $totalRooms,
             'room_utilization' => $roomUtilization,
@@ -629,6 +694,10 @@ class DepartmentHeadService
 
         $departmentGroup = $department->getDepartmentGroup();
 
+        // Get active semester for filtering schedule-based statistics
+        $activeAcademicYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
         // Count total rooms (owned by department OR shared via group)
         $totalQb = $this->roomRepository->createQueryBuilder('r')
             ->select('COUNT(r.id)')
@@ -908,9 +977,21 @@ class DepartmentHeadService
         $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
             ->findBy(['isActive' => true], ['year' => 'DESC']);
 
-        // If no academic year selected, use current active one
-        if (!$academicYearId && !empty($academicYears)) {
-            $academicYearId = $academicYears[0]->getId();
+        // Get the currently active academic year and semester from system settings
+        // This matches the logic used in faculty assignments
+        $currentAcademicYear = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+            ->findOneBy(['isCurrent' => true]);
+        $currentSemester = $currentAcademicYear?->getCurrentSemester();
+
+        // If no academic year filter is selected, use the current active one
+        // This ensures consistency with faculty assignments page
+        if (!$academicYearId && $currentAcademicYear) {
+            $academicYearId = (string)$currentAcademicYear->getId();
+        }
+
+        // If no semester filter is selected, use the current active semester
+        if (!$semester && $currentSemester) {
+            $semester = $currentSemester;
         }
 
         $facultyWorkload = [];
@@ -928,11 +1009,18 @@ class DepartmentHeadService
                 ->leftJoin('s.subject', 'sub')
                 ->leftJoin('s.room', 'r')
                 ->where('s.faculty = :faculty')
-                ->setParameter('faculty', $facultyMember);
+                ->andWhere('s.status = :status')
+                ->setParameter('faculty', $facultyMember)
+                ->setParameter('status', 'active');
 
             if ($academicYearId) {
-                $qb->andWhere('s.academicYear = :academicYear')
-                   ->setParameter('academicYear', $academicYearId);
+                // Get the academic year entity
+                $academicYear = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+                    ->find($academicYearId);
+                if ($academicYear) {
+                    $qb->andWhere('s.academicYear = :academicYear')
+                       ->setParameter('academicYear', $academicYear);
+                }
             }
 
             if ($semester) {
@@ -948,16 +1036,26 @@ class DepartmentHeadService
             foreach ($schedules as $schedule) {
                 $subject = $schedule->getSubject();
                 if ($subject) {
-                $units += $subject->getUnits();
-                $courses[] = [
-                    'code' => $subject->getCode(),
-                    'name' => $subject->getTitle(),
-                    'units' => $subject->getUnits(),
-                    'schedule' => $schedule->getDayPattern() . ' ' . $schedule->getStartTime()->format('H:i') . '-' . $schedule->getEndTime()->format('H:i'),
-                    'room' => $schedule->getRoom() ? $schedule->getRoom()->getName() : 'TBA',
-                ];
-            }
-        }            // Determine status
+                    $units += $subject->getUnits();
+                    
+                    // Safely format schedule time
+                    $scheduleTime = '';
+                    if ($schedule->getDayPattern()) {
+                        $scheduleTime = $schedule->getDayPattern();
+                    }
+                    if ($schedule->getStartTime() && $schedule->getEndTime()) {
+                        $scheduleTime .= ' ' . $schedule->getStartTime()->format('H:i') . '-' . $schedule->getEndTime()->format('H:i');
+                    }
+                    
+                    $courses[] = [
+                        'code' => $subject->getCode() ?? 'N/A',
+                        'name' => $subject->getTitle() ?? 'Untitled',
+                        'units' => $subject->getUnits() ?? 0,
+                        'schedule' => $scheduleTime ?: 'TBA',
+                        'room' => $schedule->getRoom() ? $schedule->getRoom()->getName() : 'TBA',
+                    ];
+                }
+            }            // Determine status
             $status = 'optimal';
             $statusColor = 'green';
             if ($units > $standardLoad) {
@@ -1011,6 +1109,8 @@ class DepartmentHeadService
             'faculty_workload' => $facultyWorkload,
             'statistics' => $statistics,
             'academic_years' => $academicYears,
+            'selected_academic_year' => $academicYearId,
+            'selected_semester' => $semester,
         ];
     }
 }

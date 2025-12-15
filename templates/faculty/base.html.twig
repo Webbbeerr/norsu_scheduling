@@ -214,6 +214,21 @@
 
                     <!-- User Menu -->
                     <div class="flex items-center space-x-4" x-data="{ userMenuOpen: false }">
+                        <!-- Active Semester Indicator -->
+                        {% if hasActiveSemester %}
+                            <div class="hidden md:flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                                <svg class="h-5 w-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <div class="text-sm">
+                                    <div class="font-semibold">{{ activeSemesterDisplay }}</div>
+                                </div>
+                                <svg class="h-4 w-4 ml-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </div>
+                        {% endif %}
+                        
                         <!-- Notifications -->
                         <button class="p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg">
                             <span class="sr-only">View notifications</span>

@@ -15,8 +15,8 @@
             <div class="mt-4 sm:mt-0">
                 <form method="get" action="{{ path('faculty_classes') }}">
                     <select name="semester" onchange="this.form.submit()" class="block w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="1st Semest" {% if selectedSemester == '1st Semest' %}selected{% endif %}>1st Semester</option>
-                        <option value="2nd Semest" {% if selectedSemester == '2nd Semest' %}selected{% endif %}>2nd Semester</option>
+                        <option value="1st" {% if selectedSemester == '1st' %}selected{% endif %}>1st Semester</option>
+                        <option value="2nd" {% if selectedSemester == '2nd' %}selected{% endif %}>2nd Semester</option>
                         <option value="Summer" {% if selectedSemester == 'Summer' %}selected{% endif %}>Summer</option>
                     </select>
                 </form>

@@ -216,112 +216,79 @@
                         </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white">
-                    <template x-for="(group, subjectCode) in getGroupedPaginatedData()" :key="subjectCode">
-                        <template x-data="{ groupExpanded: true }">
-                            <!-- Subject Group Header -->
-                            <tr class="bg-gray-100 border-t-2 border-gray-300">
-                                <td colspan="8" class="px-6 py-3">
-                                    <button @click="groupExpanded = !groupExpanded" class="flex items-center gap-2 w-full text-left">
-                                        <svg class="w-5 h-5 transition-transform" :class="{'rotate-90': groupExpanded}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                        </svg>
-                                        <span class="font-bold text-base" :class="getYearColor(subjectCode)" x-text="subjectCode"></span>
-                                        <span class="text-sm text-gray-600" x-text="'- ' + group.subjectTitle"></span>
-                                        <span class="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full" x-text="group.schedules.length + ' section(s)'"></span>
-                                    </button>
-                                </td>
-                            </tr>
-                            <!-- Schedule Rows for this Subject -->
-                            <template x-show="groupExpanded" x-for="schedule in group.schedules" :key="schedule.id">
-                                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-200">
-                                    <td class="px-6 py-4 whitespace-nowrap pl-16">
-                                        <div class="text-sm font-bold" :class="getYearColor(schedule.subjectCode)" x-text="schedule.subjectCode + '-' + schedule.section"></div>
-                                        <div class="text-sm text-gray-600" x-text="schedule.subject"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900" x-text="schedule.section"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900" x-text="schedule.room"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900" x-text="schedule.faculty"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900" x-text="schedule.dayPattern"></div>
-                                        <div class="text-sm text-gray-500" x-text="schedule.time"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900" x-text="schedule.semester"></div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span 
-                                            x-text="schedule.status === 'active' ? 'Active' : 'Inactive'"
-                                            :class="schedule.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                                            class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                        ></span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div class="flex items-center justify-end gap-2">
-                                    <a 
-                                        :href="`{{ path('department_head_schedules_view', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
-                                        class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
-                                        title="View"
-                                    >
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                    </a>
-                                    <template x-if="schedule.status === 'active'">
-                                        <form 
-                                            :action="`{{ path('department_head_schedules_deactivate', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
-                                            method="post"
-                                            @submit.prevent="if(confirm('Are you sure you want to deactivate this schedule?')) $el.submit()"
-                                        >
-                                            <input type="hidden" name="_token" value="{{ csrf_token('deactivate_schedule') }}">
-                                            <button type="submit" class="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors" title="Deactivate">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    </template>
-                                    <template x-if="schedule.status === 'inactive'">
-                                        <form 
-                                            :action="`{{ path('department_head_schedules_activate', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
-                                            method="post"
-                                        >
-                                            <input type="hidden" name="_token" value="{{ csrf_token('activate_schedule') }}">
-                                            <button type="submit" class="inline-flex items-center justify-center w-8 h-8 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors" title="Activate">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    </template>
-                                    <form 
-                                        :action="`{{ path('department_head_schedules_delete', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
-                                        method="post"
-                                        @submit.prevent="if(confirm('Are you sure you want to permanently delete this schedule? This action cannot be undone.')) $el.submit()"
-                                    >
-                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_schedule') }}">
-                                        <button type="submit" class="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors" title="Delete">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-                                </div>
+                <!-- Use separate tbody for each group -->
+                <template x-for="(group, groupIndex) in getGroupedPaginatedData()" :key="'group-' + groupIndex">
+                    <tbody class="bg-white">
+                        <!-- Header Row -->
+                        <tr class="bg-gray-100 border-t-2 border-gray-300">
+                            <td colspan="8" class="px-6 py-3">
+                                <button 
+                                    @click="toggleGroup(group.subjectCode)" 
+                                    class="flex items-center gap-2 w-full text-left"
+                                    type="button"
+                                >
+                                    <svg class="w-5 h-5 transition-transform" :class="{'rotate-90': isGroupExpanded(group.subjectCode)}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                    <span class="font-bold text-base" :class="getYearColor(group.subjectCode)" x-text="group.subjectCode"></span>
+                                    <span class="text-sm text-gray-600" x-text="'- ' + group.subjectTitle"></span>
+                                    <span class="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full" x-text="group.schedules.length + ' section(s)'"></span>
+                                </button>
                             </td>
                         </tr>
-                    </template>
+                        
+                        <!-- Schedule Rows -->
+                        <template x-for="(schedule, schedIndex) in group.schedules" :key="'sched-' + schedIndex">
+                            <tr x-show="isGroupExpanded(group.subjectCode)" class="hover:bg-gray-50 border-b border-gray-200">
+                                <td class="px-6 py-4 whitespace-nowrap pl-16">
+                                    <div class="text-sm font-bold" :class="getYearColor(schedule.subjectCode)" x-text="schedule.subjectCode + '-' + schedule.section"></div>
+                                    <div class="text-sm text-gray-600" x-text="schedule.subject"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="schedule.section"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="schedule.room"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="schedule.faculty"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="schedule.dayPattern"></div>
+                                    <div class="text-sm text-gray-500" x-text="schedule.time"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900" x-text="schedule.semester"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span 
+                                        x-text="schedule.status === 'active' ? 'Active' : 'Inactive'"
+                                        :class="schedule.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                        class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                    ></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a 
+                                            :href="`{{ path('department_head_schedules_view', {'id': '__ID__'}) }}`.replace('__ID__', schedule.id)" 
+                                            class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
+                                            title="View"
+                                        >
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
                         </template>
-                    </template>
-                    <template x-if="Object.keys(getGroupedPaginatedData()).length === 0">
-                        <tr>
-                            <td colspan="8" class="px-6 py-12 text-center">
+                    </tbody>
+                </template>
+                <tbody class="bg-white">
+                    <!-- Empty State -->
+                    <tr x-show="getGroupedPaginatedData().length === 0">
+                        <td colspan="8" class="px-6 py-12 text-center">
                                 <div class="text-gray-500">
                                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -330,8 +297,7 @@
                                 </div>
                             </td>
                         </tr>
-                    </template>
-                </tbody>
+                    </tbody>
             </table>
         </div>
 
@@ -415,28 +381,52 @@ function schedulesTable() {
         currentPage: 1,
         perPage: 25,
         allData: [
+            {% if schedules is empty %}
+                // NO SCHEDULES PASSED FROM CONTROLLER
+            {% else %}
             {% for schedule in schedules %}
             {
                 id: {{ schedule.id }},
-                subject: '{{ schedule.subject.title }}',
-                subjectCode: '{{ schedule.subject.code }}',
-                section: '{{ schedule.section|default('N/A') }}',
-                room: '{{ schedule.room.code }}',
-                faculty: '{{ schedule.faculty ? schedule.faculty.fullName : 'TBA' }}',
-                dayPattern: '{{ schedule.dayPatternLabel }}',
+                subject: '{{ schedule.subject.title|escape('js') }}',
+                subjectCode: '{{ schedule.subject.code|escape('js') }}',
+                section: '{{ schedule.section|default('N/A')|escape('js') }}',
+                room: '{{ schedule.room.code|escape('js') }}',
+                faculty: '{{ schedule.faculty ? schedule.faculty.fullName|escape('js') : 'TBA' }}',
+                dayPattern: '{{ schedule.dayPatternLabel|escape('js') }}',
                 time: '{{ schedule.startTime|date('g:i A') }} - {{ schedule.endTime|date('g:i A') }}',
-                semester: '{{ schedule.semester }}',
-                academicYear: '{{ schedule.academicYear.year }}',
-                status: '{{ schedule.status }}',
-                enrolledStudents: {{ schedule.enrolledStudents }},
+                semester: '{{ schedule.semester|escape('js') }}',
+                academicYear: '{{ schedule.academicYear.year|escape('js') }}',
+                status: '{{ schedule.status|escape('js') }}',
+                enrolledStudents: {{ schedule.enrolledStudents|default(0) }},
                 isConflicted: {{ schedule.isConflicted ? 'true' : 'false' }}
             }{{ not loop.last ? ',' : '' }}
             {% endfor %}
+            {% endif %}
         ],
         filteredData: [],
+        expandedGroups: {},
 
         init() {
             this.filteredData = [...this.allData];
+            // Initialize all groups as expanded
+            this.initializeExpandedGroups();
+        },
+
+        initializeExpandedGroups() {
+            const groups = this.getGroupedPaginatedData();
+            const newExpanded = {};
+            groups.forEach(group => {
+                newExpanded[group.subjectCode] = true;
+            });
+            this.expandedGroups = newExpanded;
+        },
+
+        toggleGroup(subjectCode) {
+            this.expandedGroups[subjectCode] = !this.expandedGroups[subjectCode];
+        },
+
+        isGroupExpanded(subjectCode) {
+            return this.expandedGroups[subjectCode] === true;
         },
 
         getYearColor(subjectCode) {
@@ -479,6 +469,10 @@ function schedulesTable() {
 
             this.sortData();
             this.currentPage = 1;
+            // Re-initialize expanded groups after filtering
+            this.$nextTick(() => {
+                this.initializeExpandedGroups();
+            });
         },
 
         sortBy(field) {
@@ -521,6 +515,7 @@ function schedulesTable() {
                 const code = schedule.subjectCode;
                 if (!grouped[code]) {
                     grouped[code] = {
+                        subjectCode: code,
                         subjectTitle: schedule.subject,
                         schedules: []
                     };
@@ -535,7 +530,32 @@ function schedulesTable() {
                 });
             });
 
-            return grouped;
+            // Convert to array for Alpine.js x-for iteration
+            return Object.values(grouped);
+        },
+
+        getFlattenedRows() {
+            const groups = this.getGroupedPaginatedData();
+            const rows = [];
+            
+            groups.forEach(group => {
+                // Add header row
+                rows.push({
+                    type: 'header',
+                    group: group
+                });
+                
+                // Add schedule rows
+                group.schedules.forEach(schedule => {
+                    rows.push({
+                        type: 'schedule',
+                        group: group,
+                        schedule: schedule
+                    });
+                });
+            });
+            
+            return rows;
         },
 
         totalPages() {

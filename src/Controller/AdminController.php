@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Entity\College;
+use App\Entity\ActivityLog;
 use App\Form\UserFormType;
 use App\Form\UserEditFormType;
 use App\Form\CollegeFormType;
@@ -13,6 +14,7 @@ use App\Service\DashboardService;
 use App\Service\UserService;
 use App\Service\CollegeService;
 use App\Service\ActivityLogService;
+use App\Service\SystemSettingsService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,6 +34,7 @@ class AdminController extends AbstractController
     private CollegeRepository $collegeRepository;
     private DepartmentRepository $departmentRepository;
     private EntityManagerInterface $entityManager;
+    private SystemSettingsService $systemSettingsService;
 
     public function __construct(
         DashboardService $dashboardService, 
@@ -40,7 +43,8 @@ class AdminController extends AbstractController
         ActivityLogService $activityLogService,
         CollegeRepository $collegeRepository,
         DepartmentRepository $departmentRepository,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        SystemSettingsService $systemSettingsService
     ) {
         $this->dashboardService = $dashboardService;
         $this->userService = $userService;
@@ -49,12 +53,15 @@ class AdminController extends AbstractController
         $this->collegeRepository = $collegeRepository;
         $this->departmentRepository = $departmentRepository;
         $this->entityManager = $entityManager;
+        $this->systemSettingsService = $systemSettingsService;
     }
 
     private function getBaseTemplateData(): array
     {
         return [
             'dashboard_data' => $this->dashboardService->getAdminDashboardData(),
+            'activeSemesterDisplay' => $this->systemSettingsService->getActiveSemesterDisplay(),
+            'hasActiveSemester' => $this->systemSettingsService->hasActiveSemester(),
         ];
     }
 
@@ -93,6 +100,70 @@ class AdminController extends AbstractController
         }
         
         return new JsonResponse(['activities' => $activityData]);
+    }
+
+    #[Route('/activities', name: 'activities')]
+    public function activities(Request $request): Response
+    {
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 50);
+        $action = $request->query->get('action');
+        $search = $request->query->get('search');
+        
+        $activityLogRepository = $this->entityManager->getRepository(ActivityLog::class);
+        
+        $queryBuilder = $activityLogRepository->createQueryBuilder('a')
+            ->leftJoin('a.user', 'u')
+            ->addSelect('u')
+            ->orderBy('a.createdAt', 'DESC');
+        
+        // Filter by action type
+        if ($action) {
+            $queryBuilder->andWhere('a.action = :action')
+                ->setParameter('action', $action);
+        }
+        
+        // Search filter
+        if ($search) {
+            $queryBuilder->andWhere('a.description LIKE :search OR u.firstName LIKE :search OR u.lastName LIKE :search')
+                ->setParameter('search', '%' . $search . '%');
+        }
+        
+        // Count total
+        $totalQuery = clone $queryBuilder;
+        $total = count($totalQuery->select('a.id')->getQuery()->getResult());
+        
+        // Paginate
+        $activities = $queryBuilder
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+        
+        $totalPages = ceil($total / $limit);
+        
+        // Get unique action types for filter
+        $actionTypes = $activityLogRepository->createQueryBuilder('a')
+            ->select('DISTINCT a.action')
+            ->orderBy('a.action', 'ASC')
+            ->getQuery()
+            ->getScalarResult();
+        
+        return $this->render('admin/activities.html.twig', array_merge($this->getBaseTemplateData(), [
+            'page_title' => 'Activity Logs',
+            'activities' => $activities,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_items' => $total,
+                'items_per_page' => $limit,
+            ],
+            'filters' => [
+                'action' => $action,
+                'search' => $search,
+            ],
+            'action_types' => array_column($actionTypes, 'action'),
+        ]));
     }
 
     #[Route('/colleges', name: 'colleges')]
@@ -680,37 +751,8 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_curricula');
         }
 
-        // Get semester filter from user's database preference first, then session
-        $session = $request->getSession();
-        $user = $this->getUser();
-        
-        // Load from database if not in session
-        if (!$session->has('semester_filter') && $user instanceof User) {
-            $preferredFilter = $user->getPreferredSemesterFilter();
-            // Only set session if preference is valid (not empty)
-            if ($preferredFilter && !empty(trim($preferredFilter))) {
-                $session->set('semester_filter', $preferredFilter);
-            } elseif ($preferredFilter !== null && empty(trim($preferredFilter))) {
-                // Clear invalid preference from database
-                $user->setPreferredSemesterFilter(null);
-                $this->entityManager->flush();
-            }
-        }
-        
-        // Get semester filter and validate it's not empty
-        $selectedSemester = $session->get('semester_filter', null);
-        
-        // Clean up empty semester filter
-        if ($selectedSemester !== null && empty(trim($selectedSemester))) {
-            $session->remove('semester_filter');
-            $selectedSemester = null;
-            
-            // Also clear from user preference if it's empty
-            if ($user instanceof User) {
-                $user->setPreferredSemesterFilter(null);
-                $this->entityManager->flush();
-            }
-        }
+        // Use system-wide active semester as the filter
+        $selectedSemester = $this->systemSettingsService->getActiveSemester();
 
         // Handle is_published properly
         $isPublishedParam = $request->query->get('is_published');
@@ -777,20 +819,10 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_curricula');
         }
 
-        // Store semester filter in session AND database (only if valid)
-        $session = $request->getSession();
-        $session->set('semester_filter', $semester);
-        
-        // Save to user's database preference
-        $user = $this->getUser();
-        if ($user instanceof User) {
-            $user->setPreferredSemesterFilter($semester);
-            $this->entityManager->flush();
-        }
-
-        // Redirect to the base department page
-        // This keeps the URL clean and prevents issues with reloading
-        return $this->redirectToRoute('admin_curricula_by_department', ['departmentId' => $departmentId]);
+        // System-wide semester is now managed in System Settings
+        // Redirect users to System Settings to change the active semester
+        $this->addFlash('info', 'To change the semester filter, please use System Settings.');
+        return $this->redirectToRoute('admin_system_settings');
     }
 
     /**
@@ -814,18 +846,8 @@ class AdminController extends AbstractController
         error_log("Empty semester route hit for departmentId: " . $departmentId);
         error_log("Request URI: " . $request->getRequestUri());
         
-        // Clear the invalid semester filter
-        $session = $request->getSession();
-        $session->remove('semester_filter');
-        
-        // Clear from user's database preference
-        $user = $this->getUser();
-        if ($user instanceof User) {
-            $user->setPreferredSemesterFilter(null);
-            $this->entityManager->flush();
-        }
-        
-        $this->addFlash('warning', 'Invalid semester filter was cleared. Please select a valid semester.');
+        // System-wide semester is managed in System Settings
+        $this->addFlash('info', 'Semester filtering is now system-wide. Use System Settings to change it.');
         return $this->redirectToRoute('admin_curricula_by_department', ['departmentId' => $departmentId]);
     }
 
@@ -1261,19 +1283,8 @@ class AdminController extends AbstractController
     #[Route('/subjects', name: 'subjects')]
     public function subjects(Request $request, \App\Service\SubjectService $subjectService): Response
     {
-        // Get semester filter from user's database preference first, then session
-        $session = $request->getSession();
-        $user = $this->getUser();
-        
-        // Load from database if not in session
-        if (!$session->has('semester_filter') && $user instanceof User) {
-            $preferredFilter = $user->getPreferredSemesterFilter();
-            if ($preferredFilter) {
-                $session->set('semester_filter', $preferredFilter);
-            }
-        }
-        
-        $semesterFilter = $session->get('semester_filter', null);
+        // Use system-wide active semester as the default filter
+        $semesterFilter = $this->systemSettingsService->getActiveSemester();
         
         // Default to showing ALL subjects, not just published ones
         $publishedOnlyParam = $request->query->get('published_only');
@@ -1417,37 +1428,7 @@ class AdminController extends AbstractController
         return $this->redirectToRoute('admin_subjects');
     }
 
-    #[Route('/subjects/clear-semester-filter', name: 'subjects_clear_semester_filter', methods: ['POST'])]
-    public function clearSemesterFilter(Request $request): Response
-    {
-        $session = $request->getSession();
-        $session->remove('semester_filter');
-        
-        // Clear from user's database preference
-        $user = $this->getUser();
-        if ($user instanceof User) {
-            $user->setPreferredSemesterFilter(null);
-            $this->entityManager->flush();
-        }
-        
-        return $this->redirectToRoute('admin_subjects');
-    }
-
-    #[Route('/curricula/clear-semester-filter/{departmentId}', name: 'curricula_clear_semester_filter', requirements: ['departmentId' => '\d+'])]
-    public function clearCurriculaSemesterFilter(int $departmentId, Request $request): Response
-    {
-        $session = $request->getSession();
-        $session->remove('semester_filter');
-        
-        // Clear from user's database preference
-        $user = $this->getUser();
-        if ($user instanceof User) {
-            $user->setPreferredSemesterFilter(null);
-            $this->entityManager->flush();
-        }
-        
-        return $this->redirectToRoute('admin_curricula_by_department', ['departmentId' => $departmentId]);
-    }
+    // Removed: User-specific semester filter routes (now using system-wide active semester)
 
     // User Management Routes - Main Categories
 
@@ -1608,11 +1589,423 @@ class AdminController extends AbstractController
         ]));
     }
 
+    #[Route('/users/faculty/{id}/teaching-history', name: 'users_faculty_history', methods: ['GET'])]
+    public function facultyTeachingHistory(int $id, Request $request): Response
+    {
+        $faculty = $this->userService->getUserById($id);
+        
+        if (!$faculty || $faculty->getRole() != 3) {
+            $this->addFlash('error', 'Faculty member not found.');
+            return $this->redirectToRoute('admin_users_faculty');
+        }
+
+        // Get filters from query parameters
+        $semesterFilter = $request->query->get('semester');
+        $yearFilter = $request->query->get('year');
+
+        // Get teaching history for this faculty member
+        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $qb = $scheduleRepository->createQueryBuilder('s')
+            ->leftJoin('s.faculty', 'f')
+            ->leftJoin('s.subject', 'subj')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.academicYear', 'ay')
+            ->addSelect('f', 'subj', 'r', 'ay')
+            ->where('s.faculty = :faculty')
+            ->setParameter('faculty', $faculty)
+            ->orderBy('ay.year', 'DESC')
+            ->addOrderBy('s.semester', 'DESC')
+            ->addOrderBy('subj.code', 'ASC');
+
+        // Apply filters if provided
+        if ($semesterFilter) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semesterFilter);
+        }
+        if ($yearFilter) {
+            $qb->andWhere('ay.id = :yearId')
+               ->setParameter('yearId', $yearFilter);
+        }
+
+        $teachingHistory = $qb->getQuery()->getResult();
+
+        // Calculate workload statistics
+        $workloadBySemester = [];
+        foreach ($teachingHistory as $schedule) {
+            if ($schedule->getAcademicYear() && $schedule->getSemester() && $schedule->getSubject()) {
+                $key = $schedule->getAcademicYear()->getYear() . ' - ' . $schedule->getSemester();
+                if (!isset($workloadBySemester[$key])) {
+                    $workloadBySemester[$key] = [
+                        'year' => $schedule->getAcademicYear()->getYear(),
+                        'semester' => $schedule->getSemester(),
+                        'subjects' => [],
+                        'total_units' => 0,
+                        'schedule_count' => 0,
+                    ];
+                }
+                
+                $subjectId = $schedule->getSubject()->getId();
+                if (!in_array($subjectId, $workloadBySemester[$key]['subjects'])) {
+                    $workloadBySemester[$key]['subjects'][] = $subjectId;
+                    $workloadBySemester[$key]['total_units'] += $schedule->getSubject()->getUnits();
+                }
+                $workloadBySemester[$key]['schedule_count']++;
+            }
+        }
+
+        // Get all academic years for filter dropdown
+        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+            ->createQueryBuilder('ay')
+            ->where('ay.deletedAt IS NULL')
+            ->orderBy('ay.year', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        // Calculate unique subjects and rooms
+        $uniqueSubjectIds = [];
+        $uniqueRoomIds = [];
+        foreach ($teachingHistory as $schedule) {
+            if ($schedule->getSubject()) {
+                $uniqueSubjectIds[$schedule->getSubject()->getId()] = true;
+            }
+            if ($schedule->getRoom()) {
+                $uniqueRoomIds[$schedule->getRoom()->getId()] = true;
+            }
+        }
+
+        return $this->render('admin/users/faculty_history.html.twig', [
+            'faculty' => $faculty,
+            'teachingHistory' => $teachingHistory,
+            'workloadBySemester' => $workloadBySemester,
+            'academicYears' => $academicYears,
+            'semesterFilter' => $semesterFilter,
+            'yearFilter' => $yearFilter,
+            'uniqueSubjectCount' => count($uniqueSubjectIds),
+            'uniqueRoomCount' => count($uniqueRoomIds),
+        ]);
+    }
+
+    #[Route('/users/faculty/{id}/teaching-history/export', name: 'users_faculty_history_export', methods: ['GET'])]
+    public function exportFacultyTeachingHistory(int $id, Request $request): Response
+    {
+        $faculty = $this->userService->getUserById($id);
+        
+        if (!$faculty || $faculty->getRole() != 3) {
+            $this->addFlash('error', 'Faculty member not found.');
+            return $this->redirectToRoute('admin_users_faculty');
+        }
+
+        // Get filters
+        $semesterFilter = $request->query->get('semester');
+        $yearFilter = $request->query->get('year');
+
+        // Get teaching history
+        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $qb = $scheduleRepository->createQueryBuilder('s')
+            ->leftJoin('s.faculty', 'f')
+            ->leftJoin('s.subject', 'subj')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.academicYear', 'ay')
+            ->addSelect('f', 'subj', 'r', 'ay')
+            ->where('s.faculty = :faculty')
+            ->setParameter('faculty', $faculty)
+            ->orderBy('ay.year', 'DESC')
+            ->addOrderBy('s.semester', 'DESC')
+            ->addOrderBy('subj.code', 'ASC');
+
+        if ($semesterFilter) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semesterFilter);
+        }
+        if ($yearFilter) {
+            $qb->andWhere('ay.id = :yearId')
+               ->setParameter('yearId', $yearFilter);
+        }
+
+        $teachingHistory = $qb->getQuery()->getResult();
+
+        // Create CSV content
+        $csv = [];
+        $csv[] = ['Faculty Name', 'Employee ID', 'Academic Year', 'Semester', 'Subject Code', 'Subject Name', 'Units', 'Section', 'Room', 'Day', 'Start Time', 'End Time'];
+
+        foreach ($teachingHistory as $schedule) {
+            $csv[] = [
+                $faculty->getFullName(),
+                $faculty->getEmployeeId() ?: 'N/A',
+                $schedule->getAcademicYear() ? $schedule->getAcademicYear()->getYear() : 'N/A',
+                $schedule->getSemester() ?: 'N/A',
+                $schedule->getSubject() ? $schedule->getSubject()->getCode() : 'N/A',
+                $schedule->getSubject() ? $schedule->getSubject()->getName() : 'N/A',
+                $schedule->getSubject() ? $schedule->getSubject()->getUnits() : 'N/A',
+                $schedule->getSection() ?: 'N/A',
+                $schedule->getRoom() ? $schedule->getRoom()->getName() : 'N/A',
+                $schedule->getDayOfWeek() ?: 'N/A',
+                $schedule->getStartTime() ? $schedule->getStartTime()->format('H:i') : 'N/A',
+                $schedule->getEndTime() ? $schedule->getEndTime()->format('H:i') : 'N/A',
+            ];
+        }
+
+        // Generate CSV file
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="faculty_history_' . $faculty->getEmployeeId() . '_' . date('Y-m-d') . '.csv"');
+
+        $output = fopen('php://temp', 'r+');
+        foreach ($csv as $row) {
+            fputcsv($output, $row);
+        }
+        rewind($output);
+        $response->setContent(stream_get_contents($output));
+        fclose($output);
+
+        return $response;
+    }
+
     // Legacy route - redirect to all users
     #[Route('/users', name: 'users')]
     public function users(): Response
     {
         return $this->redirectToRoute('admin_users_all');
+    }
+
+    #[Route('/history', name: 'history', methods: ['GET'])]
+    public function historyHub(Request $request): Response
+    {
+        // Get export parameter only
+        $exportType = $request->query->get('export', '');
+        $selectedYear = $request->query->get('year', '');
+        $selectedSemester = $request->query->get('semester', '');
+        $selectedDepartment = $request->query->get('department', '');
+        $searchTerm = $request->query->get('search', '');
+        
+        // Get active semester for default
+        $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        
+        // Get all academic years for filter dropdown
+        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+            ->createQueryBuilder('ay')
+            ->select('ay.year')
+            ->distinct(true)
+            ->orderBy('ay.year', 'DESC')
+            ->getQuery()
+            ->getResult();
+        $years = array_column($academicYears, 'year');
+        
+        // Get all departments for filter dropdown
+        $departments = $this->entityManager->getRepository(\App\Entity\Department::class)
+            ->createQueryBuilder('d')
+            ->where('d.deletedAt IS NULL')
+            ->orderBy('d.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        // Load ALL rooms with schedule details (for client-side filtering)
+        $rooms = $this->entityManager->getRepository(\App\Entity\Room::class)
+            ->createQueryBuilder('r')
+            ->orderBy('r.building', 'ASC')
+            ->addOrderBy('r.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        // Load ALL schedules with department/year/semester info
+        $schedules = $this->entityManager->getRepository(\App\Entity\Schedule::class)
+            ->createQueryBuilder('s')
+            ->select('s', 'r', 'sub', 'd', 'u')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.subject', 'sub')
+            ->leftJoin('sub.department', 'd')
+            ->leftJoin('s.faculty', 'u')
+            ->getQuery()
+            ->getResult();
+        
+        // Build room data with schedule counts and department info
+        $roomsData = [];
+        foreach ($rooms as $room) {
+            $roomSchedules = array_filter($schedules, fn($s) => $s->getRoom() && $s->getRoom()->getId() === $room->getId());
+            
+            // Get unique departments for this room
+            $roomDepartments = [];
+            $roomYears = [];
+            $roomSemesters = [];
+            foreach ($roomSchedules as $schedule) {
+                if ($schedule->getSubject() && $schedule->getSubject()->getDepartment()) {
+                    $dept = $schedule->getSubject()->getDepartment();
+                    $roomDepartments[$dept->getId()] = $dept->getName();
+                }
+                if ($schedule->getAcademicYear()) {
+                    $roomYears[] = $schedule->getAcademicYear();
+                }
+                if ($schedule->getSemester()) {
+                    $roomSemesters[] = $schedule->getSemester();
+                }
+            }
+            
+            $roomsData[] = [
+                0 => $room,
+                'scheduleCount' => count($roomSchedules),
+                'departments' => implode(', ', array_unique($roomDepartments)),
+                'years' => implode(', ', array_unique($roomYears)),
+                'semesters' => implode(', ', array_unique($roomSemesters))
+            ];
+        }
+        
+        // Load ALL faculty with basic stats first
+        $facultyQuery = $this->entityManager->getRepository(User::class)
+            ->createQueryBuilder('u')
+            ->select('u', 'COUNT(s.id) as scheduleCount', 'SUM(sub.units) as totalUnits')
+            ->leftJoin(\App\Entity\Schedule::class, 's', 'WITH', 's.faculty = u')
+            ->leftJoin('s.subject', 'sub')
+            ->where('u.role = :role')
+            ->andWhere('u.isActive = :active')
+            ->setParameter('role', 3)
+            ->setParameter('active', true)
+            ->groupBy('u.id')
+            ->orderBy('u.lastName', 'ASC')
+            ->addOrderBy('u.firstName', 'ASC');
+        
+        $facultyResults = $facultyQuery->getQuery()->getResult();
+        
+        // Build faculty data with schedule details for filtering
+        $facultyData = [];
+        foreach ($facultyResults as $result) {
+            $faculty = $result[0];
+            $facultySchedules = array_filter($schedules, fn($s) => $s->getFaculty() && $s->getFaculty()->getId() === $faculty->getId());
+            
+            // Get unique departments, years, semesters for this faculty
+            $facultyDepartments = [];
+            $facultyYears = [];
+            $facultySemesters = [];
+            
+            foreach ($facultySchedules as $schedule) {
+                if ($schedule->getSubject() && $schedule->getSubject()->getDepartment()) {
+                    $dept = $schedule->getSubject()->getDepartment();
+                    $facultyDepartments[$dept->getId()] = $dept->getName();
+                }
+                if ($schedule->getAcademicYear()) {
+                    $facultyYears[] = $schedule->getAcademicYear();
+                }
+                if ($schedule->getSemester()) {
+                    $facultySemesters[] = $schedule->getSemester();
+                }
+            }
+            
+            $facultyData[] = [
+                0 => $faculty,
+                'scheduleCount' => $result['scheduleCount'],
+                'totalUnits' => $result['totalUnits'],
+                'departments' => implode(', ', array_unique($facultyDepartments)),
+                'years' => implode(', ', array_unique($facultyYears)),
+                'semesters' => implode(', ', array_unique($facultySemesters))
+            ];
+        }
+        
+        // Handle bulk exports (apply filters only for export)
+        if ($exportType === 'rooms') {
+            return $this->exportAllRooms($roomsData, $selectedYear, $selectedSemester);
+        } elseif ($exportType === 'faculty') {
+            return $this->exportAllFaculty($facultyData, $selectedYear, $selectedSemester);
+        }
+        
+        // Create display string for active semester
+        $activeSemesterDisplay = $activeYear && $activeSemester 
+            ? $activeYear->getYear() . ' | ' . $activeSemester . ' Semester'
+            : null;
+        
+        return $this->render('admin/history/index.html.twig', [
+            'years' => $years,
+            'departments' => $departments,
+            'selectedYear' => '',
+            'selectedSemester' => '',
+            'selectedDepartment' => '',
+            'searchTerm' => '',
+            'activeYear' => $activeYear,
+            'activeSemester' => $activeSemester,
+            'activeSemesterDisplay' => $activeSemesterDisplay,
+            'roomsData' => $roomsData,
+            'facultyData' => $facultyData,
+            'hasActiveSemester' => $this->systemSettingsService->hasActiveSemester(),
+        ]);
+    }
+
+    private function exportAllRooms(array $roomsData, string $year, string $semester): Response
+    {
+        // Prepare CSV data
+        $csvData = [];
+        $csvData[] = ['Room', 'Building', 'Capacity', 'Schedule Count', 'Academic Year', 'Semester'];
+        
+        foreach ($roomsData as $item) {
+            $room = $item[0];
+            $scheduleCount = $item['scheduleCount'];
+            
+            $csvData[] = [
+                $room->getName(),
+                $room->getBuilding(),
+                $room->getCapacity(),
+                $scheduleCount,
+                $year ?: 'All',
+                $semester ?: 'All'
+            ];
+        }
+        
+        // Generate CSV
+        $filename = 'all_rooms_history_' . ($year ?: 'all_years') . '_' . ($semester ?: 'all_semesters') . '_' . date('Y-m-d') . '.csv';
+        
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+        $output = fopen('php://temp', 'r+');
+        foreach ($csvData as $row) {
+            fputcsv($output, $row);
+        }
+        rewind($output);
+        $response->setContent(stream_get_contents($output));
+        fclose($output);
+        
+        return $response;
+    }
+
+    private function exportAllFaculty(array $facultyData, string $year, string $semester): Response
+    {
+        // Prepare CSV data
+        $csvData = [];
+        $csvData[] = ['Employee ID', 'First Name', 'Last Name', 'Position', 'Department', 'Total Units', 'Total Subjects', 'Academic Year', 'Semester'];
+        
+        foreach ($facultyData as $item) {
+            $faculty = $item[0];
+            $scheduleCount = $item['scheduleCount'];
+            $totalUnits = $item['totalUnits'] ?? 0;
+            
+            $csvData[] = [
+                $faculty->getEmployeeId(),
+                $faculty->getFirstName(),
+                $faculty->getLastName(),
+                $faculty->getPosition(),
+                $faculty->getDepartment() ? $faculty->getDepartment()->getName() : 'No Department',
+                $totalUnits,
+                $scheduleCount,
+                $year ?: 'All',
+                $semester ?: 'All'
+            ];
+        }
+        
+        // Generate CSV
+        $filename = 'all_faculty_history_' . ($year ?: 'all_years') . '_' . ($semester ?: 'all_semesters') . '_' . date('Y-m-d') . '.csv';
+        
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+        $output = fopen('php://temp', 'r+');
+        foreach ($csvData as $row) {
+            fputcsv($output, $row);
+        }
+        rewind($output);
+        $response->setContent(stream_get_contents($output));
+        fclose($output);
+        
+        return $response;
     }
 
     // User CRUD Operations
@@ -2078,7 +2471,13 @@ class AdminController extends AbstractController
         // Get all departments for the filter dropdown
         $departments = $this->departmentRepository->findBy(['deletedAt' => null], ['name' => 'ASC']);
 
-        return $this->render('admin/rooms.html.twig', [
+        // Get active semester information
+        $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        $activeSemesterDisplay = $this->systemSettingsService->getActiveSemesterDisplay();
+        $hasActiveSemester = $this->systemSettingsService->hasActiveSemester();
+
+        return $this->render('admin/rooms.html.twig', array_merge($this->getBaseTemplateData(), [
             'rooms' => $result['rooms'],
             'pagination' => $result['pagination'],
             'filters' => $filters,
@@ -2086,7 +2485,9 @@ class AdminController extends AbstractController
             'buildings' => $buildings,
             'departments' => $departments,
             'selected_department' => null,
-        ]);
+            'activeYear' => $activeYear,
+            'activeSemester' => $activeSemester,
+        ]));
     }
 
     #[Route('/rooms/create', name: 'rooms_create', methods: ['GET', 'POST'])]
@@ -2183,9 +2584,9 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_rooms');
         }
 
-        return $this->render('admin/rooms/view.html.twig', [
+        return $this->render('admin/rooms/view.html.twig', array_merge($this->getBaseTemplateData(), [
             'room' => $room,
-        ]);
+        ]));
     }
 
     #[Route('/rooms/{id}/delete', name: 'rooms_delete', methods: ['POST'])]
@@ -2238,6 +2639,163 @@ class AdminController extends AbstractController
         return $this->redirectToRoute('admin_rooms');
     }
 
+    #[Route('/rooms/{id}/history', name: 'rooms_history', methods: ['GET'])]
+    public function roomHistory(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    {
+        $room = $roomService->getRoomById($id);
+        
+        if (!$room) {
+            return new JsonResponse(['error' => 'Room not found'], 404);
+        }
+
+        // Get filters from query parameters
+        $semesterFilter = $request->query->get('semester');
+        $yearFilter = $request->query->get('year');
+
+        // Get active semester info
+        $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
+        // Default to active semester if no filters provided
+        if (!$semesterFilter && $activeSemester) {
+            $semesterFilter = $activeSemester;
+        }
+        if (!$yearFilter && $activeYear) {
+            $yearFilter = $activeYear->getId();
+        }
+
+        // Get schedule history for this room
+        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $qb = $scheduleRepository->createQueryBuilder('s')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.subject', 'subj')
+            ->leftJoin('s.faculty', 'f')
+            ->leftJoin('s.academicYear', 'ay')
+            ->addSelect('r', 'subj', 'f', 'ay')
+            ->where('s.room = :room')
+            ->setParameter('room', $room)
+            ->orderBy('ay.year', 'DESC')
+            ->addOrderBy('s.semester', 'DESC')
+            ->addOrderBy('subj.code', 'ASC');
+
+        // Apply filters if provided
+        if ($semesterFilter) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semesterFilter);
+        }
+        if ($yearFilter) {
+            $qb->andWhere('ay.id = :yearId')
+               ->setParameter('yearId', $yearFilter);
+        }
+
+        $scheduleHistory = $qb->getQuery()->getResult();
+
+        // Get all academic years for filter dropdown
+        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+            ->createQueryBuilder('ay')
+            ->where('ay.deletedAt IS NULL')
+            ->orderBy('ay.year', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        // Calculate unique faculty and subjects
+        $uniqueFacultyIds = [];
+        $uniqueSubjectIds = [];
+        foreach ($scheduleHistory as $schedule) {
+            if ($schedule->getFaculty()) {
+                $uniqueFacultyIds[$schedule->getFaculty()->getId()] = true;
+            }
+            if ($schedule->getSubject()) {
+                $uniqueSubjectIds[$schedule->getSubject()->getId()] = true;
+            }
+        }
+
+        return $this->render('admin/rooms/history.html.twig', array_merge($this->getBaseTemplateData(), [
+            'room' => $room,
+            'scheduleHistory' => $scheduleHistory,
+            'academicYears' => $academicYears,
+            'semesterFilter' => $semesterFilter,
+            'yearFilter' => $yearFilter,
+            'uniqueFacultyCount' => count($uniqueFacultyIds),
+            'uniqueSubjectCount' => count($uniqueSubjectIds),
+            'activeYear' => $activeYear,
+            'activeSemester' => $activeSemester,
+        ]));
+    }
+
+    #[Route('/rooms/{id}/history/export', name: 'rooms_history_export', methods: ['GET'])]
+    public function exportRoomHistory(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    {
+        $room = $roomService->getRoomById($id);
+        
+        if (!$room) {
+            $this->addFlash('error', 'Room not found.');
+            return $this->redirectToRoute('admin_rooms');
+        }
+
+        // Get filters
+        $semesterFilter = $request->query->get('semester');
+        $yearFilter = $request->query->get('year');
+
+        // Get schedule history
+        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $qb = $scheduleRepository->createQueryBuilder('s')
+            ->leftJoin('s.room', 'r')
+            ->leftJoin('s.subject', 'subj')
+            ->leftJoin('s.faculty', 'f')
+            ->leftJoin('s.academicYear', 'ay')
+            ->addSelect('r', 'subj', 'f', 'ay')
+            ->where('s.room = :room')
+            ->setParameter('room', $room)
+            ->orderBy('ay.year', 'DESC')
+            ->addOrderBy('s.semester', 'DESC')
+            ->addOrderBy('subj.code', 'ASC');
+
+        if ($semesterFilter) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semesterFilter);
+        }
+        if ($yearFilter) {
+            $qb->andWhere('ay.id = :yearId')
+               ->setParameter('yearId', $yearFilter);
+        }
+
+        $scheduleHistory = $qb->getQuery()->getResult();
+
+        // Create CSV content
+        $csv = [];
+        $csv[] = ['Academic Year', 'Semester', 'Subject Code', 'Subject Name', 'Section', 'Faculty', 'Day', 'Start Time', 'End Time'];
+
+        foreach ($scheduleHistory as $schedule) {
+            $csv[] = [
+                $schedule->getAcademicYear() ? $schedule->getAcademicYear()->getYear() : 'N/A',
+                $schedule->getSemester() ?: 'N/A',
+                $schedule->getSubject() ? $schedule->getSubject()->getCode() : 'N/A',
+                $schedule->getSubject() ? $schedule->getSubject()->getName() : 'N/A',
+                $schedule->getSection() ?: 'N/A',
+                $schedule->getFaculty() ? $schedule->getFaculty()->getFullName() : 'Unassigned',
+                $schedule->getDayOfWeek() ?: 'N/A',
+                $schedule->getStartTime() ? $schedule->getStartTime()->format('H:i') : 'N/A',
+                $schedule->getEndTime() ? $schedule->getEndTime()->format('H:i') : 'N/A',
+            ];
+        }
+
+        // Generate CSV file
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="room_history_' . $room->getCode() . '_' . date('Y-m-d') . '.csv"');
+
+        $output = fopen('php://temp', 'r+');
+        foreach ($csv as $row) {
+            fputcsv($output, $row);
+        }
+        rewind($output);
+        $response->setContent(stream_get_contents($output));
+        fclose($output);
+
+        return $response;
+    }
+
     #[Route('/rooms/{id}/schedule-pdf', name: 'rooms_schedule_pdf', methods: ['GET'])]
     public function generateRoomSchedulePdf(
         int $id, 
@@ -2253,9 +2811,22 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_rooms');
         }
 
-        // Get optional filters
+        // Get optional filters or use active semester
         $academicYear = $request->query->get('academic_year');
         $semester = $request->query->get('semester');
+
+        // Default to active semester if not specified
+        if (!$academicYear || !$semester) {
+            $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+            $activeSemester = $this->systemSettingsService->getActiveSemester();
+            
+            if (!$academicYear && $activeYear) {
+                $academicYear = $activeYear->getYear();
+            }
+            if (!$semester && $activeSemester) {
+                $semester = $activeSemester;
+            }
+        }
 
         try {
             $pdfContent = $pdfService->generateRoomSchedulePdf($room, $academicYear, $semester);
@@ -2665,6 +3236,134 @@ class AdminController extends AbstractController
             return new JsonResponse([
                 'success' => false,
                 'message' => 'Error processing upload: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // System Settings Routes
+
+    #[Route('/settings/', name: 'settings_redirect')]
+    public function settingsRedirect(): Response
+    {
+        return $this->redirectToRoute('admin_system_settings');
+    }
+
+    #[Route('/settings/system', name: 'system_settings')]
+    public function systemSettings(Request $request): Response
+    {
+        $academicYearRepository = $this->entityManager->getRepository(\App\Entity\AcademicYear::class);
+        $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        
+        // Get all active academic years
+        $academicYears = $academicYearRepository->createQueryBuilder('ay')
+            ->where('ay.isActive = :active')
+            ->andWhere('ay.deletedAt IS NULL')
+            ->setParameter('active', true)
+            ->orderBy('ay.year', 'DESC')
+            ->getQuery()
+            ->getResult();
+        
+        $semesters = $this->systemSettingsService->getAvailableSemesters();
+
+        return $this->render('admin/settings/system.html.twig', array_merge($this->getBaseTemplateData(), [
+            'page_title' => 'System Settings',
+            'academic_years' => $academicYears,
+            'active_year' => $activeYear,
+            'active_semester' => $activeSemester,
+            'available_semesters' => $semesters,
+        ]));
+    }
+
+    #[Route('/settings/system/set-semester', name: 'set_active_semester', methods: ['POST'])]
+    public function setActiveSemester(Request $request): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            $academicYearId = $data['academic_year_id'] ?? null;
+            $semester = $data['semester'] ?? null;
+
+            if (!$academicYearId || !$semester) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Academic year and semester are required'
+                ], 400);
+            }
+
+            // Validate the transition
+            $warnings = $this->systemSettingsService->validateSemesterTransition($academicYearId, $semester);
+            if (!empty($warnings)) {
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'warnings' => $warnings
+                ], 400);
+            }
+
+            // Get schedule count for current semester (if exists)
+            $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+            $currentScheduleCount = 0;
+            $currentYear = $this->systemSettingsService->getActiveAcademicYear();
+            $currentSemester = $this->systemSettingsService->getActiveSemester();
+            
+            if ($currentYear && $currentSemester) {
+                $currentScheduleCount = $scheduleRepository->countByAcademicYearAndSemester($currentYear, $currentSemester);
+            }
+
+            // Set the new active semester
+            $result = $this->systemSettingsService->setActiveSemester($academicYearId, $semester);
+
+            // Update the user's semester filter preference to match the new active semester
+            $session = $request->getSession();
+            $session->set('semester_filter', $semester);
+
+            // Log the activity
+            $this->activityLogService->log(
+                'system_settings',
+                sprintf('Changed active semester to %s', $result->getFullDisplayName()),
+                'AcademicYear',
+                $result->getId(),
+                null,
+                $this->getUser()
+            );
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Active semester updated successfully',
+                'display' => $result->getFullDisplayName(),
+                'current_schedule_count' => $currentScheduleCount
+            ]);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    #[Route('/settings/system/semester-info', name: 'get_semester_info', methods: ['GET'])]
+    public function getSemesterInfo(): JsonResponse
+    {
+        try {
+            $info = $this->systemSettingsService->getSemesterTransitionInfo();
+            
+            // Get schedule count if there's an active semester
+            if ($info['has_active']) {
+                $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+                $activeYear = $this->systemSettingsService->getActiveAcademicYear();
+                $activeSemester = $this->systemSettingsService->getActiveSemester();
+                
+                $info['schedule_count'] = $scheduleRepository->countByAcademicYearAndSemester($activeYear, $activeSemester);
+            } else {
+                $info['schedule_count'] = 0;
+            }
+
+            return new JsonResponse($info);
+
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'error' => 'Error: ' . $e->getMessage()
             ], 500);
         }
     }

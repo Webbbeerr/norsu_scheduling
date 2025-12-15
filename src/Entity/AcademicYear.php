@@ -35,6 +35,13 @@ class AcademicYear
     #[ORM\Column(name: 'is_current', type: Types::BOOLEAN, nullable: true)]
     private ?bool $isCurrent = false;
 
+    #[ORM\Column(name: 'current_semester', type: Types::STRING, length: 20, nullable: true)]
+    #[Assert\Choice(
+        choices: ['1st', '2nd', 'Summer'],
+        message: 'Semester must be either 1st, 2nd, or Summer'
+    )]
+    private ?string $currentSemester = null;
+
     #[ORM\Column(name: 'is_active', type: Types::BOOLEAN, nullable: true)]
     private ?bool $isActive = true;
 
@@ -103,6 +110,17 @@ class AcademicYear
         return $this;
     }
 
+    public function getCurrentSemester(): ?string
+    {
+        return $this->currentSemester;
+    }
+
+    public function setCurrentSemester(?string $currentSemester): static
+    {
+        $this->currentSemester = $currentSemester;
+        return $this;
+    }
+
     public function isActive(): ?bool
     {
         return $this->isActive;
@@ -154,7 +172,23 @@ class AcademicYear
     {
         $name = $this->year;
         if ($this->isCurrent) {
-            $name .= ' (Current)';
+            $name .= ' (Current';
+            if ($this->currentSemester) {
+                $name .= ' - ' . $this->currentSemester . ' Semester';
+            }
+            $name .= ')';
+        }
+        return $name;
+    }
+
+    /**
+     * Get full display name with semester
+     */
+    public function getFullDisplayName(): string
+    {
+        $name = $this->year;
+        if ($this->currentSemester) {
+            $name .= ' | ' . $this->currentSemester . ' Semester';
         }
         return $name;
     }

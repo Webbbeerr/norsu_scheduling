@@ -14,6 +14,7 @@ use App\Service\UserService;
 use App\Service\ScheduleConflictDetector;
 use App\Service\TeachingLoadPdfService;
 use App\Service\ActivityLogService;
+use App\Service\SystemSettingsService;
 use App\Repository\DepartmentRepository;
 use App\Repository\RoomRepository;
 use App\Repository\ScheduleRepository;
@@ -43,6 +44,7 @@ class DepartmentHeadController extends AbstractController
     private EntityManagerInterface $entityManager;
     private TeachingLoadPdfService $pdfService;
     private ActivityLogService $activityLogService;
+    private SystemSettingsService $systemSettingsService;
 
     public function __construct(
         DashboardService $dashboardService,
@@ -56,7 +58,8 @@ class DepartmentHeadController extends AbstractController
         ScheduleConflictDetector $conflictDetector,
         EntityManagerInterface $entityManager,
         TeachingLoadPdfService $pdfService,
-        ActivityLogService $activityLogService
+        ActivityLogService $activityLogService,
+        SystemSettingsService $systemSettingsService
     ) {
         $this->dashboardService = $dashboardService;
         $this->departmentHeadService = $departmentHeadService;
@@ -70,6 +73,7 @@ class DepartmentHeadController extends AbstractController
         $this->conflictDetector = $conflictDetector;
         $this->entityManager = $entityManager;
         $this->pdfService = $pdfService;
+        $this->systemSettingsService = $systemSettingsService;
     }
 
     private function getBaseTemplateData(): array
@@ -78,6 +82,8 @@ class DepartmentHeadController extends AbstractController
         $user = $this->getUser();
         return [
             'dashboard_data' => $this->departmentHeadService->getDashboardData($user),
+            'activeSemesterDisplay' => $this->systemSettingsService->getActiveSemesterDisplay(),
+            'hasActiveSemester' => $this->systemSettingsService->hasActiveSemester(),
         ];
     }
 
@@ -471,8 +477,8 @@ class DepartmentHeadController extends AbstractController
             'workload_data' => $workloadData['faculty_workload'],
             'statistics' => $workloadData['statistics'],
             'academic_years' => $workloadData['academic_years'],
-            'selected_academic_year' => $academicYearId,
-            'selected_semester' => $semester,
+            'selected_academic_year' => $workloadData['selected_academic_year'],
+            'selected_semester' => $workloadData['selected_semester'],
             'status_filter' => $statusFilter,
         ]));
     }
@@ -835,8 +841,16 @@ class DepartmentHeadController extends AbstractController
             return $this->redirectToRoute('department_head_dashboard');
         }
 
-        // Get all schedules for the department
-        $schedules = $this->scheduleRepository->findByDepartment($department->getId());
+        // Get active semester for filtering
+        $activeAcademicYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
+        // Get schedules for the department filtered by active semester
+        $schedules = $this->scheduleRepository->findByDepartment(
+            $department->getId(),
+            $activeAcademicYear,
+            $activeSemester
+        );
 
         // Group schedules by subject code
         $groupedSchedules = [];
@@ -873,8 +887,36 @@ class DepartmentHeadController extends AbstractController
             return $this->redirectToRoute('department_head_dashboard');
         }
 
-        // Get subjects from department
-        $subjects = $this->subjectRepository->findBy(['department' => $department, 'isActive' => true]);
+        // Get active academic year and semester from system settings
+        $activeAcademicYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+        
+        // Get subjects from department - filter by active semester if available
+        if ($activeSemester) {
+            // Get subjects that are in curriculum terms matching the active semester
+            $subjects = $this->entityManager->createQueryBuilder()
+                ->select('DISTINCT s')
+                ->from('App\Entity\Subject', 's')
+                ->innerJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s')
+                ->innerJoin('App\Entity\CurriculumTerm', 'ct', 'WITH', 'cs.curriculumTerm = ct')
+                ->innerJoin('App\Entity\Curriculum', 'c', 'WITH', 'ct.curriculum = c')
+                ->where('s.department = :dept')
+                ->andWhere('s.isActive = :active')
+                ->andWhere('ct.semester = :semester')
+                ->andWhere('c.isPublished = :published')
+                ->setParameter('dept', $department)
+                ->setParameter('active', true)
+                ->setParameter('semester', $activeSemester)
+                ->setParameter('published', true)
+                ->orderBy('s.code', 'ASC')
+                ->getQuery()
+                ->getResult();
+        } else {
+            $subjects = $this->subjectRepository->findBy(
+                ['department' => $department, 'isActive' => true],
+                ['code' => 'ASC']
+            );
+        }
         
         // Get rooms accessible to department
         $rooms = $this->roomRepository->findAccessibleByDepartment($department);
@@ -941,11 +983,15 @@ class DepartmentHeadController extends AbstractController
                     foreach ($timeErrors as $error) {
                         $this->addFlash('error', $error);
                     }
-                    return $this->render('department_head/schedules/create.html.twig', array_merge($this->getBaseTemplateData(), [
-                        'page_title' => 'Create Schedule',
+                    return $this->render('admin/schedule/new_v2.html.twig', array_merge($this->getBaseTemplateData(), [
                         'subjects' => $subjects,
                         'rooms' => $rooms,
                         'academicYears' => $academicYears,
+                        'activeAcademicYear' => $activeAcademicYear,
+                        'activeSemester' => $activeSemester,
+                        'selectedDepartment' => $department,
+                        'departmentId' => $department->getId(),
+                        'isDepartmentHead' => true,
                     ]));
                 }
 
@@ -970,11 +1016,15 @@ class DepartmentHeadController extends AbstractController
                         count($hardConflicts)
                     ));
                     
-                    return $this->render('department_head/schedules/create.html.twig', array_merge($this->getBaseTemplateData(), [
-                        'page_title' => 'Create Schedule',
+                    return $this->render('admin/schedule/new_v2.html.twig', array_merge($this->getBaseTemplateData(), [
                         'subjects' => $subjects,
                         'rooms' => $rooms,
                         'academicYears' => $academicYears,
+                        'activeAcademicYear' => $activeAcademicYear,
+                        'activeSemester' => $activeSemester,
+                        'selectedDepartment' => $department,
+                        'departmentId' => $department->getId(),
+                        'isDepartmentHead' => true,
                     ]));
                 }
                 
@@ -1022,11 +1072,15 @@ class DepartmentHeadController extends AbstractController
             }
         }
 
-        return $this->render('department_head/schedules/create.html.twig', array_merge($this->getBaseTemplateData(), [
-            'page_title' => 'Create Schedule',
+        return $this->render('admin/schedule/new_v2.html.twig', array_merge($this->getBaseTemplateData(), [
             'subjects' => $subjects,
             'rooms' => $rooms,
             'academicYears' => $academicYears,
+            'activeAcademicYear' => $activeAcademicYear,
+            'activeSemester' => $activeSemester,
+            'selectedDepartment' => $department,
+            'departmentId' => $department->getId(),
+            'isDepartmentHead' => true,
         ]));
     }
 
@@ -1039,7 +1093,8 @@ class DepartmentHeadController extends AbstractController
 
         if (!$department) {
             return new JsonResponse([
-                'success' => false,
+                'has_conflicts' => false,
+                'conflicts' => [],
                 'error' => 'You are not assigned to a department.'
             ], 403);
         }
@@ -1047,34 +1102,46 @@ class DepartmentHeadController extends AbstractController
         try {
             $data = json_decode($request->getContent(), true);
             
+            // Support both naming conventions: subject/subject_id
+            $subjectId = $data['subject'] ?? $data['subject_id'] ?? null;
+            $roomId = $data['room'] ?? $data['room_id'] ?? null;
+            $academicYearId = $data['academic_year'] ?? $data['academic_year_id'] ?? null;
+            $semester = $data['semester'] ?? null;
+            $section = $data['section'] ?? null;
+            $dayPattern = $data['day_pattern'] ?? null;
+            $startTime = $data['start_time'] ?? null;
+            $endTime = $data['end_time'] ?? null;
+            
             // Validate required fields
-            $required = ['subject_id', 'room_id', 'academic_year_id', 'semester', 'section', 'day_pattern', 'start_time', 'end_time'];
-            foreach ($required as $field) {
-                if (!isset($data[$field]) || empty($data[$field])) {
-                    return new JsonResponse([
-                        'success' => false,
-                        'error' => "Missing required field: {$field}"
-                    ], 400);
-                }
+            if (!$subjectId || !$roomId || !$academicYearId || !$semester || !$section || !$dayPattern || !$startTime || !$endTime) {
+                return new JsonResponse([
+                    'has_conflicts' => false,
+                    'conflicts' => [],
+                    'warnings' => [],
+                    'debug' => 'Missing required fields'
+                ]);
             }
 
             // Get entities
-            $subject = $this->subjectRepository->find($data['subject_id']);
-            $room = $this->entityManager->getRepository(Room::class)->find($data['room_id']);
-            $academicYear = $this->academicYearRepository->find($data['academic_year_id']);
+            $subject = $this->subjectRepository->find($subjectId);
+            $room = $this->entityManager->getRepository(Room::class)->find($roomId);
+            $academicYear = $this->academicYearRepository->find($academicYearId);
 
             if (!$subject || !$room || !$academicYear) {
                 return new JsonResponse([
-                    'success' => false,
-                    'error' => 'Invalid subject, room, or academic year.'
-                ], 400);
+                    'has_conflicts' => false,
+                    'conflicts' => [],
+                    'warnings' => [],
+                    'debug' => 'Invalid subject, room, or academic year.'
+                ]);
             }
 
             // Verify subject belongs to department
             if ($subject->getDepartment()->getId() !== $department->getId()) {
                 return new JsonResponse([
-                    'success' => false,
-                    'error' => 'You can only check conflicts for subjects in your department.'
+                    'has_conflicts' => false,
+                    'conflicts' => ['You can only check conflicts for subjects in your department.'],
+                    'warnings' => []
                 ], 403);
             }
 
@@ -1117,43 +1184,140 @@ class DepartmentHeadController extends AbstractController
             // Check for all conflicts
             $conflicts = $this->conflictDetector->detectConflicts($schedule);
             $duplicateConflicts = $this->conflictDetector->checkDuplicateSubjectSection($schedule);
-            $capacityErrors = $this->conflictDetector->validateRoomCapacity($schedule);
-
-            // Merge all conflicts
-            $allConflicts = array_merge($conflicts, $duplicateConflicts);
             
-            // Add capacity warnings
-            foreach ($capacityErrors as $error) {
-                $allConflicts[] = [
-                    'type' => 'capacity_warning',
-                    'severity' => 'warning',
-                    'message' => $error
-                ];
-            }
-
-            // Categorize by severity
-            $hardConflicts = array_filter($allConflicts, function($conflict) {
-                return in_array($conflict['type'], ['room_time_conflict', 'section_conflict', 'duplicate_subject_section']);
+            // Combine hard conflicts
+            $hardConflicts = array_filter($conflicts, function($conflict) {
+                return $conflict['type'] === 'room_time_conflict' || $conflict['type'] === 'section_conflict';
             });
-
-            $softConflicts = array_filter($allConflicts, function($conflict) {
-                return $conflict['type'] === 'capacity_warning';
-            });
+            $hardConflicts = array_merge($hardConflicts, $duplicateConflicts);
+            
+            // Check capacity warnings
+            $schedule->setEnrolledStudents(0); // Temporary for capacity check
+            $capacityWarnings = $this->conflictDetector->validateRoomCapacity($schedule);
+            
+            // Format conflicts to match admin controller response
+            $conflictMessages = array_map(function($c) {
+                return $c['message'];
+            }, $hardConflicts);
 
             return new JsonResponse([
-                'success' => true,
-                'conflicts' => array_values($allConflicts),
-                'hard_conflicts' => array_values($hardConflicts),
-                'soft_conflicts' => array_values($softConflicts),
-                'has_hard_conflicts' => !empty($hardConflicts),
-                'conflict_count' => count($allConflicts)
+                'has_conflicts' => !empty($hardConflicts),
+                'conflicts' => $conflictMessages,
+                'warnings' => $capacityWarnings,
+                'debug' => [
+                    'section' => $schedule->getSection(),
+                    'subject' => $subject->getCode(),
+                    'room' => $room->getName(),
+                    'room_id' => $room->getId(),
+                    'day_pattern' => $schedule->getDayPattern(),
+                    'start_time' => $schedule->getStartTime()->format('H:i'),
+                    'end_time' => $schedule->getEndTime()->format('H:i'),
+                    'total_conflicts' => count($conflicts),
+                    'duplicate_conflicts' => count($duplicateConflicts),
+                    'hard_conflicts' => count($hardConflicts)
+                ]
             ]);
 
         } catch (\Exception $e) {
             return new JsonResponse([
-                'success' => false,
-                'error' => 'Error checking conflicts: ' . $e->getMessage()
-            ], 500);
+                'has_conflicts' => false,
+                'conflicts' => [],
+                'warnings' => [],
+                'debug' => ['error' => $e->getMessage()]
+            ]);
+        }
+    }
+
+    #[Route('/schedules/check-room-conflicts', name: 'schedules_check_room_conflicts', methods: ['POST'])]
+    public function checkRoomConflicts(Request $request): JsonResponse
+    {
+        try {
+            $data = json_decode($request->getContent(), true);
+            
+            $roomId = $data['room'] ?? null;
+            $dayPattern = $data['dayPattern'] ?? null;
+            $startTime = $data['startTime'] ?? null;
+            $endTime = $data['endTime'] ?? null;
+            $semester = $data['semester'] ?? null;
+            $academicYearId = $data['academicYear'] ?? null;
+            
+            if (!$roomId || !$dayPattern || !$startTime || !$endTime || !$semester || !$academicYearId) {
+                return $this->json([
+                    'hasConflict' => false,
+                    'message' => 'Missing required fields'
+                ]);
+            }
+            
+            // Create a temporary schedule object for conflict checking
+            $tempSchedule = new Schedule();
+            $room = $this->entityManager->getRepository(Room::class)->find($roomId);
+            $academicYear = $this->academicYearRepository->find($academicYearId);
+            
+            if (!$room || !$academicYear) {
+                return $this->json([
+                    'hasConflict' => false,
+                    'message' => 'Invalid room or academic year'
+                ]);
+            }
+            
+            $tempSchedule->setRoom($room);
+            $tempSchedule->setDayPattern($dayPattern);
+            $tempSchedule->setSemester($semester);
+            $tempSchedule->setAcademicYear($academicYear);
+            
+            try {
+                $tempSchedule->setStartTime(new \DateTime($startTime));
+                $tempSchedule->setEndTime(new \DateTime($endTime));
+            } catch (\Exception $e) {
+                return $this->json([
+                    'hasConflict' => false,
+                    'message' => 'Invalid time format'
+                ]);
+            }
+            
+            // Set a dummy subject to avoid null errors (required for conflict detection)
+            // We're only checking room conflicts, not subject conflicts
+            $dummySubject = $this->subjectRepository->findOneBy([]);
+            if ($dummySubject) {
+                $tempSchedule->setSubject($dummySubject);
+            }
+            
+            // Check for conflicts
+            $conflicts = $this->conflictDetector->detectConflicts($tempSchedule, false);
+            
+            // Filter to only room-time conflicts
+            $roomConflicts = array_filter($conflicts, function($conflict) {
+                return $conflict['type'] === 'room_time_conflict';
+            });
+            
+            if (!empty($roomConflicts)) {
+                $firstConflict = reset($roomConflicts);
+                $conflictSchedule = $firstConflict['schedule'];
+                
+                return $this->json([
+                    'hasConflict' => true,
+                    'conflictMessage' => sprintf(
+                        '%s Section %s (%s %s-%s)',
+                        $conflictSchedule->getSubject()->getCode(),
+                        $conflictSchedule->getSection() ?? 'N/A',
+                        $conflictSchedule->getDayPattern(),
+                        $conflictSchedule->getStartTime()->format('g:i A'),
+                        $conflictSchedule->getEndTime()->format('g:i A')
+                    ),
+                    'conflictCount' => count($roomConflicts)
+                ]);
+            }
+            
+            return $this->json([
+                'hasConflict' => false,
+                'message' => 'Room is available'
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->json([
+                'hasConflict' => false,
+                'message' => 'Error checking conflicts: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -1286,25 +1450,45 @@ class DepartmentHeadController extends AbstractController
     #[Route('/schedules/existing-sections/{subjectId}', name: 'schedules_existing_sections', methods: ['GET'])]
     public function getExistingSections(int $subjectId): JsonResponse
     {
+        error_log("=== Department Head getExistingSections called ===");
+        error_log("Subject ID: " . $subjectId);
+        
         /** @var User $user */
         $user = $this->getUser();
         if (!$user) {
+            error_log("ERROR: No user found");
             return $this->json(['error' => 'Unauthorized'], 401);
         }
 
         $department = $user->getDepartment();
         if (!$department) {
+            error_log("ERROR: User has no department");
             return $this->json(['error' => 'No department assigned'], 404);
         }
+        
+        error_log("User: " . $user->getEmail() . ", Department: " . $department->getName());
 
         try {
             // Verify the subject belongs to this department
             $subject = $this->subjectRepository->find($subjectId);
-            if (!$subject || $subject->getDepartment()->getId() !== $department->getId()) {
+            if (!$subject) {
+                error_log("ERROR: Subject not found with ID: " . $subjectId);
                 return $this->json([
                     'sections' => [],
                     'schedules' => [],
-                    'error' => 'Subject not found or not in your department'
+                    'error' => 'Subject not found'
+                ], 404);
+            }
+            
+            error_log("Subject found: " . $subject->getCode() . " - " . $subject->getTitle());
+            error_log("Subject department: " . ($subject->getDepartment() ? $subject->getDepartment()->getName() : 'NULL'));
+            
+            if ($subject->getDepartment()->getId() !== $department->getId()) {
+                error_log("ERROR: Subject belongs to different department");
+                return $this->json([
+                    'sections' => [],
+                    'schedules' => [],
+                    'error' => 'Subject not in your department'
                 ], 403);
             }
 
@@ -1316,6 +1500,8 @@ class DepartmentHeadController extends AbstractController
                 ->setParameter('subjectId', $subjectId)
                 ->getQuery()
                 ->getResult();
+            
+            error_log("Found " . count($schedules) . " schedules for this subject");
 
             // Extract unique sections and build schedule map
             $sections = [];
@@ -1327,23 +1513,31 @@ class DepartmentHeadController extends AbstractController
                 $year = $schedule['year'];
                 $yearId = $schedule['yearId'];
                 
+                error_log("  - Section: $section, Semester: $semester, Year: $year, YearId: $yearId");
+                
                 // Add to unique sections list
                 if (!in_array($section, $sections)) {
                     $sections[] = $section;
                 }
                 
-                // Map for duplicate checking: section_semester_yearId
-                $key = strtoupper(trim($section)) . '_' . $semester . '_' . $yearId;
+                // Map for duplicate checking: subject_section_semester_yearId
+                // This ensures each subject can have its own Section A, B, etc.
+                $key = $subjectId . '_' . strtoupper(trim($section)) . '_' . $semester . '_' . $yearId;
                 $schedulesMap[$key] = [
                     'section' => $section,
                     'semester' => $semester,
                     'year' => $year,
                     'yearId' => $yearId
                 ];
+                error_log("  - Created map key: $key");
             }
             
             // Sort sections alphabetically
             sort($sections);
+            
+            error_log("Returning " . count($sections) . " unique sections");
+            error_log("Sections: " . implode(', ', $sections));
+            error_log("Map keys: " . implode(', ', array_keys($schedulesMap)));
             
             return $this->json([
                 'sections' => $sections,
@@ -1384,9 +1578,13 @@ class DepartmentHeadController extends AbstractController
             $departmentsForFaculty = $departmentGroup->getDepartments()->toArray();
         }
 
+        // Get active semester for filtering
+        $activeAcademicYear = $this->systemSettingsService->getActiveAcademicYear();
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
         // Get all active schedules for departments in the group that need faculty assignment
         // OPTIMIZATION: Eager load related entities to prevent N+1 queries
-        $scheduledSubjects = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->innerJoin('s.subject', 'subj')
             ->addSelect('subj')
             ->leftJoin('s.faculty', 'f')
@@ -1398,8 +1596,17 @@ class DepartmentHeadController extends AbstractController
             ->where('subj.department IN (:departments)')
             ->andWhere('s.status = :status')
             ->setParameter('departments', $departmentsForFaculty)
-            ->setParameter('status', 'active')
-            ->orderBy('s.faculty', 'ASC')
+            ->setParameter('status', 'active');
+        
+        // Filter by active semester if set
+        if ($activeAcademicYear && $activeSemester) {
+            $qb->andWhere('s.academicYear = :academicYear')
+               ->andWhere('s.semester = :semester')
+               ->setParameter('academicYear', $activeAcademicYear)
+               ->setParameter('semester', $activeSemester);
+        }
+        
+        $scheduledSubjects = $qb->orderBy('s.faculty', 'ASC')
             ->addOrderBy('subj.code', 'ASC')
             ->getQuery()
             ->getResult();
@@ -1421,13 +1628,12 @@ class DepartmentHeadController extends AbstractController
             ->getQuery()
             ->getResult();
 
-        return $this->render('department_head/faculty_assignments/index.html.twig', [
-            'dashboard_data' => $dashboardData,
+        return $this->render('department_head/faculty_assignments/index.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Faculty Assignments',
             'selectedDepartment' => $department,
             'scheduledSubjects' => $scheduledSubjects,
             'faculty' => $faculty,
-        ]);
+        ]));
     }
 
     #[Route('/faculty-assignments/assign/{id}', name: 'faculty_assignments_assign', methods: ['POST'])]
@@ -1776,9 +1982,9 @@ class DepartmentHeadController extends AbstractController
             return $this->redirectToRoute('department_head_settings');
         }
 
-        return $this->render('department_head/settings/index.html.twig', [
+        return $this->render('department_head/settings/index.html.twig', array_merge($this->getBaseTemplateData(), [
             'user' => $user,
             'department' => $department,
-        ]);
+        ]));
     }
 }
