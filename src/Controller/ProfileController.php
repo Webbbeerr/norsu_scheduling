@@ -66,7 +66,7 @@ class ProfileController extends AbstractController
             'form' => $form,
             'colleges' => $collegeRepository->findAll(),
             'departments' => $departmentRepository->findAll(),
-        ]);
+        ], new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/edit-ajax', name: 'app_profile_edit_ajax', methods: ['POST'])]

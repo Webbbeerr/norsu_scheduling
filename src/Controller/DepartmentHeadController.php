@@ -194,7 +194,7 @@ class DepartmentHeadController extends AbstractController
         return $this->render('department_head/faculty/create.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Create New Faculty Member',
             'form' => $form,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/faculty/{id}/edit', name: 'faculty_edit')]
@@ -251,7 +251,7 @@ class DepartmentHeadController extends AbstractController
             'page_title' => 'Edit Faculty: ' . $user->getFullName(),
             'form' => $form,
             'user' => $user,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/faculty/{id}/view', name: 'faculty_view')]
@@ -705,7 +705,7 @@ class DepartmentHeadController extends AbstractController
             'page_title' => 'Create Room',
             'form' => $form->createView(),
             'room' => $room,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/rooms/{id}/edit', name: 'rooms_edit')]
@@ -746,7 +746,7 @@ class DepartmentHeadController extends AbstractController
             'page_title' => 'Edit Room',
             'form' => $form->createView(),
             'room' => $room,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/rooms/{id}/view', name: 'rooms_view')]
@@ -1883,9 +1883,12 @@ class DepartmentHeadController extends AbstractController
             return $this->redirectToRoute('department_head_faculty_assignments');
         }
 
+        // Get the active semester
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
         try {
-            // Generate PDF using the service
-            $pdfContent = $this->pdfService->generateTeachingLoadPdf($faculty, $academicYear);
+            // Generate PDF using the service with semester filter
+            $pdfContent = $this->pdfService->generateTeachingLoadPdf($faculty, $academicYear, $activeSemester);
             
             $filename = 'teaching_load_' . $faculty->getLastName() . '_' . date('Y-m-d') . '.pdf';
             

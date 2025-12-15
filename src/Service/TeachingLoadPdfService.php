@@ -16,7 +16,7 @@ class TeachingLoadPdfService
         $this->scheduleRepository = $scheduleRepository;
     }
 
-    public function generateTeachingLoadPdf(User $faculty, AcademicYear $academicYear): string
+    public function generateTeachingLoadPdf(User $faculty, AcademicYear $academicYear, ?string $semester = null): string
     {
         // Create new PDF document in portrait mode using Legal size (long bond paper)
         $pdf = new TCPDF('P', PDF_UNIT, 'LEGAL', true, 'UTF-8', false);
@@ -39,10 +39,10 @@ class TeachingLoadPdfService
         $pdf->AddPage();
 
         // Get schedules for this faculty
-        $schedules = $this->getSchedulesForFaculty($faculty, $academicYear);
+        $schedules = $this->getSchedulesForFaculty($faculty, $academicYear, $semester);
 
         // Calculate totals
-        $totals = $this->calculateTotals($schedules);
+        $totals = $this->calculateTotals($schedules, $semester);
 
         // Generate the PDF content
         $this->generateHeader($pdf, $totals['semester'], $academicYear);
@@ -55,17 +55,24 @@ class TeachingLoadPdfService
         return $pdf->Output('', 'S');
     }
 
-    private function getSchedulesForFaculty(User $faculty, AcademicYear $academicYear): array
+    private function getSchedulesForFaculty(User $faculty, AcademicYear $academicYear, ?string $semester = null): array
     {
-        $schedules = $this->scheduleRepository->createQueryBuilder('s')
+        $qb = $this->scheduleRepository->createQueryBuilder('s')
             ->leftJoin('s.subject', 'sub')
             ->leftJoin('s.room', 'r')
             ->leftJoin('s.faculty', 'f')
             ->where('f.id = :facultyId')
             ->andWhere('s.academicYear = :academicYear')
             ->setParameter('facultyId', $faculty->getId())
-            ->setParameter('academicYear', $academicYear)
-            ->orderBy('s.dayPattern', 'ASC')
+            ->setParameter('academicYear', $academicYear);
+        
+        // Filter by semester if provided
+        if ($semester !== null) {
+            $qb->andWhere('s.semester = :semester')
+               ->setParameter('semester', $semester);
+        }
+        
+        $schedules = $qb->orderBy('s.dayPattern', 'ASC')
             ->addOrderBy('s.startTime', 'ASC')
             ->getQuery()
             ->getResult();
@@ -73,12 +80,12 @@ class TeachingLoadPdfService
         return $schedules;
     }
 
-    private function calculateTotals(array $schedules): array
+    private function calculateTotals(array $schedules, ?string $semester = null): array
     {
         $totalUnits = 0;
         $totalHours = 0;
         $totalStudents = 0;
-        $semester = null;
+        $semesterFromSchedules = null;
         $semesters = [];
 
         foreach ($schedules as $schedule) {
@@ -102,24 +109,26 @@ class TeachingLoadPdfService
             }
         }
 
-        // Determine semester based on loaded subjects
-        if (count($semesters) === 1) {
+        // Use the provided semester parameter if available, otherwise determine from schedules
+        if ($semester !== null) {
+            $semesterFromSchedules = $semester;
+        } elseif (count($semesters) === 1) {
             // All subjects are in one semester
-            $semester = $semesters[0];
+            $semesterFromSchedules = $semesters[0];
         } elseif (count($semesters) > 1) {
             // Mixed semesters - combine them (e.g., "1 & 2")
             sort($semesters);
-            $semester = implode(' & ', $semesters);
+            $semesterFromSchedules = implode(' & ', $semesters);
         } else {
             // No semester found - default to 1st semester
-            $semester = '1';
+            $semesterFromSchedules = '1';
         }
 
         return [
             'totalUnits' => $totalUnits,
             'totalHours' => $totalHours,
             'totalStudents' => $totalStudents,
-            'semester' => $semester
+            'semester' => $semesterFromSchedules
         ];
     }
 
@@ -184,7 +193,7 @@ class TeachingLoadPdfService
         $pdf->SetFont('times', 'B', 11);
         $pdf->Cell(20, 5, 'Name:', 0, 0, 'L');
         $pdf->SetFont('times', '', 11);
-        $pdf->Cell(75, 5, strtoupper($faculty->getLastName() . ', ' . $faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty)), 'B', 0, 'L');
+        $pdf->Cell(75, 5, strtoupper($faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty) . ' ' . $faculty->getLastName()), 'B', 0, 'L');
         
         $pdf->SetFont('times', 'B', 11);
         $pdf->Cell(27, 5, 'Acad. Rank:', 0, 0, 'L');
@@ -279,7 +288,7 @@ class TeachingLoadPdfService
                 $timeText = $schedule->getStartTime()->format('g:i') . '-' . $schedule->getEndTime()->format('g:i A');
                 $courseCode = $schedule->getSubject()->getCode() . ' ' . $schedule->getSection();
                 $courseTitle = $schedule->getSubject()->getTitle();
-                $roomName = $schedule->getRoom()->getName();
+                $roomName = $schedule->getRoom()->getCode();
                 $units = (string)$schedule->getSubject()->getUnits();
                 $students = (string)$schedule->getEnrolledStudents();
                 
@@ -372,19 +381,37 @@ class TeachingLoadPdfService
         }
         $numberOfPreparations = count($uniqueSubjects);
         
-        $pdf->Cell(60, 5, 'No. of Preparation: ' . $numberOfPreparations, 0, 1, 'L');
+        // Define column widths for 2-column layout
+        $leftColWidth = 95;  // Left column width
+        $rightColWidth = 95; // Right column width (remaining space)
+        $rowHeight = 7;      // Row height with spacing
         
+        // Row 1: No. of Preparation (spans both columns)
+        $pdf->Cell($leftColWidth + $rightColWidth, $rowHeight, 'No. of Preparation: ' . $numberOfPreparations, 0, 1, 'L');
+        
+        // Row 2: Total Units (left) and Total Students (right)
         $y = $pdf->GetY();
-        $pdf->Cell(70, 5, 'Total No. of Units/Week: ' . $totals['totalUnits'], 0, 0, 'L');
-        $pdf->Cell(0, 5, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'L');
+        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Units/Week: ' . $totals['totalUnits'], 0, 0, 'L');
+        $pdf->Cell($rightColWidth, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'R');
         
-        $pdf->Cell(0, 5, 'Total No. of Hrs./Week: ' . number_format($totals['totalHours'], 0), 0, 1, 'L');
+        // Row 3: Total Hours (left column only)
+        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week: ' . number_format($totals['totalHours'], 0), 0, 1, 'L');
         
-        $pdf->Ln(2);
-        $pdf->Cell(0, 5, 'Other Designation/Special Assignments:', 0, 1, 'L');
-        $pdf->Cell(0, 5, 'Highest Educational Attainment:', 0, 1, 'L');
+        // Row 4: Other Designation (spans both columns) - with fillable field
+        $y = $pdf->GetY();
+        $pdf->Cell(70, $rowHeight, 'Other Designation/Special Assignments:', 0, 0, 'L');
+        // Add fillable text field for Other Designation
+        $pdf->TextField('other_designation', 120, $rowHeight, ['strokeColor' => [200, 200, 200], 'lineWidth' => 0.3], [], 70 + $pdf->GetX(), $y);
+        $pdf->Ln($rowHeight);
         
-        $pdf->Ln(4);
+        // Row 5: Highest Educational Attainment (spans both columns) - with fillable field
+        $y = $pdf->GetY();
+        $pdf->Cell(70, $rowHeight, 'Highest Educational Attainment:', 0, 0, 'L');
+        // Add fillable text field for Educational Attainment
+        $pdf->TextField('educational_attainment', 120, $rowHeight, ['strokeColor' => [200, 200, 200], 'lineWidth' => 0.3], [], 70 + $pdf->GetX(), $y);
+        $pdf->Ln($rowHeight);
+        
+        $pdf->Ln(3);
         $pdf->Cell(0, 5, 'Certified Correct:', 0, 1, 'L');
         
         $pdf->Ln(5);

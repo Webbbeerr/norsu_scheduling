@@ -257,7 +257,7 @@ class AdminController extends AbstractController
         return $this->render('admin/colleges/create.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Create New College',
             'form' => $form,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/colleges/{id}/edit', name: 'colleges_edit')]
@@ -335,7 +335,7 @@ class AdminController extends AbstractController
             'page_title' => 'Edit College: ' . $college->getName(),
             'form' => $form,
             'college' => $college,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/colleges/{id}/view', name: 'colleges_view')]
@@ -563,7 +563,7 @@ class AdminController extends AbstractController
         return $this->render('admin/departments/create.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Create Department',
             'form' => $form->createView(),
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/departments/{id}/edit', name: 'departments_edit')]
@@ -633,7 +633,7 @@ class AdminController extends AbstractController
             'page_title' => 'Edit Department',
             'form' => $form->createView(),
             'department' => $department,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/departments/{id}', name: 'departments_view')]
@@ -916,7 +916,7 @@ class AdminController extends AbstractController
             'departments_by_college' => $departmentsByCollege,
             'show_department_fields' => $showDepartmentFields,
             'department_id' => $departmentId, // Pass to template for context
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/curricula/{id}/edit', name: 'curricula_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
@@ -965,7 +965,7 @@ class AdminController extends AbstractController
             'form' => $form->createView(),
             'curriculum' => $curriculum,
             'departments_by_college' => $departmentsByCollege,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/curricula/{id}', name: 'curricula_view', requirements: ['id' => '\d+'])]
@@ -1337,7 +1337,7 @@ class AdminController extends AbstractController
         return $this->render('admin/subjects/create.html.twig', array_merge($this->getBaseTemplateData(), [
             'page_title' => 'Create Subject',
             'form' => $form->createView(),
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/subjects/{id}/edit', name: 'subjects_edit')]
@@ -1367,7 +1367,7 @@ class AdminController extends AbstractController
             'page_title' => 'Edit Subject',
             'form' => $form->createView(),
             'subject' => $subject,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/subjects/{id}', name: 'subjects_view')]
@@ -2097,7 +2097,7 @@ class AdminController extends AbstractController
             'form' => $form,
             'preselected_role' => $preselectedRole,
             'departments_by_college' => $this->getDepartmentsByCollege(),
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/users/{id}/edit', name: 'users_edit')]
@@ -2174,7 +2174,7 @@ class AdminController extends AbstractController
             'user' => $user,
             'return_url' => $returnUrl,
             'departments_by_college' => $this->getDepartmentsByCollege(),
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/users/{id}', name: 'users_show', requirements: ['id' => '\d+'])]
@@ -2527,7 +2527,7 @@ class AdminController extends AbstractController
 
         return $this->render('admin/rooms/create.html.twig', [
             'form' => $form->createView(),
-        ]);
+        ], new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/rooms/{id}/edit', name: 'rooms_edit', methods: ['GET', 'POST'])]
@@ -2571,7 +2571,7 @@ class AdminController extends AbstractController
         return $this->render('admin/rooms/edit.html.twig', [
             'form' => $form->createView(),
             'room' => $room,
-        ]);
+        ], new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     #[Route('/rooms/{id}', name: 'rooms_view', methods: ['GET'])]

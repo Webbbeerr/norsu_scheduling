@@ -381,7 +381,7 @@ class FacultyController extends AbstractController
             'page_title' => 'Profile & Settings',
             'form' => $form->createView(),
             'user' => $user,
-        ]));
+        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
     }
 
     /**

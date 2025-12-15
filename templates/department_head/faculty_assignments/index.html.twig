@@ -853,7 +853,21 @@ function viewFacultyAssignments(facultyId) {
     let totalUnits = 0;
     let html = '<div class="space-y-3">';
     
-    faculty.assignedSchedules.forEach(schedule => {
+    // Sort schedules by start time
+    const sortedSchedules = [...faculty.assignedSchedules].sort((a, b) => {
+        // Convert time strings to comparable format (e.g., "9:00 AM" -> 900)
+        const timeToMinutes = (timeStr) => {
+            const [time, period] = timeStr.split(' ');
+            const [hours, minutes] = time.split(':').map(Number);
+            let totalMinutes = hours * 60 + minutes;
+            if (period === 'PM' && hours !== 12) totalMinutes += 12 * 60;
+            if (period === 'AM' && hours === 12) totalMinutes -= 12 * 60;
+            return totalMinutes;
+        };
+        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+    });
+    
+    sortedSchedules.forEach(schedule => {
         totalUnits += schedule.units;
         const conflicts = loadedConflicts.get(schedule.id) || [];
         const hasConflict = conflicts.length > 0;

@@ -1076,9 +1076,12 @@ class ScheduleController extends AbstractController
             return $this->redirectToRoute('app_schedule_faculty_loading');
         }
 
+        // Get the active semester
+        $activeSemester = $this->systemSettingsService->getActiveSemester();
+
         try {
-            // Generate PDF using the service
-            $pdfContent = $pdfService->generateTeachingLoadPdf($faculty, $academicYear);
+            // Generate PDF using the service with semester filter
+            $pdfContent = $pdfService->generateTeachingLoadPdf($faculty, $academicYear, $activeSemester);
             
             $filename = 'teaching_load_' . $faculty->getLastName() . '_' . date('Y-m-d') . '.pdf';
             
