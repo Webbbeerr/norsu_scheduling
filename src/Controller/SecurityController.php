@@ -7,6 +7,7 @@ use App\Form\LoginFormType;
 use App\Form\RegistrationFormType;
 use App\Repository\CollegeRepository;
 use App\Repository\DepartmentRepository;
+use App\Repository\UserRepository;
 use App\Service\ActivityLogService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -59,7 +60,7 @@ class SecurityController extends AbstractController
     }
 
     #[Route('/register', name: 'app_register')]
-    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, CollegeRepository $collegeRepository, DepartmentRepository $departmentRepository, ActivityLogService $activityLogService): Response
+    public function register(Request $request, UserPasswordHasherInterface $userPasswordHasher, EntityManagerInterface $entityManager, CollegeRepository $collegeRepository, DepartmentRepository $departmentRepository, UserRepository $userRepository, ActivityLogService $activityLogService): Response
     {
         $user = new User();
         
@@ -70,6 +71,30 @@ class SecurityController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Check if username already exists
+            $existingUsername = $userRepository->findOneBy(['username' => $user->getUsername()]);
+            if ($existingUsername) {
+                $this->addFlash('error', 'Username is already taken. Please choose a different username.');
+                // Re-render the form with error
+                goto render_form;
+            }
+
+            // Check if email already exists
+            $existingEmail = $userRepository->findOneBy(['email' => $user->getEmail()]);
+            if ($existingEmail) {
+                $this->addFlash('error', 'Email address is already registered. Please use a different email or login if you already have an account.');
+                // Re-render the form with error
+                goto render_form;
+            }
+
+            // Check if employee ID already exists
+            $existingEmployeeId = $userRepository->findOneBy(['employeeId' => $user->getEmployeeId()]);
+            if ($existingEmployeeId) {
+                $this->addFlash('error', 'Employee ID is already registered. Please contact the administrator if you believe this is an error.');
+                // Re-render the form with error
+                goto render_form;
+            }
+
             // encode the plain password
             $user->setPassword(
                 $userPasswordHasher->hashPassword(
@@ -96,6 +121,7 @@ class SecurityController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        render_form:
         // Get all active colleges for the form
         $colleges = $collegeRepository->findBy(['isActive' => true]);
         

@@ -3367,4 +3367,94 @@ class AdminController extends AbstractController
             ], 500);
         }
     }
+
+    #[Route('/logs', name: 'logs', methods: ['GET'])]
+    public function activityLogs(Request $request): Response
+    {
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = 50;
+        $offset = ($page - 1) * $limit;
+
+        // Get filter parameters
+        $filterUser = $request->query->get('user');
+        $filterAction = $request->query->get('action');
+        $filterDateFrom = $request->query->get('date_from');
+        $filterDateTo = $request->query->get('date_to');
+
+        // Build query
+        $qb = $this->entityManager->getRepository(ActivityLog::class)
+            ->createQueryBuilder('al')
+            ->leftJoin('al.user', 'u')
+            ->addSelect('u')
+            ->orderBy('al.createdAt', 'DESC');
+
+        // Apply filters
+        if ($filterUser) {
+            $qb->andWhere('u.id = :userId')
+               ->setParameter('userId', $filterUser);
+        }
+
+        if ($filterAction) {
+            $qb->andWhere('al.action = :action')
+               ->setParameter('action', $filterAction);
+        }
+
+        if ($filterDateFrom) {
+            $qb->andWhere('al.createdAt >= :dateFrom')
+               ->setParameter('dateFrom', new \DateTime($filterDateFrom . ' 00:00:00'));
+        }
+
+        if ($filterDateTo) {
+            $qb->andWhere('al.createdAt <= :dateTo')
+               ->setParameter('dateTo', new \DateTime($filterDateTo . ' 23:59:59'));
+        }
+
+        // Get total count
+        $totalCount = (int) (clone $qb)
+            ->select('COUNT(al.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        // Get paginated logs
+        $logs = $qb
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        // Get all users for filter dropdown
+        $users = $this->entityManager->getRepository(User::class)
+            ->createQueryBuilder('u')
+            ->where('u.deletedAt IS NULL')
+            ->orderBy('u.lastName', 'ASC')
+            ->addOrderBy('u.firstName', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        // Get distinct actions for filter
+        $actions = $this->entityManager->getRepository(ActivityLog::class)
+            ->createQueryBuilder('al')
+            ->select('DISTINCT al.action')
+            ->orderBy('al.action', 'ASC')
+            ->getQuery()
+            ->getScalarResult();
+        $actions = array_column($actions, 'action');
+
+        $totalPages = ceil($totalCount / $limit);
+
+        return $this->render('admin/logs/index.html.twig', [
+            'logs' => $logs,
+            'users' => $users,
+            'actions' => $actions,
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalCount' => $totalCount,
+            'filters' => [
+                'user' => $filterUser,
+                'action' => $filterAction,
+                'date_from' => $filterDateFrom,
+                'date_to' => $filterDateTo,
+            ],
+        ]);
+    }
 }

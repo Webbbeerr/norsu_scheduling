@@ -389,13 +389,12 @@ class TeachingLoadPdfService
         // Row 1: No. of Preparation (spans both columns)
         $pdf->Cell($leftColWidth + $rightColWidth, $rowHeight, 'No. of Preparation: ' . $numberOfPreparations, 0, 1, 'L');
         
-        // Row 2: Total Units (left) and Total Students (right)
-        $y = $pdf->GetY();
-        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Units/Week: ' . $totals['totalUnits'], 0, 0, 'L');
-        $pdf->Cell($rightColWidth, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'R');
+        // Row 2: Total Units (left column only)
+        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Units/Week: ' . $totals['totalUnits'], 0, 1, 'L');
         
-        // Row 3: Total Hours (left column only)
-        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week: ' . number_format($totals['totalHours'], 0), 0, 1, 'L');
+        // Row 3: Total Hours (left) and Total Students (right)
+        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week: ' . number_format($totals['totalHours'], 0), 0, 0, 'L');
+        $pdf->Cell($rightColWidth, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'R');
         
         // Row 4: Other Designation (spans both columns)
         $pdf->Cell(0, $rowHeight, 'Other Designation/Special Assignments:', 0, 1, 'L');
