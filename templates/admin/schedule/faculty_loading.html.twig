@@ -339,16 +339,6 @@
                                     </div>
                                 </td>
                             </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="px-6 py-12 text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                    </svg>
-                                    <h3 class="mt-2 text-sm font-medium text-gray-900">No Faculty Members Found</h3>
-                                    <p class="mt-1 text-sm text-gray-500">There are no faculty members in this department.</p>
-                                </td>
-                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -660,6 +650,11 @@ $(document).ready(function() {
         return;
     }
     
+    // Debug: Count columns
+    const theadCols = $('#facultyTable thead tr:first th').length;
+    const tbodyFirstRowCols = $('#facultyTable tbody tr:first td').length;
+    console.log('📊 Column count - thead:', theadCols, 'tbody first row:', tbodyFirstRowCols);
+    
     console.log('✓ Faculty table found with', $('#facultyTable tbody tr').length, 'rows');
     
     // Check if DataTable already exists and destroy it
@@ -670,6 +665,7 @@ $(document).ready(function() {
     
     // Initialize DataTables with full functionality
     const table = $('#facultyTable').DataTable({
+        retrieve: true, // Retrieve existing instance if available
         paging: true,
         pageLength: 10,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
@@ -678,9 +674,15 @@ $(document).ready(function() {
         info: true,
         autoWidth: false,
         processing: false, // No processing indicator for instant results
+        deferRender: true,
         order: [[0, 'asc']], // Sort by faculty name by default
         columnDefs: [
-            { orderable: false, targets: 5 } // Actions column (index 5) not sortable
+            { targets: 0, orderable: true }, // Faculty Member
+            { targets: 1, orderable: true }, // Employee ID
+            { targets: 2, orderable: true }, // Position
+            { targets: 3, orderable: true }, // Status
+            { targets: 4, orderable: true }, // Date Added
+            { targets: 5, orderable: false } // Actions
         ],
         language: {
             info: "Showing _START_ to _END_ of _TOTAL_ faculty members",
