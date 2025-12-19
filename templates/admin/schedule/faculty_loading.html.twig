@@ -115,7 +115,7 @@
     <div class="mb-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between">
             <div>
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                <h1 class="text-3xl font-bold text-black">
                     Faculty Loading
                 </h1>
                 <p class="mt-2 text-sm text-gray-600">
@@ -147,52 +147,70 @@
         <!-- Statistics Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <!-- Total Schedules -->
-            <div class="bg-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-blue-100 text-sm font-medium">Total Schedules</p>
-                        <p class="text-4xl font-bold mt-2">{{ scheduledSubjects|length }}</p>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-full p-3">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 transform hover:shadow-lg transition-all duration-200">
+                <div class="flex items-start gap-4">
+                    <div class="bg-blue-500 rounded-full p-3 flex-shrink-0">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-600 text-sm font-medium mb-1">Total Schedules</p>
+                        <p class="text-3xl font-bold text-black">{{ scheduledSubjects|length }}</p>
+                        <div class="flex items-center mt-2 text-xs">
+                            <svg class="w-4 h-4 text-blue-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                            <span class="text-blue-600 font-medium">{{ scheduledSubjects|length }} total schedules</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Assigned -->
-            <div class="bg-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-green-100 text-sm font-medium">Assigned</p>
-                        <p class="text-4xl font-bold mt-2">
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 transform hover:shadow-lg transition-all duration-200">
+                <div class="flex items-start gap-4">
+                    <div class="bg-green-500 rounded-full p-3 flex-shrink-0">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-600 text-sm font-medium mb-1">Assigned</p>
+                        <p class="text-3xl font-bold text-black">
                             {% set assignedCount = scheduledSubjects|filter(s => s.faculty is not null)|length %}
                             {{ assignedCount }}
                         </p>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-full p-3">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <div class="flex items-center mt-2 text-xs">
+                            <svg class="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-green-600 font-medium">{{ assignedCount }} schedules assigned</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Unassigned -->
-            <div class="bg-orange-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-all duration-200">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-orange-100 text-sm font-medium">Unassigned</p>
-                        <p class="text-4xl font-bold mt-2">
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 p-6 transform hover:shadow-lg transition-all duration-200">
+                <div class="flex items-start gap-4">
+                    <div class="bg-orange-500 rounded-full p-3 flex-shrink-0">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-gray-600 text-sm font-medium mb-1">Unassigned</p>
+                        <p class="text-3xl font-bold text-gray-900">
                             {% set unassignedCount = scheduledSubjects|filter(s => s.faculty is null)|length %}
                             {{ unassignedCount }}
                         </p>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-full p-3">
-                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+                        <div class="flex items-center mt-2 text-xs">
+                            <svg class="w-4 h-4 text-orange-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span class="text-orange-600 font-medium">{{ unassignedCount }} pending assignment</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -206,7 +224,7 @@
                     <!-- Left side: Search -->
                     <div class="flex-1 max-w-md">
                         <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
@@ -214,7 +232,7 @@
                             <input type="text" 
                                    id="searchInput" 
                                    placeholder="Search faculty by name, email, or employee ID..." 
-                                   class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                                   class="block w-full pl-11 pr-10 py-2.5 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                             <!-- Clear button -->
                             <button type="button" 
                                     id="clearSearch" 
@@ -661,6 +679,14 @@ $(document).ready(function() {
         autoWidth: false,
         processing: false, // No processing indicator for instant results
         order: [[0, 'asc']], // Sort by faculty name by default
+        columns: [
+            { orderable: true },  // Faculty Member
+            { orderable: true },  // Employee ID
+            { orderable: true },  // Position
+            { orderable: true },  // Status
+            { orderable: true },  // Date Added
+            { orderable: false }  // Actions
+        ],
         columnDefs: [
             { orderable: false, targets: -1 } // Actions column not sortable
         ],
