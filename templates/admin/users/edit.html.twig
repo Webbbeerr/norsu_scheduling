@@ -435,9 +435,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
     
     // Add event listener for role changes
-    const roleSelect = form.querySelector('#user_edit_form_role, [name*="[role]"]');
+    const roleSelect = document.querySelector('select[name="user_edit_form[role]"]');
     if (roleSelect) {
         roleSelect.addEventListener('change', updateFieldVisibilityBasedOnRole);
+        console.log('Role change listener attached to:', roleSelect);
+    } else {
+        console.error('Role select field not found in edit form!');
     }
 });
 
@@ -445,42 +448,49 @@ document.addEventListener('DOMContentLoaded', function() {
 // Administrator (1) doesn't need position, college, or department
 // Department Head (2) and Faculty (3) need these fields
 function updateFieldVisibilityBasedOnRole() {
-    const form = document.querySelector('form[name="user_edit_form"]');
-    if (!form) return;
+    console.log('updateFieldVisibilityBasedOnRole called');
     
-    const roleSelect = form.querySelector('#user_edit_form_role, [name*="[role]"]');
-    if (!roleSelect) return;
+    const roleSelect = document.querySelector('select[name="user_edit_form[role]"]');
+    if (!roleSelect) {
+        console.error('Role select not found');
+        return;
+    }
     
-    const positionContainer = form.querySelector('#user_edit_form_position, [name*="[position]"]')?.closest('div.space-y-4 > div');
-    const collegeContainer = document.querySelector('#college-select')?.closest('div');
-    const departmentContainer = document.querySelector('#department-select')?.closest('div');
+    const positionSelect = document.querySelector('select[name="user_edit_form[position]"]');
+    const collegeSelect = document.querySelector('#college-select');
+    const departmentSelect = document.querySelector('#department-select');
     
     const selectedRole = parseInt(roleSelect.value);
+    console.log('Selected role:', selectedRole);
     
     // Role 1 = Administrator (hide position, college, department)
     // Role 2 = Department Head (show all)
     // Role 3 = Faculty (show all)
     
+    // Get containers
+    const positionContainer = positionSelect?.closest('div.space-y-4 > div');
+    const collegeDepGrid = document.querySelector('.grid.grid-cols-2.gap-4');
+    
     if (selectedRole === 1) {
         // Administrator - hide these fields
+        console.log('Administrator selected - hiding fields');
+        
         if (positionContainer) {
             positionContainer.style.display = 'none';
-            const positionSelect = positionContainer.querySelector('select, input');
             if (positionSelect) positionSelect.value = '';
         }
+        
         // Hide the entire college-department grid
-        const collegeDepGrid = document.querySelector('.grid.grid-cols-2.gap-4');
         if (collegeDepGrid) {
             collegeDepGrid.style.display = 'none';
-            const collegeSelect = collegeDepGrid.querySelector('#college-select');
-            const departmentSelect = collegeDepGrid.querySelector('#department-select');
             if (collegeSelect) collegeSelect.value = '';
             if (departmentSelect) departmentSelect.value = '';
         }
     } else if (selectedRole === 2 || selectedRole === 3) {
         // Department Head or Faculty - show these fields
+        console.log('Department Head or Faculty selected - showing fields');
+        
         if (positionContainer) positionContainer.style.display = '';
-        const collegeDepGrid = document.querySelector('.grid.grid-cols-2.gap-4');
         if (collegeDepGrid) collegeDepGrid.style.display = '';
     }
 }
