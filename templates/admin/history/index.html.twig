@@ -970,17 +970,17 @@
                                                         <span class="text-blue-600 font-semibold" x-text="' - ' + schedule.section"></span>
                                                     </div>
                                                 </td>
-                                                <!-- Show subject info only on first schedule row -->
-                                                <td x-show="schedIndex === 0" class="px-6 py-4 align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                <!-- Show subject info on every row -->
+                                                <td class="px-6 py-4">
                                                     <div class="text-sm text-gray-900" x-text="subject.title"></div>
                                                 </td>
-                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm text-gray-900" x-text="subject.department || 'No Department'"></div>
                                                 </td>
-                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                <td class="px-6 py-4 whitespace-nowrap">
                                                     <div class="text-sm text-gray-900" x-text="subject.units"></div>
                                                 </td>
-                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                <td class="px-6 py-4 whitespace-nowrap">
                                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
                                                           :class="subject.type === 'lecture' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'"
                                                           x-text="subject.type.charAt(0).toUpperCase() + subject.type.slice(1)"></span>
@@ -1959,44 +1959,49 @@ function subjectsTableData() {
         filterData() {
             let filtered = [...this.allData];
             
-            // Apply global department filter (including department group members)
+            // Get filter values
             const globalDeptFilter = document.getElementById('filterDepartment')?.value;
-            if (globalDeptFilter) {
-                const deptId = parseInt(globalDeptFilter);
-                
-                // Get all department IDs to filter by (including group members)
-                const deptIdsToFilter = [globalDeptFilter];
-                if (departmentGroupMap[deptId]) {
-                    departmentGroupMap[deptId].forEach(groupDept => {
-                        deptIdsToFilter.push(groupDept.id.toString());
-                    });
-                }
-                
-                filtered = filtered.filter(subject => 
-                    deptIdsToFilter.includes(subject.departmentId)
-                );
-            }
-            
-            // Apply global year filter
             const globalYearFilter = document.getElementById('filterYear')?.value;
-            if (globalYearFilter) {
-                filtered = filtered.filter(subject => {
-                    return subject.years && subject.years.includes(globalYearFilter);
-                });
-            }
-            
-            // Apply global semester filter
             const globalSemesterFilter = document.getElementById('filterSemester')?.value;
-            if (globalSemesterFilter) {
-                filtered = filtered.filter(subject => {
-                    return subject.semesters && subject.semesters.includes(globalSemesterFilter);
-                });
-            }
-            
-            // Apply search filter (from internal search or global search)
             const globalSearch = document.getElementById('filterSearch')?.value || '';
             const searchTerm = this.search || globalSearch;
             
+            // Apply global department filter (only selected department, not group)
+            if (globalDeptFilter) {
+                filtered = filtered.filter(subject => 
+                    subject.departmentId === globalDeptFilter
+                );
+            }
+            
+            // Filter subjects and their schedules by year/semester
+            filtered = filtered.map(subject => {
+                let filteredSchedules = subject.schedules;
+                
+                // Filter schedules by year
+                if (globalYearFilter && filteredSchedules.length > 0) {
+                    filteredSchedules = filteredSchedules.filter(schedule => 
+                        schedule.year === globalYearFilter
+                    );
+                }
+                
+                // Filter schedules by semester
+                if (globalSemesterFilter && filteredSchedules.length > 0) {
+                    filteredSchedules = filteredSchedules.filter(schedule => 
+                        schedule.semester === globalSemesterFilter
+                    );
+                }
+                
+                // Return subject with filtered schedules
+                return {
+                    ...subject,
+                    schedules: filteredSchedules
+                };
+            });
+            
+            // Remove subjects with no schedules after filtering
+            filtered = filtered.filter(subject => subject.schedules.length > 0);
+            
+            // Apply search filter (from internal search or global search)
             if (searchTerm) {
                 const searchLower = searchTerm.toLowerCase();
                 filtered = filtered.filter(subject => 

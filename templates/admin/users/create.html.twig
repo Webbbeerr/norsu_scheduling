@@ -5,6 +5,28 @@
 {% block stylesheets %}
     {{ parent() }}
     <style>
+        /* Error message styling */
+        .field-error-message {
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .enhanced-input.error,
+        .enhanced-input.border-red-500 {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+        
         /* Enhanced loading animations */
         @keyframes pulse-progress {
             0%, 100% { 
@@ -1535,8 +1557,46 @@ function validatePasswordMatch() {
 function checkAvailability(field, value, element) {
     if (!value) return;
 
+    // Client-side validation before checking availability
+    let validationError = null;
+    
+    if (field === 'username' && value.length < 3) {
+        validationError = 'Username must be at least 3 characters';
+    } else if (field === 'email') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+            validationError = 'Please enter a valid email address';
+        }
+    } else if (field === 'employee_id') {
+        if (value.length < 6) {
+            validationError = 'Employee ID must be at least 6 characters';
+        } else if (value.length > 15) {
+            validationError = 'Employee ID cannot be longer than 15 characters';
+        }
+    }
+    
+    // Remove existing feedback
+    const existingFeedback = element.parentNode.querySelector('.availability-feedback');
+    if (existingFeedback) {
+        existingFeedback.remove();
+    }
+    
+    // If validation fails, show error without checking server
+    if (validationError) {
+        element.classList.remove('border-green-500', 'border-blue-500');
+        element.classList.add('border-red-500', 'error');
+        showValidationIcon(element, false);
+        
+        const feedback = document.createElement('div');
+        feedback.className = 'availability-feedback text-sm mt-1 flex items-center text-red-600';
+        feedback.innerHTML = '<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>' + validationError;
+        element.parentNode.appendChild(feedback);
+        return;
+    }
+
     // Add loading state
     element.classList.add('border-blue-500');
+    element.classList.remove('border-red-500', 'border-green-500', 'error');
     showValidationIcon(element, false);
     
     fetch('{{ path('admin_api_users_check_availability') }}', {
@@ -1588,9 +1648,10 @@ function checkAvailability(field, value, element) {
     });
 }
 
-// Form validation on submit - Advisory only, don't prevent submission
+// Form validation on submit - Use AJAX to prevent page reload
 document.querySelector('form').addEventListener('submit', function(e) {
-    console.log('Form submission started');
+    e.preventDefault(); // Prevent default form submission
+    console.log('Form submission started (AJAX)');
     
     // Clear auto-saved data since we're submitting
     clearAutoSavedData();
@@ -1601,7 +1662,6 @@ document.querySelector('form').addEventListener('submit', function(e) {
     const maxFormAge = 30 * 60 * 1000; // 30 minutes
     
     if (timeSinceLoad > maxFormAge) {
-        e.preventDefault();
         if (confirm('This form has been open for a while and may have expired. Would you like to refresh the page to ensure it works properly?')) {
             window.location.reload();
             return;
@@ -1616,12 +1676,11 @@ document.querySelector('form').addEventListener('submit', function(e) {
         if (passwordField.value && confirmPasswordField.value && passwordField.value !== confirmPasswordField.value) {
             confirmPasswordField.classList.add('border-red-500');
             showNotification('Passwords do not match', 'error');
-            e.preventDefault();
             return;
         }
     }
     
-    // Visual feedback for empty required fields (but don't prevent submission)
+    // Client-side validation for required fields
     const requiredFieldIds = [
         '#user_form_username',
         '#user_form_email', 
@@ -1636,7 +1695,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
         const field = document.querySelector(fieldId);
         if (field) {
             if (!field.value || field.value.trim() === '') {
-                field.classList.add('border-yellow-500');
+                field.classList.add('border-red-500');
                 hasEmptyFields = true;
             } else {
                 field.classList.remove('border-yellow-500', 'border-red-500');
@@ -1645,15 +1704,111 @@ document.querySelector('form').addEventListener('submit', function(e) {
     });
     
     if (hasEmptyFields) {
-        showNotification('Some required fields appear to be empty', 'warning');
+        showNotification('Please fill in all required fields', 'error');
+        return;
     }
 
     // Show loading spinner and overlay
     showLoadingState();
     
-    // Always allow form submission - let server-side validation handle it
-    console.log('Form validation completed, allowing submission...');
-    showNotification('Creating user...', 'info');
+    // Submit form via AJAX
+    const formData = new FormData(this);
+    const actionUrl = this.action;
+    
+    fetch(actionUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoadingState();
+        
+        if (data.success) {
+            // Show success message
+            showNotification(data.message, 'success');
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = data.redirectUrl;
+            }, 1000);
+        } else {
+            // Display errors
+            showNotification(data.message, 'error', 5000);
+            
+            // Clear previous error displays
+            document.querySelectorAll('.field-error-message').forEach(el => el.remove());
+            document.querySelectorAll('.enhanced-input').forEach(el => {
+                el.classList.remove('border-red-500', 'error');
+            });
+            
+            // Display field-specific errors
+            if (data.errors) {
+                Object.keys(data.errors).forEach(fieldName => {
+                    const errorMessages = data.errors[fieldName];
+                    
+                    // Try to find the field by different selectors
+                    let field = document.getElementById('user_form_' + fieldName);
+                    
+                    // Handle nested fields like plainPassword (which has 'first' and 'second' sub-fields)
+                    if (!field && fieldName === 'plainPassword') {
+                        field = document.getElementById('user_form_plainPassword_first');
+                    }
+                    
+                    // Try alternative selectors
+                    if (!field) {
+                        field = document.querySelector(`[name*="${fieldName}"]`);
+                    }
+                    
+                    if (!field) {
+                        field = document.querySelector(`input[id*="${fieldName}"]`);
+                    }
+                    
+                    if (field) {
+                        // Mark field as error
+                        field.classList.add('border-red-500', 'error');
+                        
+                        // Add error messages below the field
+                        const errorContainer = document.createElement('div');
+                        errorContainer.className = 'field-error-message text-sm text-red-600 mt-1';
+                        errorMessages.forEach(msg => {
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = 'flex items-center mt-1';
+                            errorMsg.innerHTML = `
+                                <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>${msg}</span>
+                            `;
+                            errorContainer.appendChild(errorMsg);
+                        });
+                        
+                        // Insert after the field's parent container
+                        const fieldContainer = field.closest('.form-field-container');
+                        if (fieldContainer) {
+                            fieldContainer.appendChild(errorContainer);
+                            
+                            // Scroll to first error
+                            if (!document.querySelector('.field-error-message-scrolled')) {
+                                errorContainer.classList.add('field-error-message-scrolled');
+                                fieldContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }
+                    } else {
+                        // If field not found, log for debugging
+                        console.warn('Could not find field for error:', fieldName, errorMessages);
+                    }
+                });
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideLoadingState();
+        showNotification('An error occurred while creating the user. Please try again.', 'error', 5000);
+    });
 });
 
 // Loading state functions

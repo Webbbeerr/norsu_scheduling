@@ -1920,13 +1920,15 @@ class AdminController extends AbstractController
                     $subjectSemesters[] = $schedule->getSemester();
                 }
                 
-                // Collect schedule details (time, day, room, section, faculty)
+                // Collect schedule details (time, day, room, section, faculty, year, semester)
                 $scheduleDetails[] = [
                     'section' => $schedule->getSection() ?: 'N/A',
                     'time' => $schedule->getStartTime()->format('h:i A') . ' - ' . $schedule->getEndTime()->format('h:i A'),
                     'day' => $schedule->getDayPattern(),
                     'room' => $schedule->getRoom() ? $schedule->getRoom()->getCode() : 'N/A',
-                    'faculty' => $schedule->getFaculty() ? ($schedule->getFaculty()->getFirstName() . ' ' . $schedule->getFaculty()->getLastName()) : 'N/A'
+                    'faculty' => $schedule->getFaculty() ? ($schedule->getFaculty()->getFirstName() . ' ' . $schedule->getFaculty()->getLastName()) : 'N/A',
+                    'year' => $schedule->getAcademicYear() ? $schedule->getAcademicYear()->getYear() : null,
+                    'semester' => $schedule->getSemester() ?: null
                 ];
             }
             
@@ -2474,16 +2476,85 @@ class AdminController extends AbstractController
         $form = $this->createForm(UserFormType::class, $user, ['is_edit' => false]);
         $form->handleRequest($request);
 
+        // Handle AJAX submission
+        if ($request->isXmlHttpRequest() && $form->isSubmitted()) {
+            if ($form->isValid()) {
+                try {
+                    $plainPassword = $form->get('plainPassword')->getData();
+                    $userData = [
+                        'username' => $user->getUsername(),
+                        'firstName' => $user->getFirstName(),
+                        'middleName' => $user->getMiddleName(),
+                        'lastName' => $user->getLastName(),
+                        'email' => $user->getEmail(),
+                        'employeeId' => $user->getEmployeeId(),
+                        'position' => $user->getPosition(),
+                        'address' => $user->getAddress(),
+                        'role' => $user->getRole(),
+                        'departmentId' => $user->getDepartmentId(),
+                        'isActive' => $user->isActive(),
+                    ];
+
+                    $createdUser = $this->userService->createUser($userData, $plainPassword);
+                    
+                    // Log the activity
+                    $this->activityLogService->logUserActivity('user.created', $createdUser, [
+                        'role' => $createdUser->getRoleDisplayName(),
+                        'department' => $createdUser->getDepartment() ? $createdUser->getDepartment()->getName() : null
+                    ]);
+                    
+                    // Return success with redirect URL
+                    $redirectUrl = match($createdUser->getRole()) {
+                        1 => $this->generateUrl('admin_users_administrators'),
+                        2 => $this->generateUrl('admin_users_department_heads'),
+                        3 => $this->generateUrl('admin_users_faculty'),
+                        default => $this->generateUrl('admin_users_all')
+                    };
+                    
+                    return new JsonResponse([
+                        'success' => true,
+                        'message' => 'User has been created successfully.',
+                        'redirectUrl' => $redirectUrl
+                    ]);
+                } catch (\Exception $e) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'message' => 'Error creating user: ' . $e->getMessage(),
+                        'errors' => []
+                    ], 400);
+                }
+            } else {
+                // Collect all form errors
+                $errors = [];
+                foreach ($form->getErrors(true) as $error) {
+                    $fieldName = $error->getOrigin() ? $error->getOrigin()->getName() : 'general';
+                    if (!isset($errors[$fieldName])) {
+                        $errors[$fieldName] = [];
+                    }
+                    $errors[$fieldName][] = $error->getMessage();
+                }
+                
+                return new JsonResponse([
+                    'success' => false,
+                    'message' => 'Please correct the errors in the form.',
+                    'errors' => $errors
+                ], 422);
+            }
+        }
+
+        // Handle regular form submission (fallback)
         if ($form->isSubmitted() && $form->isValid()) {
             try {
                 $plainPassword = $form->get('plainPassword')->getData();
                 $userData = [
                     'username' => $user->getUsername(),
                     'firstName' => $user->getFirstName(),
+                    'middleName' => $user->getMiddleName(),
                     'lastName' => $user->getLastName(),
                     'email' => $user->getEmail(),
                     'employeeId' => $user->getEmployeeId(),
                     'position' => $user->getPosition(),
+                    'address' => $user->getAddress(),
                     'role' => $user->getRole(),
                     'departmentId' => $user->getDepartmentId(),
                     'isActive' => $user->isActive(),
