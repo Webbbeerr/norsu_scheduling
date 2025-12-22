@@ -212,7 +212,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900">
                                     {% if schedule.room %}
-                                        <div class="font-medium">{{ schedule.room.name }}</div>
+                                        <div class="font-medium">{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}</div>
                                         <div class="text-gray-500 text-xs">{{ schedule.room.building }}</div>
                                     {% else %}
                                         <span class="text-gray-400 italic">No room</span>

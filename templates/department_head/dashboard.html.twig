@@ -176,7 +176,7 @@
                                             Section: {{ item.schedule.section }} | 
                                             {{ item.schedule.dayPattern }} | 
                                             {{ item.schedule.startTime|date('g:i A') }} - {{ item.schedule.endTime|date('g:i A') }} |
-                                            Room: {{ item.schedule.room.name }}
+                                            Room: {{ item.schedule.room.code }}{% if item.schedule.room.name %} - {{ item.schedule.room.name }}{% endif %}
                                         </p>
                                         <div class="mt-2 space-y-1">
                                             {% for conflict in item.conflicts %}

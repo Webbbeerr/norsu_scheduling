@@ -349,7 +349,8 @@
                                 </div>
                                 <div class="ml-2">
                                     <p class="text-xs text-gray-500">Room</p>
-                                    <p class="text-sm font-semibold text-gray-900">{{ schedule.room.building }} - {{ schedule.room.name }}</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}</p>
+                                    {% if schedule.room.building %}<p class="text-xs text-gray-500">{{ schedule.room.building }}</p>{% endif %}
                                 </div>
                             </div>
 
@@ -411,7 +412,8 @@
                          data-days="{{ schedule.dayPattern }}"
                          data-start="{{ schedule.startTime|date('g:i A') }}"
                          data-end="{{ schedule.endTime|date('g:i A') }}"
-                         data-room="{{ schedule.room.building }} - {{ schedule.room.name }}"
+                         data-room="{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}"
+                         data-room-building="{{ schedule.room.building }}"
                          data-room-type="{{ schedule.room.type }}"
                          data-capacity="{{ schedule.room.capacity }}"
                          data-status="{{ schedule.status }}"
@@ -484,6 +486,7 @@ function showScheduleDetails(scheduleId) {
     document.getElementById('modal-start').textContent = data.start;
     document.getElementById('modal-end').textContent = data.end;
     document.getElementById('modal-room').textContent = data.room;
+    document.getElementById('modal-room-building').textContent = data.roomBuilding || '';
     document.getElementById('modal-room-type').textContent = data.roomType;
     document.getElementById('modal-capacity').textContent = data.capacity;
     document.getElementById('modal-status').textContent = data.status.toUpperCase();
@@ -654,6 +657,7 @@ document.addEventListener('keydown', function(e) {
                     <div class="flex items-center justify-between">
                         <div>
                             <p id="modal-room" class="text-sm font-semibold text-gray-900"></p>
+                            <p id="modal-room-building" class="text-xs text-gray-500 mt-0.5"></p>
                             <p id="modal-room-type" class="text-xs text-gray-500 mt-0.5"></p>
                         </div>
                         <div class="text-right">

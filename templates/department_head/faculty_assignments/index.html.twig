@@ -390,7 +390,7 @@ const facultyData = {
                     startTimeRaw: '{{ schedule.startTime|date('H:i')|e('js') }}',
                     endTime: '{{ schedule.endTime|date('g:i A')|e('js') }}',
                     endTimeRaw: '{{ schedule.endTime|date('H:i')|e('js') }}',
-                    room: '{{ schedule.room ? schedule.room.name|e('js') : 'TBA' }}',
+                    room: '{{ schedule.room ? (schedule.room.code ~ (schedule.room.name ? ' - ' ~ schedule.room.name : ''))|e('js') : 'TBA' }}',
                     roomCode: '{{ schedule.room ? schedule.room.code|e('js') : '' }}'
                 },
                 {% endfor %}

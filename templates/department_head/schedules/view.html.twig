@@ -151,8 +151,7 @@
                         <!-- Room -->
                         <div>
                             <label class="block text-sm font-medium text-gray-500 mb-1">Room</label>
-                            <p class="text-base font-semibold text-gray-900">{{ schedule.room.code }}</p>
-                            <p class="text-sm text-gray-600">{{ schedule.room.name }}</p>
+                            <p class="text-base font-semibold text-gray-900">{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}</p>
                             <p class="text-xs text-gray-500 mt-1">
                                 {% if schedule.room.building %}{{ schedule.room.building }} • {% endif %}
                                 Capacity: {{ schedule.room.capacity }}

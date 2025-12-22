@@ -145,7 +145,7 @@
                                                     <p class="text-sm font-semibold text-{{ colorClass }}-900">{{ schedule.subject.code }}</p>
                                                     <p class="text-xs text-{{ colorClass }}-700">{{ schedule.subject.title }}</p>
                                                     <p class="text-xs text-{{ colorClass }}-600 mt-1">
-                                                        {{ schedule.room.name }} • {{ schedule.enrolledStudents ?? 0 }} students
+                                                        {{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %} • {{ schedule.enrolledStudents ?? 0 }} students
                                                     </p>
                                                     {% if schedule.section %}
                                                         <p class="text-xs text-{{ colorClass }}-600">{{ schedule.section }}</p>
@@ -466,7 +466,7 @@
                                 units: {{ schedule.subject.units }},
                                 dayPattern: '{{ schedule.dayPatternLabel|e('js') }}',
                                 timeRange: '{{ schedule.startTime|date('g:i A') }} - {{ schedule.endTime|date('g:i A') }}',
-                                roomName: '{{ schedule.room.name|e('js') }}',
+                                roomName: '{{ schedule.room.code|e('js') }}{% if schedule.room.name %} - {{ schedule.room.name|e('js') }}{% endif %}',
                                 enrolledStudents: {{ schedule.enrolledStudents ?? 0 }},
                                 section: '{{ schedule.section|default('')|e('js') }}',
                                 notes: '{{ schedule.notes|default('')|e('js') }}',
