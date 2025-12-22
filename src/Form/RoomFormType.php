@@ -41,8 +41,8 @@ class RoomFormType extends AbstractType
                     'class' => 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
                     'placeholder' => 'e.g., Computer Laboratory 1'
                 ],
+                'required' => false,
                 'constraints' => [
-                    new Assert\NotBlank(['message' => 'Room name is required']),
                     new Assert\Length([
                         'max' => 255,
                         'maxMessage' => 'Room name cannot be longer than {{ limit }} characters'

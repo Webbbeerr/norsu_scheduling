@@ -463,7 +463,12 @@ class UserService
         }
 
         if (isset($data['employeeId'])) {
-            $user->setEmployeeId($data['employeeId']);
+            // Auto-pad employee ID with leading zeros to reach minimum 6 characters
+            $employeeId = trim($data['employeeId']);
+            if ($employeeId !== '' && is_numeric($employeeId)) {
+                $employeeId = str_pad($employeeId, 6, '0', STR_PAD_LEFT);
+            }
+            $user->setEmployeeId($employeeId);
         }
 
         if (isset($data['position'])) {

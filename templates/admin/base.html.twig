@@ -840,7 +840,10 @@
                         return; // Don't reset edit forms
                     }
                     
-                    form.reset();
+                    // Check if reset method exists before calling it
+                    if (typeof form.reset === 'function') {
+                        form.reset();
+                    }
                     // Clear all input values explicitly
                     form.querySelectorAll('input, textarea, select').forEach(function(field) {
                         if (field.type !== 'hidden' && field.type !== 'submit' && field.type !== 'button') {
@@ -866,7 +869,10 @@
                         return; // Don't reset edit forms
                     }
                     
-                    form.reset();
+                    // Check if reset method exists before calling it
+                    if (typeof form.reset === 'function') {
+                        form.reset();
+                    }
                     // Explicitly clear all fields
                     form.querySelectorAll('input, textarea, select').forEach(function(field) {
                         if (field.type !== 'hidden' && field.type !== 'submit' && field.type !== 'button') {
@@ -889,7 +895,10 @@
                     return; // Don't reset edit forms
                 }
                 
-                form.reset();
+                // Check if reset method exists before calling it
+                if (typeof form.reset === 'function') {
+                    form.reset();
+                }
                 // Explicitly clear all fields
                 form.querySelectorAll('input, textarea, select').forEach(function(field) {
                     if (field.type !== 'hidden' && field.type !== 'submit' && field.type !== 'button') {
@@ -922,7 +931,10 @@
                 
                 // Only clear if user didn't actually modify the form
                 if (!form.getAttribute('data-modified')) {
-                    form.reset();
+                    // Check if reset method exists before calling it
+                    if (typeof form.reset === 'function') {
+                        form.reset();
+                    }
                 }
             });
         });

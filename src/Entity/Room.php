@@ -20,8 +20,7 @@ class Room
     #[Assert\NotBlank]
     private ?string $code = null;
 
-    #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $name = null;
 
     #[ORM\Column(length: 50, nullable: true)]
@@ -86,7 +85,7 @@ class Room
         return $this->name;
     }
 
-    public function setName(string $name): static
+    public function setName(?string $name): static
     {
         $this->name = $name;
         return $this;

@@ -222,8 +222,7 @@
                                 <option value="">Select room...</option>
                                 {% for room in rooms %}
                                     <option value="{{ room.id }}" {% if schedule.room and schedule.room.id == room.id %}selected{% endif %}>
-                                        {{ room.building }} - {{ room.name }} 
-                                        {% if room.capacity %}(Capacity: {{ room.capacity }}){% endif %}
+                                        {{ room.code }}{% if room.name %} - {{ room.name }}{% endif %}
                                     </option>
                                 {% endfor %}
                             </select>

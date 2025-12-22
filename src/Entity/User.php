@@ -294,6 +294,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function setEmployeeId(?string $employeeId): static
     {
+        // Auto-pad employee ID with leading zeros to reach minimum 6 characters
+        if ($employeeId !== null && $employeeId !== '') {
+            // Remove any existing leading/trailing whitespace
+            $employeeId = trim($employeeId);
+            
+            // If the employee ID is numeric, pad it with zeros
+            if (is_numeric($employeeId)) {
+                $employeeId = str_pad($employeeId, 6, '0', STR_PAD_LEFT);
+            }
+        }
+        
         $this->employeeId = $employeeId;
         return $this;
     }

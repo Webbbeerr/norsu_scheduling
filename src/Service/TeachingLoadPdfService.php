@@ -325,18 +325,30 @@ class TeachingLoadPdfService
                 $pdf->SetY($rowY + $rowHeight);
             }
 
-            // Total row with advanced formatting
+            // Total row - NO merged cells, TOTAL text in Description column only
             $pdf->SetFont('times', 'B', 8);
-            $pdf->SetFillColor(211, 211, 211);
+            $pdf->SetFillColor(211, 211, 211); // Gray background
             
             $totalY = $pdf->GetY();
             $totalHeight = 6;
             
-            $totalColWidth = $colWidths[0] + $colWidths[1] + $colWidths[2] + $colWidths[3] + $colWidths[4];
-            
             $x = $startX;
-            $pdf->MultiCell($totalColWidth, $totalHeight, 'TOTAL', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
-            $x += $totalColWidth;
+            // Empty cell with border - Day column (no right border)
+            $pdf->MultiCell($colWidths[0], $totalHeight, '', 'LTB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $x += $colWidths[0];
+            // Empty cell with border - Time column (no right border)
+            $pdf->MultiCell($colWidths[1], $totalHeight, '', 'TB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $x += $colWidths[1];
+            // TOTAL text in Course Code with Section column (no right border)
+            $pdf->MultiCell($colWidths[2], $totalHeight, 'TOTAL', 'TB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $x += $colWidths[2];
+            // Empty cell with border - Description column
+            $pdf->MultiCell($colWidths[3], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $x += $colWidths[3];
+            // Empty cell with border - Room column
+            $pdf->MultiCell($colWidths[4], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $x += $colWidths[4];
+            // Total values
             $pdf->MultiCell($colWidths[5], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[5];
             $pdf->MultiCell($colWidths[6], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
@@ -345,21 +357,34 @@ class TeachingLoadPdfService
             
             $pdf->SetY($totalY + $totalHeight);
 
-            // Consultation row with advanced formatting
+            // Consultation Period row - NO merged cells, maintain vertical grid lines
             $pdf->SetFont('times', '', 8);
             $pdf->SetFillColor(255, 255, 255);
             
             $consultY = $pdf->GetY();
             $consultHeight = 8;
             
-            $consultEmptyWidth = $colWidths[2] + $colWidths[3] + $colWidths[4] + $colWidths[5] + $colWidths[6] + $colWidths[7];
-            
             $x = $startX;
-            $pdf->MultiCell($colWidths[0], $consultHeight, 'Consultation', 1, 'L', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            // Consultation Period label
+            $pdf->MultiCell($colWidths[0], $consultHeight, 'Consultation Period', 1, 'L', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $x += $colWidths[0];
+            // Time in bold
+            $pdf->SetFont('times', 'B', 8);
             $pdf->MultiCell($colWidths[1], $consultHeight, 'MWF 10-11 PM', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $pdf->SetFont('times', '', 8);
             $x += $colWidths[1];
-            $pdf->MultiCell($consultEmptyWidth, $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            // Individual empty cells to maintain vertical grid lines
+            $pdf->MultiCell($colWidths[2], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[2];
+            $pdf->MultiCell($colWidths[3], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[3];
+            $pdf->MultiCell($colWidths[4], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[4];
+            $pdf->MultiCell($colWidths[5], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[5];
+            $pdf->MultiCell($colWidths[6], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[6];
+            $pdf->MultiCell($colWidths[7], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             
             $pdf->SetY($consultY + $consultHeight);
         }

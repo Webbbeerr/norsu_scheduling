@@ -63,12 +63,18 @@ class ScheduleConflictDetector
             
             // Check if day patterns overlap AND times overlap
             if ($hasDayOverlap && $hasTimeOverlap) {
+                $room = $existing->getRoom();
+                $roomDisplay = $room->getCode();
+                if ($room->getName()) {
+                    $roomDisplay .= ' - ' . $room->getName();
+                }
+                
                 $conflicts[] = [
                     'type' => 'room_time_conflict',
                     'schedule' => $existing,
                     'message' => sprintf(
                         'Room %s is already booked for %s (%s) from %s to %s (Section: %s)',
-                        $existing->getRoom()->getName(),
+                        $roomDisplay,
                         $existing->getSubject()->getCode(),
                         $existing->getDayPattern(),
                         $existing->getStartTime()->format('g:i A'),
@@ -242,6 +248,12 @@ class ScheduleConflictDetector
             // Check if day patterns overlap AND times overlap
             if ($this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern())
                 && $this->hasTimeOverlap($schedule, $existing)) {
+                $room = $existing->getRoom();
+                $roomDisplay = $room->getCode();
+                if ($room->getName()) {
+                    $roomDisplay .= ' - ' . $room->getName();
+                }
+                
                 $conflicts[] = [
                     'type' => 'section_conflict',
                     'schedule' => $existing,
@@ -252,7 +264,7 @@ class ScheduleConflictDetector
                         $existing->getDayPattern(),
                         $existing->getStartTime()->format('g:i A'),
                         $existing->getEndTime()->format('g:i A'),
-                        $existing->getRoom()->getName()
+                        $roomDisplay
                     )
                 ];
             }
@@ -294,6 +306,12 @@ class ScheduleConflictDetector
         $existingSchedules = $qb->getQuery()->getResult();
 
         foreach ($existingSchedules as $existing) {
+            $room = $existing->getRoom();
+            $roomDisplay = $room->getCode();
+            if ($room->getName()) {
+                $roomDisplay .= ' - ' . $room->getName();
+            }
+            
             $conflicts[] = [
                 'type' => 'duplicate_subject_section',
                 'schedule' => $existing,
@@ -304,7 +322,7 @@ class ScheduleConflictDetector
                     $existing->getDayPattern(),
                     $existing->getStartTime()->format('g:i A'),
                     $existing->getEndTime()->format('g:i A'),
-                    $existing->getRoom()->getName()
+                    $roomDisplay
                 )
             ];
         }

@@ -206,7 +206,7 @@
                 <select id="room-filter" onchange="filterSchedules()" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition">
                     <option value="">All Rooms</option>
                     {% for room in rooms %}
-                        <option value="{{ room.id }}">{{ room.building }} - {{ room.name }}</option>
+                        <option value="{{ room.id }}">{{ room.code }}{% if room.name %} - {{ room.name }}{% endif %}</option>
                     {% endfor %}
                 </select>
             </div>
