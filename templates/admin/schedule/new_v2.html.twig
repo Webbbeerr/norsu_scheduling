@@ -237,7 +237,7 @@
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                                     style="max-height: 300px; overflow-y: auto;"
                                     size="1"
-                                    onchange="updateSubjectInfo()">
+                                    onchange="updateSubjectInfo();">
                                 <option value="">Choose a subject...</option>
                                 {% for subject in subjects %}
                                     <option value="{{ subject.id }}" 
@@ -351,13 +351,11 @@
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                                     onchange="updatePreview(); checkRoomConflicts();">
                                 <option value="">Select pattern...</option>
-                                <option value="MWF">Mon-Wed-Fri</option>
-                                <option value="TTH">Tue-Thu</option>
-                                <option value="MTWTHF">Mon-Fri (Daily)</option>
-                                <option value="MW">Mon-Wed</option>
-                                <option value="WF">Wed-Fri</option>
-                                <option value="MTH">Mon-Thu</option>
-                                <option value="TF">Tue-Fri</option>
+                                <option value="M-W-F">Mon-Wed-Fri</option>
+                                <option value="T-TH">Tue-Thu</option>
+                                <option value="M-T-W-TH-F">Mon-Fri (Daily)</option>
+                                <option value="M-T">Mon-Tue</option>
+                                <option value="TH-F">Thu-Fri</option>
                                 <option value="SAT">Saturday Only</option>
                                 <option value="SUN">Sunday Only</option>
                             </select>
@@ -644,6 +642,9 @@ function fetchExistingSections(subjectId) {
             console.log('=== STORED IN existingSchedules ===');
             console.log('Keys stored:', Object.keys(existingSchedules));
             console.log('Full map:', existingSchedules);
+            
+            // Re-validate section field after new data is loaded
+            checkSectionExists();
         })
         .catch(error => {
             console.error('Error fetching existing sections:', error);
@@ -876,13 +877,16 @@ function checkRoomConflicts() {
     });
 }
 
-// Auto-calculate end time (1 hour after start by default)
+// Auto-calculate end time (1 hour 30 minutes after start by default)
 function calculateEndTime() {
     const startTime = document.getElementById('start_time').value;
     if (startTime) {
         const [hours, minutes] = startTime.split(':');
-        let endHour = (parseInt(hours) + 1) % 24;
-        const endTime = endHour.toString().padStart(2, '0') + ':' + minutes;
+        const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
+        const endMinutes = startMinutes + 90; // Add 1 hour 30 minutes
+        const endHour = Math.floor(endMinutes / 60) % 24;
+        const endMin = endMinutes % 60;
+        const endTime = endHour.toString().padStart(2, '0') + ':' + endMin.toString().padStart(2, '0');
         document.getElementById('end_time').value = endTime;
         updateDuration();
     }
@@ -951,13 +955,11 @@ function updatePreview() {
     // Update schedule preview
     if (dayPattern && startTime && endTime) {
         const dayLabels = {
-            'MWF': 'Mon/Wed/Fri',
-            'TTH': 'Tue/Thu',
-            'MTWTHF': 'Mon-Fri',
-            'MW': 'Mon/Wed',
-            'WF': 'Wed/Fri',
-            'MTH': 'Mon/Thu',
-            'TF': 'Tue/Fri',
+            'M-W-F': 'Mon/Wed/Fri',
+            'T-TH': 'Tue/Thu',
+            'M-T-W-TH-F': 'Mon-Fri',
+            'M-T': 'Mon/Tue',
+            'TH-F': 'Thu/Fri',
             'SAT': 'Saturday',
             'SUN': 'Sunday'
         };

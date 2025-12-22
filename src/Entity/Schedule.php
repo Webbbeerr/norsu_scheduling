@@ -89,24 +89,20 @@ class Schedule
     {
         $pattern = $this->dayPattern;
         
-        if ($pattern === 'MWF') {
+        if ($pattern === 'M-W-F') {
             return ['Monday', 'Wednesday', 'Friday'];
-        } elseif ($pattern === 'TTH') {
+        } elseif ($pattern === 'T-TH') {
             return ['Tuesday', 'Thursday'];
-        } elseif ($pattern === 'MTWTHF') {
+        } elseif ($pattern === 'M-T-W-TH-F') {
             return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        } elseif ($pattern === 'M-T') {
+            return ['Monday', 'Tuesday'];
+        } elseif ($pattern === 'TH-F') {
+            return ['Thursday', 'Friday'];
         } elseif ($pattern === 'SAT') {
             return ['Saturday'];
         } elseif ($pattern === 'SUN') {
             return ['Sunday'];
-        } elseif ($pattern === 'MW') {
-            return ['Monday', 'Wednesday'];
-        } elseif ($pattern === 'WF') {
-            return ['Wednesday', 'Friday'];
-        } elseif ($pattern === 'MTH') {
-            return ['Monday', 'Thursday'];
-        } elseif ($pattern === 'TF') {
-            return ['Tuesday', 'Friday'];
         }
 
         return [];
@@ -115,13 +111,11 @@ class Schedule
     public function getDayPatternLabel(): string
     {
         $labels = [
-            'MWF' => 'Monday-Wednesday-Friday',
-            'TTH' => 'Tuesday-Thursday',
-            'MTWTHF' => 'Monday-Tuesday-Wednesday-Thursday-Friday',
-            'MW' => 'Monday-Wednesday',
-            'WF' => 'Wednesday-Friday',
-            'MTH' => 'Monday-Thursday',
-            'TF' => 'Tuesday-Friday',
+            'M-W-F' => 'Monday-Wednesday-Friday',
+            'T-TH' => 'Tuesday-Thursday',
+            'M-T-W-TH-F' => 'Monday-Tuesday-Wednesday-Thursday-Friday',
+            'M-T' => 'Monday-Tuesday',
+            'TH-F' => 'Thursday-Friday',
             'SAT' => 'Saturday',
             'SUN' => 'Sunday',
         ];

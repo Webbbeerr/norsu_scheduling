@@ -165,13 +165,11 @@
                                     class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
                                     onchange="updatePreview()">
                                 <option value="">Select pattern...</option>
-                                <option value="MWF" {% if schedule.dayPattern == 'MWF' %}selected{% endif %}>Mon-Wed-Fri</option>
-                                <option value="TTH" {% if schedule.dayPattern == 'TTH' %}selected{% endif %}>Tue-Thu</option>
-                                <option value="MTWTHF" {% if schedule.dayPattern == 'MTWTHF' %}selected{% endif %}>Mon-Fri (Daily)</option>
-                                <option value="MW" {% if schedule.dayPattern == 'MW' %}selected{% endif %}>Mon-Wed</option>
-                                <option value="WF" {% if schedule.dayPattern == 'WF' %}selected{% endif %}>Wed-Fri</option>
-                                <option value="MTH" {% if schedule.dayPattern == 'MTH' %}selected{% endif %}>Mon-Thu</option>
-                                <option value="TF" {% if schedule.dayPattern == 'TF' %}selected{% endif %}>Tue-Fri</option>
+                                <option value="M-W-F" {% if schedule.dayPattern == 'M-W-F' %}selected{% endif %}>Mon-Wed-Fri</option>
+                                <option value="T-TH" {% if schedule.dayPattern == 'T-TH' %}selected{% endif %}>Tue-Thu</option>
+                                <option value="M-T-W-TH-F" {% if schedule.dayPattern == 'M-T-W-TH-F' %}selected{% endif %}>Mon-Fri (Daily)</option>
+                                <option value="M-T" {% if schedule.dayPattern == 'M-T' %}selected{% endif %}>Mon-Tue</option>
+                                <option value="TH-F" {% if schedule.dayPattern == 'TH-F' %}selected{% endif %}>Thu-Fri</option>
                                 <option value="SAT" {% if schedule.dayPattern == 'SAT' %}selected{% endif %}>Saturday Only</option>
                                 <option value="SUN" {% if schedule.dayPattern == 'SUN' %}selected{% endif %}>Sunday Only</option>
                             </select>
@@ -575,13 +573,11 @@ function updatePreview() {
     // Update schedule preview
     if (dayPattern && startTime && endTime) {
         const dayLabels = {
-            'MWF': 'Mon/Wed/Fri',
-            'TTH': 'Tue/Thu',
-            'MTWTHF': 'Mon-Fri',
-            'MW': 'Mon/Wed',
-            'WF': 'Wed/Fri',
-            'MTH': 'Mon/Thu',
-            'TF': 'Tue/Fri',
+            'M-W-F': 'Mon/Wed/Fri',
+            'T-TH': 'Tue/Thu',
+            'M-T-W-TH-F': 'Mon-Fri',
+            'M-T': 'Mon/Tue',
+            'TH-F': 'Thu/Fri',
             'SAT': 'Saturday',
             'SUN': 'Sunday'
         };

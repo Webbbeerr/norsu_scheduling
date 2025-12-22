@@ -277,14 +277,8 @@ class TeachingLoadPdfService
             foreach ($schedules as $schedule) {
                 $rowY = $pdf->GetY();
                 
-                // Get text content - add hyphens between days (handle TH as one unit)
+                // Get day pattern (already formatted with hyphens like M-W-F, T-TH)
                 $dayPattern = $schedule->getDayPattern();
-                if ($dayPattern) {
-                    // Replace TH with a placeholder, split, then restore
-                    $dayPattern = str_replace('TH', '~', $dayPattern);
-                    $dayPattern = implode('-', str_split($dayPattern));
-                    $dayPattern = str_replace('~', 'TH', $dayPattern);
-                }
                 $timeText = $schedule->getStartTime()->format('g:i') . '-' . $schedule->getEndTime()->format('g:i A');
                 $courseCode = $schedule->getSubject()->getCode() . ' ' . $schedule->getSection();
                 $courseTitle = $schedule->getSubject()->getTitle();

@@ -69,8 +69,9 @@ class SubjectsReportPdfService
         // Get all schedules for reference
         $scheduleQb = $this->entityManager->getRepository(\App\Entity\Schedule::class)
             ->createQueryBuilder('s')
-            ->select('s', 'sub', 'f', 'd', 'ay')
+            ->select('s', 'sub', 'r', 'f', 'd', 'ay')
             ->leftJoin('s.subject', 'sub')
+            ->leftJoin('s.room', 'r')
             ->leftJoin('s.faculty', 'f')
             ->leftJoin('sub.department', 'd')
             ->leftJoin('s.academicYear', 'ay');
@@ -102,16 +103,20 @@ class SubjectsReportPdfService
                 return $s->getSubject() && $s->getSubject()->getId() === $subject->getId();
             });
 
-            // Get unique faculty teaching this subject
-            $facultyList = [];
+            // Get schedule details (time, day, room)
+            $scheduleDetails = [];
             $years = [];
             $semesters = [];
             
             foreach ($subjectSchedules as $schedule) {
-                if ($schedule->getFaculty()) {
-                    $faculty = $schedule->getFaculty();
-                    $facultyList[$faculty->getId()] = $faculty->getFirstName() . ' ' . $faculty->getLastName();
-                }
+                $scheduleDetails[] = [
+                    'section' => $schedule->getSection() ?: 'N/A',
+                    'time' => $schedule->getStartTime()->format('h:i A') . ' - ' . $schedule->getEndTime()->format('h:i A'),
+                    'day' => $schedule->getDayPattern(),
+                    'room' => $schedule->getRoom() ? $schedule->getRoom()->getCode() : 'N/A',
+                    'faculty' => $schedule->getFaculty() ? ($schedule->getFaculty()->getFirstName() . ' ' . $schedule->getFaculty()->getLastName()) : 'N/A'
+                ];
+                
                 if ($schedule->getAcademicYear()) {
                     $years[] = $schedule->getAcademicYear()->getYear();
                 }
@@ -125,9 +130,7 @@ class SubjectsReportPdfService
             if (count($subjectSchedules) > 0 || (!$year && !$semester)) {
                 $subjectsData[] = [
                     'subject' => $subject,
-                    'timesOffered' => count($subjectSchedules),
-                    'facultyCount' => count($facultyList),
-                    'facultyList' => array_values($facultyList),
+                    'schedules' => $scheduleDetails,
                     'years' => array_unique($years),
                     'semesters' => array_unique($semesters)
                 ];
@@ -191,7 +194,7 @@ class SubjectsReportPdfService
         $totalLecture = 0;
         $totalLab = 0;
         $totalUnits = 0;
-        $totalOfferings = 0;
+        $totalSchedules = 0;
 
         foreach ($subjectsData as $data) {
             $subject = $data['subject'];
@@ -201,7 +204,7 @@ class SubjectsReportPdfService
                 $totalLab++;
             }
             $totalUnits += $subject->getUnits();
-            $totalOfferings += $data['timesOffered'];
+            $totalSchedules += count($data['schedules']);
         }
 
         // Summary box
@@ -251,12 +254,13 @@ class SubjectsReportPdfService
             $pdf->SetFont('helvetica', 'B', 8);
             $pdf->SetFillColor(51, 122, 183);
             $pdf->Cell(30, 6, 'Code', 1, 0, 'C', true);
-            $pdf->Cell(80, 6, 'Subject Title', 1, 0, 'C', true);
-            $pdf->Cell(15, 6, 'Units', 1, 0, 'C', true);
+            $pdf->Cell(60, 6, 'Subject Title', 1, 0, 'C', true);
+            $pdf->Cell(12, 6, 'Units', 1, 0, 'C', true);
             $pdf->Cell(20, 6, 'Type', 1, 0, 'C', true);
-            $pdf->Cell(20, 6, 'Offered', 1, 0, 'C', true);
-            $pdf->Cell(20, 6, 'Faculty', 1, 0, 'C', true);
-            $pdf->Cell(0, 6, 'Faculty Assigned', 1, 1, 'C', true);
+            $pdf->Cell(30, 6, 'Time', 1, 0, 'C', true);
+            $pdf->Cell(22, 6, 'Day', 1, 0, 'C', true);
+            $pdf->Cell(25, 6, 'Room', 1, 0, 'C', true);
+            $pdf->Cell(0, 6, 'Faculty', 1, 1, 'C', true);
             
             // Data rows
             $pdf->SetFont('helvetica', '', 8);
@@ -265,47 +269,55 @@ class SubjectsReportPdfService
             
             foreach ($subjects as $data) {
                 $subject = $data['subject'];
-                $facultyNames = !empty($data['facultyList']) ? implode(', ', array_slice($data['facultyList'], 0, 3)) : 'Not Assigned';
-                if (count($data['facultyList']) > 3) {
-                    $facultyNames .= '...';
+                $schedules = $data['schedules'];
+                
+                // If no schedules, show one row with N/A
+                if (empty($schedules)) {
+                    $schedules = [['section' => 'N/A', 'time' => 'N/A', 'day' => 'N/A', 'room' => 'N/A', 'faculty' => 'N/A']];
                 }
                 
-                // Calculate row height based on content
-                $rowHeight = 6;
-                $titleLines = $pdf->getNumLines($subject->getTitle(), 80);
-                $facultyLines = $pdf->getNumLines($facultyNames, 0);
-                $rowHeight = max($rowHeight, max($titleLines, $facultyLines) * 4);
-                
-                $x = $pdf->GetX();
-                $y = $pdf->GetY();
-                
-                // Check if we need a new page
-                if ($y + $rowHeight > $pdf->getPageHeight() - 20) {
-                    $pdf->AddPage();
-                    // Repeat headers
-                    $pdf->SetFont('helvetica', 'B', 8);
-                    $pdf->SetFillColor(51, 122, 183);
-                    $pdf->SetTextColor(255, 255, 255);
-                    $pdf->Cell(30, 6, 'Code', 1, 0, 'C', true);
-                    $pdf->Cell(80, 6, 'Subject Title', 1, 0, 'C', true);
-                    $pdf->Cell(15, 6, 'Units', 1, 0, 'C', true);
-                    $pdf->Cell(20, 6, 'Type', 1, 0, 'C', true);
-                    $pdf->Cell(20, 6, 'Offered', 1, 0, 'C', true);
-                    $pdf->Cell(20, 6, 'Faculty', 1, 0, 'C', true);
-                    $pdf->Cell(0, 6, 'Faculty Assigned', 1, 1, 'C', true);
-                    $pdf->SetFont('helvetica', '', 8);
-                    $pdf->SetTextColor(0, 0, 0);
+                // Show each schedule on a separate row
+                foreach ($schedules as $schedule) {
+                    $rowHeight = 6;
+                    $titleLines = $pdf->getNumLines($subject->getTitle(), 60);
+                    $rowHeight = max($rowHeight, $titleLines * 4);
+                    
+                    $x = $pdf->GetX();
                     $y = $pdf->GetY();
+                    
+                    // Check if we need a new page
+                    if ($y + $rowHeight > $pdf->getPageHeight() - 20) {
+                        $pdf->AddPage();
+                        // Repeat headers
+                        $pdf->SetFont('helvetica', 'B', 8);
+                        $pdf->SetFillColor(51, 122, 183);
+                        $pdf->SetTextColor(255, 255, 255);
+                        $pdf->Cell(30, 6, 'Code', 1, 0, 'C', true);
+                        $pdf->Cell(60, 6, 'Subject Title', 1, 0, 'C', true);
+                        $pdf->Cell(12, 6, 'Units', 1, 0, 'C', true);
+                        $pdf->Cell(20, 6, 'Type', 1, 0, 'C', true);
+                        $pdf->Cell(30, 6, 'Time', 1, 0, 'C', true);
+                        $pdf->Cell(22, 6, 'Day', 1, 0, 'C', true);
+                        $pdf->Cell(25, 6, 'Room', 1, 0, 'C', true);
+                        $pdf->Cell(0, 6, 'Faculty', 1, 1, 'C', true);
+                        $pdf->SetFont('helvetica', '', 8);
+                        $pdf->SetTextColor(0, 0, 0);
+                        $y = $pdf->GetY();
+                    }
+                    
+                    // Code with section (e.g., "ITS 100 - A")
+                    $codeWithSection = $subject->getCode() . ' - ' . $schedule['section'];
+                    $pdf->MultiCell(30, $rowHeight, $codeWithSection, 1, 'L', false, 0, $x, $y);
+                    $pdf->MultiCell(60, $rowHeight, $subject->getTitle(), 1, 'L', false, 0, $x + 30, $y);
+                    $pdf->MultiCell(12, $rowHeight, $subject->getUnits(), 1, 'C', false, 0, $x + 90, $y);
+                    $pdf->MultiCell(20, $rowHeight, ucfirst($subject->getType()), 1, 'C', false, 0, $x + 102, $y);
+                    
+                    // Schedule details
+                    $pdf->MultiCell(30, $rowHeight, $schedule['time'], 1, 'C', false, 0, $x + 122, $y);
+                    $pdf->MultiCell(22, $rowHeight, $schedule['day'], 1, 'C', false, 0, $x + 152, $y);
+                    $pdf->MultiCell(25, $rowHeight, $schedule['room'], 1, 'L', false, 0, $x + 174, $y);
+                    $pdf->MultiCell(0, $rowHeight, $schedule['faculty'], 1, 'L', false, 1, $x + 199, $y);
                 }
-                
-                // Draw cells
-                $pdf->MultiCell(30, $rowHeight, $subject->getCode(), 1, 'L', false, 0, $x, $y);
-                $pdf->MultiCell(80, $rowHeight, $subject->getTitle(), 1, 'L', false, 0, $x + 30, $y);
-                $pdf->MultiCell(15, $rowHeight, $subject->getUnits(), 1, 'C', false, 0, $x + 110, $y);
-                $pdf->MultiCell(20, $rowHeight, ucfirst($subject->getType()), 1, 'C', false, 0, $x + 125, $y);
-                $pdf->MultiCell(20, $rowHeight, $data['timesOffered'] . 'x', 1, 'C', false, 0, $x + 145, $y);
-                $pdf->MultiCell(20, $rowHeight, $data['facultyCount'], 1, 'C', false, 0, $x + 165, $y);
-                $pdf->MultiCell(0, $rowHeight, $facultyNames, 1, 'L', false, 1, $x + 185, $y);
             }
             
             $pdf->Ln(3);

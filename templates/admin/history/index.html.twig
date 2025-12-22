@@ -952,53 +952,89 @@
                                         </div>
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th @click="sortBy('timesOffered')" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                                        <div class="flex items-center gap-2">
-                                            Times Offered
-                                            <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'timesOffered' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="sortField === 'timesOffered' && sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
-                                            </svg>
-                                        </div>
-                                    </th>
-                                    <th @click="sortBy('facultyCount')" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                                        <div class="flex items-center gap-2">
-                                            Faculty Count
-                                            <svg class="w-4 h-4" :class="{ 'text-blue-600': sortField === 'facultyCount' }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="sortField === 'facultyCount' && sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"/>
-                                            </svg>
-                                        </div>
-                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <template x-for="subject in paginatedData" :key="subject.id">
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900" x-text="subject.code"></div>
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <div class="text-sm text-gray-900" x-text="subject.title"></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900" x-text="subject.department || 'No Department'"></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900" x-text="subject.units"></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
-                                                  :class="subject.type === 'lecture' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'"
-                                                  x-text="subject.type.charAt(0).toUpperCase() + subject.type.slice(1)"></span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                <span x-text="subject.timesOffered"></span>x
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900"><span x-text="subject.facultyCount"></span> faculty</div>
-                                        </td>
-                                    </tr>
+                                    <template x-if="subject.schedules && subject.schedules.length > 0">
+                                        <template x-for="(schedule, schedIndex) in subject.schedules" :key="subject.id + '-' + schedIndex">
+                                            <tr class="hover:bg-gray-50">
+                                                <!-- Code with Section -->
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="text-sm font-medium text-gray-900">
+                                                        <span x-text="subject.code"></span>
+                                                        <span class="text-blue-600 font-semibold" x-text="' - ' + schedule.section"></span>
+                                                    </div>
+                                                </td>
+                                                <!-- Show subject info only on first schedule row -->
+                                                <td x-show="schedIndex === 0" class="px-6 py-4 align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                    <div class="text-sm text-gray-900" x-text="subject.title"></div>
+                                                </td>
+                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                    <div class="text-sm text-gray-900" x-text="subject.department || 'No Department'"></div>
+                                                </td>
+                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                    <div class="text-sm text-gray-900" x-text="subject.units"></div>
+                                                </td>
+                                                <td x-show="schedIndex === 0" class="px-6 py-4 whitespace-nowrap align-top bg-gray-50 border-r-2 border-blue-100" x-bind:rowspan="subject.schedules.length">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
+                                                          :class="subject.type === 'lecture' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'"
+                                                          x-text="subject.type.charAt(0).toUpperCase() + subject.type.slice(1)"></span>
+                                                </td>
+                                                
+                                                <!-- Schedule details on every row -->
+                                                <td class="px-6 py-3 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900" x-text="schedule.time"></div>
+                                                </td>
+                                                <td class="px-6 py-3 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900" x-text="schedule.day"></div>
+                                                </td>
+                                                <td class="px-6 py-3 whitespace-nowrap">
+                                                    <div class="text-sm text-gray-900" x-text="schedule.room"></div>
+                                                </td>
+                                                <td class="px-6 py-3">
+                                                    <div class="text-sm text-gray-900" x-text="schedule.faculty"></div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                    <template x-if="!subject.schedules || subject.schedules.length === 0">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-900" x-text="subject.code"></div>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="text-sm text-gray-900" x-text="subject.title"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-900" x-text="subject.department || 'No Department'"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-900" x-text="subject.units"></div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" 
+                                                      :class="subject.type === 'lecture' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'"
+                                                      x-text="subject.type.charAt(0).toUpperCase() + subject.type.slice(1)"></span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-500">N/A</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-500">N/A</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-500">N/A</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm text-gray-500">N/A</div>
+                                            </td>
+                                        </tr>
+                                    </template>
                                 </template>
                             </tbody>
                         </table>
@@ -1897,8 +1933,7 @@ function subjectsTableData() {
                     departmentId: '{{ item.departmentId|default('') }}',
                     units: {{ subject.units }},
                     type: '{{ subject.type|e('js') }}',
-                    timesOffered: {{ item.timesOffered }},
-                    facultyCount: {{ item.facultyCount }},
+                    schedules: {{ item.schedules|default([])|json_encode|raw }},
                     years: {{ item.yearsList|default([])|json_encode|raw }},
                     semesters: {{ item.semestersList|default([])|json_encode|raw }}
                 },

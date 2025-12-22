@@ -1906,23 +1906,28 @@ class AdminController extends AbstractController
         foreach ($subjects as $subject) {
             $subjectSchedules = array_filter($schedules, fn($s) => $s->getSubject() && $s->getSubject()->getId() === $subject->getId());
             
-            // Get unique faculty, years, semesters for this subject
-            $subjectFaculty = [];
+            // Get unique years, semesters, and schedule details for this subject
             $subjectYears = [];
             $subjectSemesters = [];
             $subjectDepartments = [];
+            $scheduleDetails = [];
             
             foreach ($subjectSchedules as $schedule) {
-                if ($schedule->getFaculty()) {
-                    $fac = $schedule->getFaculty();
-                    $subjectFaculty[$fac->getId()] = $fac->getFirstName() . ' ' . $fac->getLastName();
-                }
                 if ($schedule->getAcademicYear()) {
                     $subjectYears[$schedule->getAcademicYear()->getId()] = $schedule->getAcademicYear()->getYear();
                 }
                 if ($schedule->getSemester()) {
                     $subjectSemesters[] = $schedule->getSemester();
                 }
+                
+                // Collect schedule details (time, day, room, section, faculty)
+                $scheduleDetails[] = [
+                    'section' => $schedule->getSection() ?: 'N/A',
+                    'time' => $schedule->getStartTime()->format('h:i A') . ' - ' . $schedule->getEndTime()->format('h:i A'),
+                    'day' => $schedule->getDayPattern(),
+                    'room' => $schedule->getRoom() ? $schedule->getRoom()->getCode() : 'N/A',
+                    'faculty' => $schedule->getFaculty() ? ($schedule->getFaculty()->getFirstName() . ' ' . $schedule->getFaculty()->getLastName()) : 'N/A'
+                ];
             }
             
             // Store department info for filtering
@@ -1932,9 +1937,7 @@ class AdminController extends AbstractController
             
             $subjectsData[] = [
                 0 => $subject,
-                'timesOffered' => count($subjectSchedules),
-                'facultyCount' => count($subjectFaculty),
-                'facultyList' => array_values($subjectFaculty),
+                'schedules' => $scheduleDetails,
                 'departments' => implode(', ', array_unique($subjectDepartments)),
                 'years' => implode(', ', array_unique($subjectYears)),
                 'semesters' => implode(', ', array_unique($subjectSemesters)),
