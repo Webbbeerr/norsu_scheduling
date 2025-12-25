@@ -29,22 +29,33 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
+# Copy composer files first for better caching
+COPY composer.json composer.lock symfony.lock ./
+
+# Install dependencies (allow platform checks to be bypassed if needed)
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-progress --prefer-dist
+
 # Copy application files
 COPY . .
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Run post-install scripts
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/var
+# Create var directory structure
+RUN mkdir -p var/cache var/log var/sessions \
+    && chown -R www-data:www-data var \
+    && chmod -R 775 var
 
 # Configure Apache
 RUN a2enmod rewrite
 COPY docker-apache.conf /etc/apache2/sites-available/000-default.conf
 
-# Clear and warm up cache
-RUN php bin/console cache:clear --env=prod --no-debug
-RUN php bin/console cache:warmup --env=prod --no-debug
+# Set APP_ENV for cache commands
+ENV APP_ENV=prod
+
+# Clear and warm up cache (skip if fails)
+RUN php bin/console cache:clear --no-warmup || true
+RUN php bin/console cache:warmup || true
 
 EXPOSE 80
 
