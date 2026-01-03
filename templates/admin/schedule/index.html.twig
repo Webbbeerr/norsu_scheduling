@@ -273,17 +273,18 @@
             {% endif %}
         </div>
     {% else %}
-        <!-- Schedule Cards Grid -->
+        <!-- Schedule Cards Grid with Block Sectioning -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="schedules-container">
-            {% for schedule in schedules %}
-                <div class="schedule-card bg-white rounded-lg shadow-md hover:shadow-lg border border-gray-200 overflow-hidden transition-all duration-200 transform hover:-translate-y-0.5"
-                     data-room="{{ schedule.room.id }}"
-                     data-day="{{ schedule.dayPattern }}"
-                     data-status="{{ schedule.status }}"
-                     data-subject="{{ schedule.subject.code }}">
+            {% for subjectKey, group in groupedSchedules %}
+                <!-- Subject Block Card -->
+                <div class="schedule-block bg-white rounded-lg shadow-md hover:shadow-lg border border-gray-200 overflow-hidden transition-all duration-200 transform hover:-translate-y-0.5"
+                     data-room="{{ group.sections[0].room.id }}"
+                     data-day="{{ group.sections[0].dayPattern }}"
+                     data-status="{{ group.sections[0].status }}"
+                     data-subject="{{ group.subject.code }}">
                     
                     <!-- Card Header with Status -->
-                    {% set yearLevel = schedule.subject.code|slice(4, 1) %}
+                    {% set yearLevel = group.subject.code|slice(4, 1) %}
                     {% if yearLevel == '1' or yearLevel == '0' %}
                         {% set headerColor = 'from-blue-500 to-blue-600' %}
                     {% elseif yearLevel == '2' %}
@@ -304,18 +305,13 @@
                                     </svg>
                                 </div>
                                 <div class="text-white">
-                                    <h3 class="font-bold text-lg">{{ schedule.subject.code }}-{{ schedule.section }}</h3>
-                                    <p class="text-xs opacity-90">{{ schedule.subject.title|slice(0, 35) }}{% if schedule.subject.title|length > 35 %}...{% endif %}</p>
+                                    <h3 class="font-bold text-lg">{{ group.subject.code }}</h3>
+                                    <p class="text-xs opacity-90">{{ group.subject.title|slice(0, 35) }}{% if group.subject.title|length > 35 %}...{% endif %}</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-1">
-                                {% if schedule.isConflicted %}
-                                    <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-semibold mr-1" title="Schedule has conflicts">
-                                        ⚠️ Conflict
-                                    </span>
-                                {% endif %}
-                                <span class="bg-white bg-opacity-90 px-2 py-0.5 rounded-full text-xs font-semibold {% if schedule.status == 'approved' %}text-green-700{% elseif schedule.status == 'pending' %}text-yellow-700{% else %}text-red-700{% endif %}">
-                                    {{ schedule.status|upper }}
+                                <span class="bg-white bg-opacity-90 px-2 py-1 rounded-full text-xs font-semibold text-gray-700">
+                                    {{ group.sections|length }} Section{{ group.sections|length > 1 ? 's' : '' }}
                                 </span>
                             </div>
                         </div>
@@ -323,104 +319,117 @@
 
                     <!-- Card Body -->
                     <div class="p-3">
-                        <!-- Section Info -->
+                        <!-- Subject Info -->
                         <div class="flex items-center gap-3 mb-3 pb-2 border-b border-gray-200">
-                            <div class="flex items-center text-xs text-gray-600">
-                                <svg class="h-3.5 w-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                Section {{ schedule.section }}
-                            </div>
                             <div class="flex items-center text-xs text-gray-600">
                                 <svg class="h-3.5 w-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
-                                Sem {{ schedule.semester }}
+                                Sem {{ group.semester }}
+                            </div>
+                            <div class="flex items-center text-xs text-gray-600">
+                                <svg class="h-3.5 w-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                AY {{ group.academicYear.year }}
                             </div>
                         </div>
 
-                        <!-- Room & Schedule Info -->
+                        <!-- Sections Grid -->
                         <div class="space-y-2 mb-3">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-2">
-                                    <p class="text-xs text-gray-500">Room</p>
-                                    <p class="text-sm font-semibold text-gray-900">{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}</p>
-                                    {% if schedule.room.building %}<p class="text-xs text-gray-500">{{ schedule.room.building }}</p>{% endif %}
-                                </div>
-                            </div>
-
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                    <svg class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
-                                <div class="ml-2">
-                                    <p class="text-xs text-gray-500">Schedule</p>
-                                    <p class="text-sm font-semibold text-gray-900">
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-1.5">
+                            {% for schedule in group.sections %}
+                                {% set sectionYearLevel = schedule.subject.code|slice(4, 1) %}
+                                {% if sectionYearLevel == '1' or sectionYearLevel == '0' %}
+                                    {% set sectionColor = 'blue' %}
+                                {% elseif sectionYearLevel == '2' %}
+                                    {% set sectionColor = 'green' %}
+                                {% elseif sectionYearLevel == '3' %}
+                                    {% set sectionColor = 'orange' %}
+                                {% elseif sectionYearLevel == '4' %}
+                                    {% set sectionColor = 'red' %}
+                                {% else %}
+                                    {% set sectionColor = 'blue' %}
+                                {% endif %}
+                                <div class="bg-gray-50 rounded-lg p-2 border border-gray-200 hover:bg-gray-100 transition">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <div class="flex items-center gap-2">
+                                            <span class="inline-flex items-center justify-center w-7 h-7 bg-{{ sectionColor }}-500 text-white rounded-md text-sm font-bold">
+                                                {{ schedule.section }}
+                                            </span>
+                                            <div>
+                                                <p class="text-xs font-medium text-gray-700">Section {{ schedule.section }}</p>
+                                                <p class="text-xs text-gray-500">{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            {% if schedule.isConflicted %}
+                                                <span class="bg-red-100 text-red-800 px-1.5 py-0.5 rounded text-xs font-semibold" title="Schedule has conflicts">
+                                                    ⚠️
+                                                </span>
+                                            {% endif %}
+                                            <span class="px-1.5 py-0.5 rounded text-xs font-semibold {% if schedule.status == 'approved' %}bg-green-100 text-green-700{% elseif schedule.status == 'pending' %}bg-yellow-100 text-yellow-700{% else %}bg-red-100 text-red-700{% endif %}">
+                                                {{ schedule.status|upper }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center text-xs text-gray-600 mb-1.5">
+                                        <svg class="h-3 w-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-1">
                                             {{ schedule.dayPattern }}
                                         </span>
                                         {{ schedule.startTime|date('h:i A') }} - {{ schedule.endTime|date('h:i A') }}
-                                    </p>
+                                    </div>
+                                    <!-- Section Actions -->
+                                    <div class="flex items-center justify-end gap-1 pt-1 border-t border-gray-300">
+                                        <button onclick="showScheduleDetails({{ schedule.id }})" 
+                                           class="inline-flex items-center justify-center w-8 h-8 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition" title="View Details">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </button>
+                                        <a href="{{ path('app_schedule_edit', {id: schedule.id}) }}" 
+                                           class="inline-flex items-center justify-center w-8 h-8 border border-blue-300 rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition" title="Edit Schedule">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </a>
+                                        <form method="post" action="{{ path('app_schedule_delete', {id: schedule.id}) }}" class="inline m-0" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ schedule.id) }}">
+                                            <button type="submit" class="inline-flex items-center justify-center w-8 h-8 border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 transition" title="Delete Schedule">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    
+                                    <!-- Hidden data for modal -->
+                                    <div id="schedule-data-{{ schedule.id }}" class="hidden"
+                                         data-code="{{ schedule.subject.code }}"
+                                         data-title="{{ schedule.subject.title }}"
+                                         data-section="{{ schedule.section }}"
+                                         data-semester="{{ schedule.semester }}"
+                                         data-year="{{ schedule.academicYear.year }}"
+                                         data-enrolled="{{ schedule.enrolledStudents }}"
+                                         data-days="{{ schedule.dayPattern }}"
+                                         data-start="{{ schedule.startTime|date('g:i A') }}"
+                                         data-end="{{ schedule.endTime|date('g:i A') }}"
+                                         data-room="{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}"
+                                         data-room-building="{{ schedule.room.building }}"
+                                         data-room-type="{{ schedule.room.type }}"
+                                         data-capacity="{{ schedule.room.capacity }}"
+                                         data-status="{{ schedule.status }}"
+                                         data-conflicted="{{ schedule.isConflicted ? 'yes' : 'no' }}"
+                                         data-notes="{{ schedule.notes|default('') }}"
+                                         data-created="{{ schedule.createdAt|date('F j, Y g:i A') }}"
+                                         data-updated="{{ schedule.updatedAt ? schedule.updatedAt|date('F j, Y g:i A') : '' }}">
+                                    </div>
                                 </div>
-                            </div>
+                            {% endfor %}
                         </div>
-
-                        <!-- Actions -->
-                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-200">
-                            <button onclick="showScheduleDetails({{ schedule.id }})" 
-                               class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition">
-                                <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                                View
-                            </button>
-                            <a href="{{ path('app_schedule_edit', {id: schedule.id}) }}" 
-                               class="inline-flex items-center px-3 py-2 border border-blue-300 rounded-lg text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition">
-                                <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                                Edit
-                            </a>
-                            <form method="post" action="{{ path('app_schedule_delete', {id: schedule.id}) }}" class="inline m-0" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ schedule.id) }}">
-                                <button type="submit" class="inline-flex items-center px-3 py-2 border border-red-300 rounded-lg text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 transition">
-                                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                    Delete
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <!-- Hidden data for modal -->
-                    <div id="schedule-data-{{ schedule.id }}" class="hidden"
-                         data-code="{{ schedule.subject.code }}"
-                         data-title="{{ schedule.subject.title }}"
-                         data-section="{{ schedule.section }}"
-                         data-semester="{{ schedule.semester }}"
-                         data-year="{{ schedule.academicYear.year }}"
-                         data-enrolled="{{ schedule.enrolledStudents }}"
-                         data-days="{{ schedule.dayPattern }}"
-                         data-start="{{ schedule.startTime|date('g:i A') }}"
-                         data-end="{{ schedule.endTime|date('g:i A') }}"
-                         data-room="{{ schedule.room.code }}{% if schedule.room.name %} - {{ schedule.room.name }}{% endif %}"
-                         data-room-building="{{ schedule.room.building }}"
-                         data-room-type="{{ schedule.room.type }}"
-                         data-capacity="{{ schedule.room.capacity }}"
-                         data-status="{{ schedule.status }}"
-                         data-conflicted="{{ schedule.isConflicted ? 'yes' : 'no' }}"
-                         data-notes="{{ schedule.notes|default('') }}"
-                         data-created="{{ schedule.createdAt|date('F j, Y g:i A') }}"
-                         data-updated="{{ schedule.updatedAt ? schedule.updatedAt|date('F j, Y g:i A') : '' }}">
                     </div>
                 </div>
             {% endfor %}
@@ -435,7 +444,7 @@ function filterSchedules() {
     const dayFilter = document.getElementById('day-filter').value;
     const statusFilter = document.getElementById('status-filter').value;
     
-    const cards = document.querySelectorAll('.schedule-card');
+    const cards = document.querySelectorAll('.schedule-block');
     let visibleCount = 0;
     
     cards.forEach(card => {

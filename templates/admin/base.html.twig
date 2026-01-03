@@ -646,8 +646,8 @@
                                         </span>
                                     {% endif %}
                                 </a>
-                                <a href="{{ path('admin_logs') }}" class="nav-item {% if app.request.get('_route') starts with 'admin_logs' %}bg-indigo-50 border-indigo-500 text-indigo-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} border-l-4 {% if not (app.request.get('_route') starts with 'admin_logs') %}border-transparent{% endif %} group flex items-center px-3 py-3 text-sm font-medium rounded-r-lg">
-                                    <svg class="{% if app.request.get('_route') starts with 'admin_logs' %}text-indigo-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %} mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <a href="{{ path('admin_activities') }}" class="nav-item {% if app.request.get('_route') starts with 'admin_activities' %}bg-indigo-50 border-indigo-500 text-indigo-700{% else %}text-gray-600 hover:bg-gray-50 hover:text-gray-900{% endif %} border-l-4 {% if not (app.request.get('_route') starts with 'admin_activities') %}border-transparent{% endif %} group flex items-center px-3 py-3 text-sm font-medium rounded-r-lg">
+                                    <svg class="{% if app.request.get('_route') starts with 'admin_activities' %}text-indigo-500{% else %}text-gray-400 group-hover:text-gray-500{% endif %} mr-4 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                     Activity Logs

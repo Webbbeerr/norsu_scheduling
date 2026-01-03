@@ -253,6 +253,29 @@
                             <p class="mt-1 text-xs text-gray-500">Select the subject for this schedule (scroll to see all)</p>
                         </div>
 
+                        <!-- Section Count Selector -->
+                        <div class="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-4">
+                            <label for="section_count" class="block text-sm font-semibold text-purple-900 mb-2">
+                                📊 How many sections do you want to create?
+                            </label>
+                            <select id="section_count" name="section_count"
+                                    class="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 transition text-lg font-medium"
+                                    onchange="generateSectionColumns()">
+                                <option value="" selected>Select number of sections...</option>
+                                <option value="1">1 Section</option>
+                                <option value="2">2 Sections</option>
+                                <option value="3">3 Sections</option>
+                                <option value="4">4 Sections</option>
+                                <option value="5">5 Sections</option>
+                                <option value="6">6 Sections</option>
+                                <option value="7">7 Sections</option>
+                                <option value="8">8 Sections</option>
+                                <option value="9">9 Sections</option>
+                                <option value="10">10 Sections</option>
+                            </select>
+                            <p class="mt-2 text-xs text-purple-700 italic">💡 Select multiple sections to create them all at once with different details</p>
+                        </div>
+
                         <!-- Existing Sections Info -->
                         <div id="existing-sections-info" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 shadow-sm mb-4">
                             <div class="flex items-start gap-2">
@@ -261,26 +284,17 @@
                                         Existing Sections for this Subject:
                                     </p>
                                     <div id="existing-sections-list" class="flex flex-wrap gap-1.5"></div>
-                                    <p class="text-xs text-blue-700 mt-1.5 italic">Choose a unique section name to avoid conflicts</p>
+                                    <p class="text-xs text-blue-700 mt-1.5 italic">
+                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                        </svg>
+                                        <span id="next-section-hint">New sections will automatically start from the next available letter</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="section" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Section <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="text" id="section" name="section" required
-                                           placeholder="e.g., A, B, 1, 2, BSIT-3A"
-                                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                                           oninput="checkSectionExists()">
-                                    <div id="section-status-icon" class="hidden absolute right-3 top-1/2 -translate-y-1/2"></div>
-                                </div>
-                                <p class="mt-1 text-xs text-gray-500" id="section-hint">Class section identifier</p>
-                            </div>
-
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Semester <span class="text-red-500">*</span>
@@ -296,7 +310,7 @@
                                 {% else %}
                                     <select id="semester" name="semester" required
                                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                                            onchange="updatePreview(); checkSectionExists(); updateExistingSectionsDisplay();">
+                                            onchange="checkSectionExists(); updateExistingSectionsDisplay(); refreshAllRoomSchedules(); recheckAllSections();">
                                         <option value="">Select semester...</option>
                                         <option value="1st">1st Semester</option>
                                         <option value="2nd">2nd Semester</option>
@@ -320,7 +334,7 @@
                                 {% else %}
                                     <select id="academic_year" name="academic_year" required
                                             class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                                            onchange="updatePreview(); checkSectionExists(); updateExistingSectionsDisplay();">
+                                            onchange="checkSectionExists(); updateExistingSectionsDisplay(); refreshAllRoomSchedules(); recheckAllSections();">
                                         <option value="">Select year...</option>
                                         {% for ay in academicYears %}
                                             <option value="{{ ay.id }}">{{ ay.year }}</option>
@@ -332,106 +346,19 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Schedule Time & Days -->
+                <!-- Step 2: Section Details (Dynamic Columns) -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold text-lg">2</div>
                         <div>
-                            <h2 class="text-xl font-semibold text-gray-900">Schedule Time & Days</h2>
-                            <p class="text-sm text-gray-500">Set the class meeting days and time</p>
+                            <h2 class="text-xl font-semibold text-gray-900">Section Details</h2>
+                            <p class="text-sm text-gray-500">Configure each section with specific details</p>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label for="day_pattern" class="block text-sm font-medium text-gray-700 mb-2">
-                                Day Pattern <span class="text-red-500">*</span>
-                            </label>
-                            <select id="day_pattern" name="day_pattern" required 
-                                    class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                                    onchange="updatePreview(); checkRoomConflicts();">
-                                <option value="">Select pattern...</option>
-                                <option value="M-W-F">Mon-Wed-Fri</option>
-                                <option value="T-TH">Tue-Thu</option>
-                                <option value="M-T-W-TH-F">Mon-Fri (Daily)</option>
-                                <option value="M-T">Mon-Tue</option>
-                                <option value="TH-F">Thu-Fri</option>
-                                <option value="SAT">Saturday Only</option>
-                                <option value="SUN">Sunday Only</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="start_time" class="block text-sm font-medium text-gray-700 mb-2">
-                                Start Time <span class="text-red-500">*</span>
-                            </label>
-                            <input type="time" id="start_time" name="start_time" required 
-                                   min="07:00" max="21:00"
-                                   onchange="calculateEndTime(); updatePreview(); checkRoomConflicts();"
-                                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition">
-                            <p class="mt-1 text-xs text-gray-500">Classes typically 7 AM - 9 PM</p>
-                        </div>
-
-                        <div>
-                            <label for="end_time" class="block text-sm font-medium text-gray-700 mb-2">
-                                End Time <span class="text-red-500">*</span>
-                            </label>
-                            <input type="time" id="end_time" name="end_time" required 
-                                   min="07:00" max="21:00"
-                                   onchange="updatePreview(); checkRoomConflicts();"
-                                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition">
-                            <p class="mt-1 text-xs text-gray-500" id="duration-hint">Duration: --</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 3: Room & Enrollment -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold text-lg">3</div>
-                        <div>
-                            <h2 class="text-xl font-semibold text-gray-900">Room & Enrollment</h2>
-                            <p class="text-sm text-gray-500">Assign a room and specify enrollment details</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="room" class="block text-sm font-medium text-gray-700 mb-2">
-                                Room <span class="text-red-500">*</span>
-                            </label>
-                            <select id="room" name="room" required 
-                                    class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"
-                                    onchange="checkCapacity(); updatePreview(); checkRoomConflicts();">
-                                <option value="">Select room...</option>
-                                {% for room in rooms %}
-                                    <option value="{{ room.id }}" data-capacity="{{ room.capacity }}">
-                                        {{ room.code }}{% if room.name %} - {{ room.name }}{% endif %}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500" id="room-conflict-hint">Select all details to check room availability</p>
-                        </div>
-
-                        <div>
-                            <label for="enrolled_students" class="block text-sm font-medium text-gray-700 mb-2">
-                                Enrolled Students
-                            </label>
-                            <input type="number" id="enrolled_students" name="enrolled_students" 
-                                   placeholder="Number of students" min="0" max="999"
-                                   onchange="checkCapacity()"
-                                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition">
-                            <p class="mt-1 text-xs" id="capacity-warning"></p>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
-                                Notes (Optional)
-                            </label>
-                            <textarea id="notes" name="notes" rows="3" 
-                                      placeholder="Additional notes, requirements, or special instructions..."
-                                      class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition"></textarea>
-                        </div>
+                    <!-- Dynamic Section Columns Container -->
+                    <div id="sections-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Columns will be generated by JavaScript -->
                     </div>
                 </div>
 
@@ -504,49 +431,6 @@
                 </div>
             </div>
 
-            <!-- Schedule Preview -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    Schedule Preview
-                </h3>
-                
-                <div id="schedule-preview" class="space-y-3">
-                    <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
-                        </svg>
-                        <div class="flex-1">
-                            <p class="text-xs font-medium text-gray-500">Subject</p>
-                            <p id="preview-subject" class="text-sm text-gray-900 font-medium">Not selected</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
-                        </svg>
-                        <div class="flex-1">
-                            <p class="text-xs font-medium text-gray-500">Schedule</p>
-                            <p id="preview-schedule" class="text-sm text-gray-900 font-medium">Not set</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start gap-3">
-                        <svg class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd"/>
-                        </svg>
-                        <div class="flex-1">
-                            <p class="text-xs font-medium text-gray-500">Room</p>
-                            <p id="preview-room" class="text-sm text-gray-900 font-medium">Not selected</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Helpful Tips -->
             <div class="bg-amber-50 rounded-lg shadow-sm border border-amber-200 p-5">
                 <h4 class="text-sm font-semibold text-amber-900 mb-3 flex items-center gap-2">
@@ -586,6 +470,583 @@
 // Store existing schedules data
 let existingSchedules = {};
 
+// Store all room schedules (for cross-subject conflict detection)
+let allRoomSchedules = {};
+
+// Rooms data for dropdowns
+const roomsData = [
+    {% for room in rooms %}
+    {id: {{ room.id }}, code: '{{ room.code }}', name: '{{ room.name|default('') }}', capacity: {{ room.capacity }}},
+    {% endfor %}
+];
+
+// Time slots (7:00 AM - 8:30 PM in 90-minute intervals)
+const timeSlots = [
+    {start: '07:00', end: '08:30', label: '7:00 AM - 8:30 AM'},
+    {start: '08:30', end: '10:00', label: '8:30 AM - 10:00 AM'},
+    {start: '10:00', end: '11:30', label: '10:00 AM - 11:30 AM'},
+    {start: '11:30', end: '13:00', label: '11:30 AM - 1:00 PM'},
+    {start: '13:00', end: '14:30', label: '1:00 PM - 2:30 PM'},
+    {start: '14:30', end: '16:00', label: '2:30 PM - 4:00 PM'},
+    {start: '16:00', end: '17:30', label: '4:00 PM - 5:30 PM'},
+    {start: '17:30', end: '19:00', label: '5:30 PM - 7:00 PM'},
+    {start: '19:00', end: '20:30', label: '7:00 PM - 8:30 PM'}
+];
+
+// Generate section columns dynamically
+function generateSectionColumns() {
+    const countSelect = document.getElementById('section_count');
+    const count = parseInt(countSelect.value);
+    const container = document.getElementById('sections-container');
+    
+    // If no selection, clear and return
+    if (!count || isNaN(count)) {
+        container.innerHTML = '<p class="text-center text-gray-500 py-8">Please select how many sections you want to create above</p>';
+        return;
+    }
+    
+    // Clear existing columns
+    container.innerHTML = '';
+    
+    // Get existing sections to determine starting letter
+    const existingSections = Object.values(existingSchedules).map(s => s.section.toUpperCase());
+    const startingIndex = getNextAvailableSectionIndex(existingSections);
+    
+    console.log('Existing sections:', existingSections);
+    console.log('Starting section index:', startingIndex);
+    
+    // Generate columns based on count
+    for (let i = 0; i < count; i++) {
+        const sectionLetter = String.fromCharCode(65 + startingIndex + i); // A, B, C, ... starting from next available
+        const columnHtml = createSectionColumn(i, sectionLetter);
+        container.insertAdjacentHTML('beforeend', columnHtml);
+    }
+    
+    // Update submit button text
+    const submitBtn = document.getElementById('submitBtnText');
+    if (count === 1) {
+        submitBtn.textContent = 'Create Schedule';
+    } else {
+        submitBtn.textContent = `Create ${count} Sections`;
+    }
+    
+    // Recheck all sections after generation
+    recheckAllSections();
+}
+
+// Helper: Find the next available section letter
+function getNextAvailableSectionIndex(existingSections) {
+    if (!existingSections || existingSections.length === 0) {
+        return 0; // Start with 'A' if no sections exist
+    }
+    
+    // Find the highest section letter
+    let maxIndex = -1;
+    existingSections.forEach(section => {
+        const sectionStr = String(section).trim().toUpperCase();
+        // Handle single letter sections (A, B, C, etc.)
+        if (sectionStr.length === 1 && sectionStr >= 'A' && sectionStr <= 'Z') {
+            const index = sectionStr.charCodeAt(0) - 65; // A=0, B=1, etc.
+            if (index > maxIndex) {
+                maxIndex = index;
+            }
+        }
+    });
+    
+    // Return next available index
+    return maxIndex + 1;
+}
+
+// Create a single section column HTML
+function createSectionColumn(index, defaultSection) {
+    return `
+        <div id="section-column-${index}" class="border-2 border-gray-200 rounded-lg p-4 bg-gradient-to-br from-white to-gray-50 hover:border-blue-300 transition relative">
+            
+            <!-- Conflict Details Sidebar -->
+            <div id="conflict-details-${index}" class="hidden absolute top-0 right-3 bg-white border-2 border-red-400 rounded-lg shadow-lg p-3 z-10 max-w-xs">
+                <div class="flex items-start gap-2 mb-2">
+                    <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <h4 class="font-bold text-sm text-red-700 mb-1">Conflicts Detected</h4>
+                        <div id="conflict-list-${index}" class="space-y-1 text-xs text-gray-700"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-lg text-gray-800">Section ${index + 1}</h3>
+                <div class="flex items-center gap-2">
+                    <span id="conflict-badge-${index}" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 cursor-pointer" onclick="toggleConflictDetails(${index})">Unchecked</span>
+                    <span class="text-xs text-gray-500">#${index + 1}</span>
+                </div>
+            </div>
+            
+            <div class="space-y-3">
+                <!-- Section Name -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Section Name <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" name="sections[${index}][section]" 
+                               value="${defaultSection}"
+                               placeholder="e.g., A, B, 1, 2"
+                               required
+                               oninput="recheckAllSections()"
+                               onblur="validateSectionName(${index})"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <div id="section-status-${index}" class="hidden absolute right-2 top-1/2 -translate-y-1/2"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-0.5" id="section-hint-${index}">Section identifier</p>
+                </div>
+                
+                <!-- Room -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Room <span class="text-red-500">*</span>
+                    </label>
+                    <select name="sections[${index}][room]" required
+                            onchange="fetchRoomSchedules(this.value); recheckAllSections();"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <option value="">Select room...</option>
+                        ${roomsData.map(room => `
+                            <option value="${room.id}" data-capacity="${room.capacity}">
+                                ${room.code}${room.name ? ' - ' + room.name : ''}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                
+                <!-- Day Pattern -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Day Pattern <span class="text-red-500">*</span>
+                    </label>
+                    <select name="sections[${index}][day_pattern]" required
+                            onchange="recheckAllSections()"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <option value="">Select...</option>
+                        <option value="M-W-F">Mon-Wed-Fri</option>
+                        <option value="T-TH">Tue-Thu</option>
+                        <option value="M-T-W-TH-F">Mon-Fri (Daily)</option>
+                        <option value="M-T">Mon-Tue</option>
+                        <option value="TH-F">Thu-Fri</option>
+                        <option value="SAT">Saturday Only</option>
+                        <option value="SUN">Sunday Only</option>
+                    </select>
+                </div>
+                
+                <!-- Time Slot -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Time Slot <span class="text-red-500">*</span>
+                    </label>
+                    <select name="sections[${index}][time_slot]" required
+                            onchange="setTimeValues(${index}, this.value); recheckAllSections();"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                        <option value="">Select time...</option>
+                        ${timeSlots.map((slot, idx) => `
+                            <option value="${idx}" data-start="${slot.start}" data-end="${slot.end}">
+                                ${slot.label}
+                            </option>
+                        `).join('')}
+                    </select>
+                    <input type="hidden" name="sections[${index}][start_time]" id="start-time-${index}">
+                    <input type="hidden" name="sections[${index}][end_time]" id="end-time-${index}">
+                </div>
+                
+                <!-- Enrolled Students -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Enrolled Students
+                    </label>
+                    <input type="number" name="sections[${index}][enrolled_students]" 
+                           placeholder="0"
+                           min="0" max="999"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Set start and end time hidden values based on selected time slot
+function setTimeValues(index, slotIndex) {
+    if (slotIndex === '') return;
+    
+    const slot = timeSlots[slotIndex];
+    document.getElementById(`start-time-${index}`).value = slot.start;
+    document.getElementById(`end-time-${index}`).value = slot.end;
+}
+
+// Validate section name for duplicates
+function validateSectionName(index) {
+    const input = document.querySelector(`input[name="sections[${index}][section]"]`);
+    const section = input.value.trim().toUpperCase();
+    const subjectId = document.getElementById('subject').value;
+    const semester = document.getElementById('semester').value;
+    const academicYear = document.getElementById('academic_year').value;
+    const hintElement = document.getElementById(`section-hint-${index}`);
+    const statusIcon = document.getElementById(`section-status-${index}`);
+    
+    if (!section || !subjectId || !semester || !academicYear) {
+        input.className = 'block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm';
+        if (statusIcon) statusIcon.classList.add('hidden');
+        if (hintElement) hintElement.textContent = 'Section identifier';
+        return;
+    }
+    
+    // Check if this section already exists
+    const key = `${subjectId}_${section}_${semester}_${academicYear}`;
+    const exists = existingSchedules[key];
+    
+    if (exists) {
+        input.className = 'block w-full rounded-md border-2 border-red-500 shadow-sm focus:border-red-600 focus:ring-red-500 text-sm bg-red-50';
+        if (statusIcon) {
+            statusIcon.innerHTML = '<svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+            statusIcon.classList.remove('hidden');
+        }
+        if (hintElement) {
+            hintElement.innerHTML = '⚠️ Already exists';
+            hintElement.className = 'text-xs text-red-600 mt-0.5 font-medium';
+        }
+    } else {
+        input.className = 'block w-full rounded-md border-2 border-green-500 shadow-sm focus:border-green-600 focus:ring-green-500 text-sm bg-green-50';
+        if (statusIcon) {
+            statusIcon.innerHTML = '<svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>';
+            statusIcon.classList.remove('hidden');
+        }
+        if (hintElement) {
+            hintElement.innerHTML = '✅ Available';
+            hintElement.className = 'text-xs text-green-600 mt-0.5 font-medium';
+        }
+    }
+}
+
+// Fetch room schedules for conflict detection across all subjects
+function fetchRoomSchedules(roomId) {
+    const semester = document.getElementById('semester').value;
+    const academicYear = document.getElementById('academic_year').value;
+    
+    if (!roomId || !semester || !academicYear) {
+        return;
+    }
+    
+    const url = `/admin/schedule/room-schedules/${roomId}/${semester}/${academicYear}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`=== ROOM ${roomId} SCHEDULES ===`, data.schedules);
+            // Store room schedules indexed by room ID
+            allRoomSchedules[roomId] = data.schedules || [];
+            
+            // Recheck all sections after getting room data
+            recheckAllSections();
+        })
+        .catch(error => {
+            console.error('Error fetching room schedules:', error);
+            allRoomSchedules[roomId] = [];
+        });
+}
+
+// Fetch all room schedules when semester or year changes
+function refreshAllRoomSchedules() {
+    const sectionCount = parseInt(document.getElementById('section_count')?.value || 1);
+    
+    // Get unique room IDs from all sections
+    const roomIds = new Set();
+    for (let i = 0; i < sectionCount; i++) {
+        const roomSelect = document.querySelector(`select[name="sections[${i}][room]"]`);
+        if (roomSelect && roomSelect.value) {
+            roomIds.add(roomSelect.value);
+        }
+    }
+    
+    // Fetch schedules for each room
+    roomIds.forEach(roomId => fetchRoomSchedules(roomId));
+}
+
+// Check for conflicts in a specific section column
+function checkSectionConflict(index) {
+    const subjectId = document.getElementById('subject').value;
+    const semester = document.getElementById('semester').value;
+    const academicYear = document.getElementById('academic_year').value;
+    const subjectSelect = document.getElementById('subject');
+    const selectedSubject = subjectSelect.options[subjectSelect.selectedIndex];
+    const subjectCode = selectedSubject?.getAttribute('data-subject-code') || '';
+    
+    const sectionInput = document.querySelector(`input[name="sections[${index}][section]"]`);
+    const roomSelect = document.querySelector(`select[name="sections[${index}][room]"]`);
+    const dayPatternSelect = document.querySelector(`select[name="sections[${index}][day_pattern]"]`);
+    const startTimeInput = document.getElementById(`start-time-${index}`);
+    const endTimeInput = document.getElementById(`end-time-${index}`);
+    
+    const badge = document.getElementById(`conflict-badge-${index}`);
+    const column = document.getElementById(`section-column-${index}`);
+    const conflictDetailsDiv = document.getElementById(`conflict-details-${index}`);
+    const conflictList = document.getElementById(`conflict-list-${index}`);
+    
+    if (!sectionInput || !roomSelect || !dayPatternSelect || !startTimeInput || !endTimeInput) {
+        console.log(`Section ${index}: Missing elements`);
+        return;
+    }
+    
+    const section = sectionInput.value.trim().toUpperCase();
+    const roomId = roomSelect.value;
+    const roomText = roomSelect.options[roomSelect.selectedIndex]?.text || '';
+    const dayPattern = dayPatternSelect.value;
+    const startTime = startTimeInput.value;
+    const endTime = endTimeInput.value;
+    
+    console.log(`=== Checking Section ${index + 1} ===`);
+    console.log('Section:', section, 'Room:', roomId, roomText);
+    console.log('Day:', dayPattern, 'Time:', startTime, '-', endTime);
+    
+    // Check if all required fields are filled
+    if (!subjectId || !semester || !academicYear || !section || !roomId || !dayPattern || !startTime || !endTime) {
+        console.log(`Section ${index + 1}: Incomplete fields`);
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 cursor-pointer';
+        badge.textContent = 'Incomplete';
+        
+        // Remove all border color classes and set to gray
+        column.classList.remove('border-green-500', 'border-red-500', 'border-gray-200', 'border-2');
+        column.classList.add('border-gray-200', 'border-2');
+        
+        conflictDetailsDiv.classList.add('hidden');
+        return;
+    }
+    
+    let hasConflict = false;
+    let conflictDetails = [];
+    
+    // 1. Check for duplicate section name
+    const sectionKey = `${subjectId}_${section}_${semester}_${academicYear}`;
+    if (existingSchedules[sectionKey]) {
+        hasConflict = true;
+        const schedule = existingSchedules[sectionKey];
+        conflictDetails.push({
+            type: 'duplicate',
+            message: `<strong>${subjectCode} - Section ${section}</strong><br><span class="text-red-600">Already exists in the system</span>`
+        });
+    }
+    
+    // 2. Check for room-time conflicts with existing schedules (same subject)
+    for (const [key, schedule] of Object.entries(existingSchedules)) {
+        if (schedule.semester === semester && schedule.yearId == academicYear) {
+            // Check if same room
+            if (schedule.roomId == roomId) {
+                // Check if days overlap
+                if (daysOverlap(dayPattern, schedule.dayPattern)) {
+                    // Check if times overlap
+                    if (timesOverlap(startTime, endTime, schedule.startTime, schedule.endTime)) {
+                        hasConflict = true;
+                        conflictDetails.push({
+                            type: 'room',
+                            message: `<strong>${schedule.subjectCode} - Section ${schedule.section}</strong><br><span class="text-red-600">Room ${roomText.split(' - ')[0]} is occupied</span><br><span class="text-xs text-gray-600">${schedule.dayPattern} ${schedule.startTime}-${schedule.endTime}</span>`
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 3. Check for room conflicts across ALL subjects (from cached data)
+    if (!hasConflict && roomId && allRoomSchedules[roomId]) {
+        const roomSchedules = allRoomSchedules[roomId];
+        for (const schedule of roomSchedules) {
+            // Check if days overlap
+            if (daysOverlap(dayPattern, schedule.dayPattern)) {
+                // Check if times overlap
+                if (timesOverlap(startTime, endTime, schedule.startTime, schedule.endTime)) {
+                    hasConflict = true;
+                    conflictDetails.push({
+                        type: 'room_global',
+                        message: `<strong>${schedule.subjectCode} - Section ${schedule.section}</strong><br><span class="text-red-600">Room ${roomText.split(' - ')[0]} is occupied</span><br><span class="text-xs text-gray-600">${schedule.dayPattern} ${schedule.startTime}-${schedule.endTime}</span>`
+                    });
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 4. Check for conflicts with other columns in this form
+    const sectionCount = parseInt(document.getElementById('section_count').value);
+    console.log(`Checking against ${sectionCount} sections`);
+    
+    for (let i = 0; i < sectionCount; i++) {
+        if (i === index) continue; // Skip self
+        
+        const otherSectionInput = document.querySelector(`input[name="sections[${i}][section]"]`);
+        const otherRoomSelect = document.querySelector(`select[name="sections[${i}][room]"]`);
+        const otherDaySelect = document.querySelector(`select[name="sections[${i}][day_pattern]"]`);
+        const otherStartTime = document.getElementById(`start-time-${i}`);
+        const otherEndTime = document.getElementById(`end-time-${i}`);
+        
+        if (!otherSectionInput || !otherRoomSelect || !otherDaySelect || !otherStartTime || !otherEndTime) {
+            console.log(`Section ${i + 1}: Missing elements, skipping`);
+            continue;
+        }
+        
+        const otherSection = otherSectionInput.value.trim().toUpperCase();
+        const otherRoom = otherRoomSelect.value;
+        const otherRoomText = otherRoomSelect.options[otherRoomSelect.selectedIndex]?.text || '';
+        const otherDay = otherDaySelect.value;
+        const otherStart = otherStartTime.value;
+        const otherEnd = otherEndTime.value;
+        
+        console.log(`Comparing with Section ${i + 1}:`, {otherSection, otherRoom, otherDay, otherStart, otherEnd});
+        
+        if (!otherSection || !otherRoom || !otherDay || !otherStart || !otherEnd) {
+            console.log(`Section ${i + 1}: Incomplete fields, skipping`);
+            continue;
+        }
+        
+        // Check duplicate section name within form
+        if (section === otherSection) {
+            console.log(`CONFLICT: Duplicate section name ${section}`);
+            hasConflict = true;
+            conflictDetails.push({
+                type: 'duplicate_form',
+                message: `<strong>${subjectCode} - Section ${section}</strong><br><span class="text-red-600">Duplicate with Section ${i + 1} in this form</span>`
+            });
+        }
+        
+        // Check room-time conflict within form
+        console.log(`Room check: ${otherRoom} == ${roomId}?`, otherRoom == roomId);
+        console.log(`Days overlap: ${dayPattern} vs ${otherDay}?`, daysOverlap(dayPattern, otherDay));
+        console.log(`Times overlap: ${startTime}-${endTime} vs ${otherStart}-${otherEnd}?`, timesOverlap(startTime, endTime, otherStart, otherEnd));
+        
+        if (otherRoom == roomId && daysOverlap(dayPattern, otherDay) && timesOverlap(startTime, endTime, otherStart, otherEnd)) {
+            console.log(`CONFLICT: Room-time conflict detected!`);
+            hasConflict = true;
+            conflictDetails.push({
+                type: 'room_form',
+                message: `<strong>${subjectCode} - Section ${otherSection}</strong><br><span class="text-red-600">Room ${otherRoomText.split(' - ')[0]} conflict with Section ${i + 1}</span><br><span class="text-xs text-gray-600">${otherDay} ${otherStart}-${otherEnd}</span>`
+            });
+        }
+    }
+    
+    console.log(`Section ${index + 1} final result: hasConflict=${hasConflict}, conflictCount=${conflictDetails.length}`);
+    
+    // Update visual indicator and details
+    if (hasConflict) {
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium cursor-pointer hover:bg-red-200';
+        badge.textContent = `❌ ${conflictDetails.length} Conflict${conflictDetails.length > 1 ? 's' : ''}`;
+        
+        // Remove all border color classes and add red
+        column.classList.remove('border-gray-200', 'border-green-500', 'border-red-500', 'border-2');
+        column.classList.add('border-red-500', 'border-2');
+        
+        // Populate conflict details and show them
+        conflictList.innerHTML = conflictDetails.map(detail => `
+            <div class="bg-red-50 p-2 rounded border border-red-200 mb-1">
+                ${detail.message}
+            </div>
+        `).join('');
+        
+        // Show the conflict details panel
+        conflictDetailsDiv.classList.remove('hidden');
+    } else {
+        badge.textContent = '✅ No Conflict';
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium cursor-pointer';
+        
+        // Remove all border color classes and add green
+        column.classList.remove('border-gray-200', 'border-red-500', 'border-green-500', 'border-2');
+        column.classList.add('border-green-500', 'border-2');
+        
+        conflictDetailsDiv.classList.add('hidden');
+    }
+    
+    // Return conflict status for submit button control
+    return hasConflict;
+}
+
+// Toggle conflict details visibility
+function toggleConflictDetails(index) {
+    const detailsDiv = document.getElementById(`conflict-details-${index}`);
+    if (detailsDiv) {
+        detailsDiv.classList.toggle('hidden');
+    }
+}
+
+// Helper: Check if day patterns overlap
+function daysOverlap(pattern1, pattern2) {
+    const days1 = pattern1.split('-');
+    const days2 = pattern2.split('-');
+    return days1.some(day => days2.includes(day));
+}
+
+// Helper: Check if time ranges overlap
+function timesOverlap(start1, end1, start2, end2) {
+    const s1 = timeToMinutes(start1);
+    const e1 = timeToMinutes(end1);
+    const s2 = timeToMinutes(start2);
+    const e2 = timeToMinutes(end2);
+    return (s1 < e2 && e1 > s2);
+}
+
+// Helper: Convert time string to minutes
+function timeToMinutes(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Recheck all sections for conflicts
+function recheckAllSections() {
+    const sectionCount = parseInt(document.getElementById('section_count')?.value || 1);
+    let anyConflict = false;
+    
+    for (let i = 0; i < sectionCount; i++) {
+        const hasConflict = checkSectionConflict(i);
+        if (hasConflict) {
+            anyConflict = true;
+        }
+    }
+    
+    // Update submit button state
+    updateSubmitButton(anyConflict);
+}
+
+// Update submit button based on conflict status
+function updateSubmitButton(hasConflicts) {
+    const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
+    
+    if (hasConflicts) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        submitBtn.classList.remove('hover:bg-green-700', 'hover:shadow-md');
+        submitBtnText.textContent = '⚠️ Cannot Create (Conflicts Detected)';
+    } else {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        submitBtn.classList.add('hover:bg-green-700', 'hover:shadow-md');
+        
+        const sectionCount = parseInt(document.getElementById('section_count')?.value || 1);
+        if (sectionCount === 1) {
+            submitBtnText.textContent = 'Create Schedule';
+        } else {
+            submitBtnText.textContent = `Create ${sectionCount} Sections`;
+        }
+    }
+}
+
+// Initialize: Wait for user to select number of sections (don't auto-generate)
+document.addEventListener('DOMContentLoaded', function() {
+    // Don't generate sections automatically - wait for user selection
+    // generateSectionColumns();
+});
+
+
 // Update subject info preview and show existing sections
 function updateSubjectInfo() {
     const select = document.getElementById('subject');
@@ -599,11 +1060,14 @@ function updateSubjectInfo() {
         
         // Fetch and display existing sections for this subject
         fetchExistingSections(select.value);
+        
+        // Recheck all sections for conflicts
+        recheckAllSections();
     } else {
         document.getElementById('preview-subject').textContent = 'Not selected';
         hideExistingSections();
     }
-    updatePreview();
+    // updatePreview() removed - not used in block sectioning
 }
 
 // Fetch existing sections for the selected subject
@@ -625,7 +1089,13 @@ function fetchExistingSections(subjectId) {
                 if (response.status === 403) {
                     console.error('403 Forbidden - Subject may not belong to your department');
                 }
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Try to get the error message from the response
+                return response.json().then(errData => {
+                    console.error('Backend error:', errData);
+                    throw new Error(`HTTP ${response.status}: ${errData.error || 'Unknown error'}`);
+                }).catch(() => {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                });
             }
             return response.json();
         })
@@ -637,6 +1107,11 @@ function fetchExistingSections(subjectId) {
             console.log('Sections array:', data.sections);
             
             existingSchedules = data.schedules || {};
+            
+            // Regenerate section columns with correct starting letters
+            generateSectionColumns();
+            
+            // Display existing sections info
             displayExistingSections(data.sections || []);
             
             console.log('=== STORED IN existingSchedules ===');
@@ -703,6 +1178,15 @@ function updateExistingSectionsDisplay() {
                 Section ${section}
             </span>`
         ).join('');
+        
+        // Update hint to show next available section
+        const nextIndex = getNextAvailableSectionIndex(currentSections.map(s => s.toUpperCase()));
+        const nextSection = String.fromCharCode(65 + nextIndex);
+        const hintElement = document.getElementById('next-section-hint');
+        if (hintElement) {
+            hintElement.textContent = `New sections will automatically start from Section ${nextSection}`;
+        }
+        
         infoBox.classList.remove('hidden');
     } else {
         hideExistingSections();
@@ -715,9 +1199,15 @@ function hideExistingSections() {
     existingSchedules = {};
 }
 
-// Check if section already exists
+// Check if section already exists (NOT USED in block sectioning mode)
 function checkSectionExists() {
     const sectionInput = document.getElementById('section');
+    
+    // Element doesn't exist in block sectioning mode, skip
+    if (!sectionInput) {
+        return;
+    }
+    
     const section = sectionInput.value.trim().toUpperCase();
     const subjectSelect = document.getElementById('subject');
     const subjectId = subjectSelect ? subjectSelect.value : '';
@@ -952,50 +1442,7 @@ function checkCapacity() {
     }
 }
 
-// Update comprehensive preview
-function updatePreview() {
-    const dayPattern = document.getElementById('day_pattern').value;
-    const startTime = document.getElementById('start_time').value;
-    const endTime = document.getElementById('end_time').value;
-    const room = document.getElementById('room');
-    
-    // Update schedule preview
-    if (dayPattern && startTime && endTime) {
-        const dayLabels = {
-            'M-W-F': 'Mon/Wed/Fri',
-            'T-TH': 'Tue/Thu',
-            'M-T-W-TH-F': 'Mon-Fri',
-            'M-T': 'Mon/Tue',
-            'TH-F': 'Thu/Fri',
-            'SAT': 'Saturday',
-            'SUN': 'Sunday'
-        };
-        
-        const start = new Date('2000-01-01 ' + startTime);
-        const end = new Date('2000-01-01 ' + endTime);
-        const startFormatted = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const endFormatted = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        
-        document.getElementById('preview-schedule').textContent = 
-            `${dayLabels[dayPattern] || dayPattern} • ${startFormatted} - ${endFormatted}`;
-    } else {
-        document.getElementById('preview-schedule').textContent = 'Not set';
-    }
-    
-    // Update room preview
-    if (room.value) {
-        const selectedOption = room.options[room.selectedIndex];
-        document.getElementById('preview-room').textContent = selectedOption.text;
-    } else {
-        document.getElementById('preview-room').textContent = 'Not selected';
-    }
-    
-    updateDuration();
-}
-
-// Add event listeners
-document.getElementById('start_time').addEventListener('change', updateDuration);
-document.getElementById('end_time').addEventListener('change', updateDuration);
+// Note: Preview and duration functions removed as they're not used in block sectioning mode
 
 // Form submission
 document.getElementById('scheduleForm').addEventListener('submit', function(e) {
@@ -1012,7 +1459,9 @@ document.getElementById('scheduleForm').addEventListener('submit', function(e) {
     }, 3000);
 });
 
-// Live Conflict Detection
+// Live Conflict Detection - NOT USED IN BLOCK SECTIONING MODE
+// This function is kept commented out for potential future use
+/*
 let conflictCheckTimeout;
 
 function checkForConflicts() {
@@ -1090,7 +1539,10 @@ function checkForConflicts() {
         });
     }, 500);
 }
+*/
 
+// displayConflictResults and getCheckedItems also commented out - not used in block sectioning
+/*
 function displayConflictResults(data) {
     const conflictBox = document.getElementById('live-conflict-detection');
     const iconEl = document.getElementById('conflict-icon');
@@ -1260,16 +1712,10 @@ function getCheckedItems() {
     
     return html;
 }
+*/
 
-// Add event listeners for live checking
-document.getElementById('subject').addEventListener('change', checkForConflicts);
-document.getElementById('section').addEventListener('input', checkForConflicts);
-document.getElementById('semester').addEventListener('change', checkForConflicts);
-document.getElementById('academic_year').addEventListener('change', checkForConflicts);
-document.getElementById('room').addEventListener('change', checkForConflicts);
-document.getElementById('day_pattern').addEventListener('change', checkForConflicts);
-document.getElementById('start_time').addEventListener('change', checkForConflicts);
-document.getElementById('end_time').addEventListener('change', checkForConflicts);
+// Note: Live conflict checking for old single-section form removed
+// Block sectioning uses recheckAllSections() instead
 
 // Filter subjects by semester dropdown
 function filterSubjectsBySemester() {
