@@ -774,8 +774,8 @@ function checkSectionExists() {
     if (exists) {
         console.log('🚫 DUPLICATE FOUND:', exists);
         
-        // Change input background to light purple
-        sectionInput.className = 'block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition bg-purple-50';
+        // Change input border and background to RED
+        sectionInput.className = 'block w-full rounded-lg border-2 border-red-500 shadow-sm focus:border-red-600 focus:ring-red-500 transition bg-red-50';
         
         // Show error icon
         if (statusIcon) {
@@ -794,16 +794,23 @@ function checkSectionExists() {
     } else {
         console.log('✅ Section available for selected semester/year');
         
-        // Reset input to normal
-        sectionInput.className = 'block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition';
+        // Change input border and background to GREEN
+        sectionInput.className = 'block w-full rounded-lg border-2 border-green-500 shadow-sm focus:border-green-600 focus:ring-green-500 transition bg-green-50';
         
-        // Hide status icon
+        // Show success icon
         if (statusIcon) {
-            statusIcon.classList.add('hidden');
+            statusIcon.innerHTML = `
+                <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+            `;
+            statusIcon.classList.remove('hidden');
         }
         
-        hintElement.textContent = 'Class section identifier';
-        hintElement.className = 'mt-1 text-xs text-gray-500';
+        hintElement.innerHTML = `<span class="flex items-center gap-1.5">
+            ✅ Section ${section} is available
+        </span>`;
+        hintElement.className = 'mt-1 text-sm text-green-600 font-medium';
     }
 }
 
