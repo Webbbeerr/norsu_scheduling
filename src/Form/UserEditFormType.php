@@ -226,6 +226,7 @@ class UserEditFormType extends AbstractType
         $resolver->setDefaults([
             'data_class' => User::class,
             'include_password_reset' => false,
+            'is_department_head' => false,
         ]);
     }
 }

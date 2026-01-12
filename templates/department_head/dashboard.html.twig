@@ -278,38 +278,220 @@
         </div>
 
         <!-- Faculty Workload -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Faculty Workload</h2>
-            
-            <div class="space-y-6">
-                {% if dashboard_data.faculty_loads|length > 0 %}
-                    {% for load_data in dashboard_data.faculty_loads %}
-                        <!-- Faculty Member -->
-                        <div class="flex items-center space-x-4">
-                            <div class="h-10 w-10 rounded-full {% if load_data.percentage >= 100 %}gradient-danger{% elseif load_data.percentage >= 85 %}gradient-warning{% else %}gradient-success{% endif %} flex items-center justify-center text-white font-medium">
-                                {{ load_data.faculty.firstName|first }}{{ load_data.faculty.lastName|first }}
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between mb-1">
-                                    <p class="text-sm font-medium text-gray-900">{{ load_data.faculty.firstName }} {{ load_data.faculty.lastName }}</p>
-                                    <span class="text-xs text-gray-500">{{ load_data.current_load }}/{{ load_data.max_load }} hrs</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="{% if load_data.percentage >= 100 %}gradient-danger{% elseif load_data.percentage >= 85 %}gradient-warning{% else %}gradient-success{% endif %} h-2 rounded-full" style="width: {{ load_data.percentage > 100 ? 100 : load_data.percentage }}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center py-8">
-                        <p class="text-gray-500">No faculty workload data available</p>
-                    </div>
-                {% endif %}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8"
+             x-data="facultyWorkloadTable()" x-init="init()">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold text-gray-900">Faculty Workload</h2>
+                <div class="flex items-center gap-2">
+                    <select x-model="workloadFilter" 
+                            @change="filterData()"
+                            class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">All Faculty</option>
+                        <option value="overloaded">Overloaded (≥100%)</option>
+                        <option value="near-full">Near Full (≥85%)</option>
+                        <option value="available">Available (<85%)</option>
+                    </select>
+                </div>
             </div>
+            
+            <!-- Table View -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="border-b border-gray-200">
+                        <tr>
+                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-50"
+                                @click="sortBy('name')">
+                                <div class="flex items-center gap-1">
+                                    <span>Faculty</span>
+                                    <span class="flex flex-col">
+                                        <svg class="w-3 h-3" :class="sortField === 'name' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                        </svg>
+                                        <svg class="w-3 h-3 -mt-1" :class="sortField === 'name' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </th>
+                            <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-50"
+                                @click="sortBy('percentage')">
+                                <div class="flex items-center gap-1">
+                                    <span>Load</span>
+                                    <span class="flex flex-col">
+                                        <svg class="w-3 h-3" :class="sortField === 'percentage' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/>
+                                        </svg>
+                                        <svg class="w-3 h-3 -mt-1" :class="sortField === 'percentage' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-if="filteredData.length === 0">
+                            <tr>
+                                <td colspan="2" class="px-2 py-8 text-center text-sm text-gray-500">
+                                    No faculty members found
+                                </td>
+                            </tr>
+                        </template>
+                        
+                        <template x-for="load in filteredData.slice(0, 10)" :key="load.id">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-2 py-3">
+                                    <div class="flex items-center space-x-3">
+                                        <div 
+                                            class="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                                            :class="{
+                                                'bg-gradient-to-br from-red-500 to-red-600': load.percentage >= 100,
+                                                'bg-gradient-to-br from-yellow-500 to-yellow-600': load.percentage >= 85 && load.percentage < 100,
+                                                'bg-gradient-to-br from-green-500 to-green-600': load.percentage < 85
+                                            }"
+                                            x-text="load.initials">
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-medium text-gray-900 truncate" x-text="load.name"></p>
+                                            <p class="text-xs text-gray-500">
+                                                <span x-text="load.current_load"></span>/<span x-text="load.max_load"></span> hrs
+                                                <span class="ml-1" :class="{
+                                                    'text-red-600 font-semibold': load.percentage >= 100,
+                                                    'text-yellow-600 font-semibold': load.percentage >= 85 && load.percentage < 100,
+                                                    'text-green-600': load.percentage < 85
+                                                }">
+                                                    (<span x-text="Math.round(load.percentage)"></span>%)
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-2 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 bg-gray-200 rounded-full h-2 min-w-[60px]">
+                                            <div 
+                                                class="h-2 rounded-full transition-all duration-300"
+                                                :class="{
+                                                    'bg-gradient-to-r from-red-500 to-red-600': load.percentage >= 100,
+                                                    'bg-gradient-to-r from-yellow-500 to-yellow-600': load.percentage >= 85 && load.percentage < 100,
+                                                    'bg-gradient-to-r from-green-500 to-green-600': load.percentage < 85
+                                                }"
+                                                :style="`width: ${Math.min(load.percentage, 100)}%`">
+                                            </div>
+                                        </div>
+                                        <span 
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                            :class="{
+                                                'bg-red-100 text-red-800': load.percentage >= 100,
+                                                'bg-yellow-100 text-yellow-800': load.percentage >= 85 && load.percentage < 100,
+                                                'bg-green-100 text-green-800': load.percentage < 85
+                                            }">
+                                            <template x-if="load.percentage >= 100">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </template>
+                                            <template x-if="load.percentage >= 85 && load.percentage < 100">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </template>
+                                            <template x-if="load.percentage < 85">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                                </svg>
+                                            </template>
+                                            <span x-text="load.statusLabel"></span>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Show more link if there are more than 10 items -->
+            <template x-if="filteredData.length > 10">
+                <div class="mt-4 text-center">
+                    <p class="text-sm text-gray-500">
+                        Showing <span x-text="Math.min(10, filteredData.length)"></span> of <span x-text="filteredData.length"></span> faculty members
+                    </p>
+                </div>
+            </template>
 
             <a href="{{ path('department_head_reports_faculty_workload') }}" class="block w-full mt-6 text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-2 border border-blue-200 rounded-xl hover:bg-blue-50 transition-colors duration-200">
                 View Detailed Workload Report
             </a>
         </div>
+
+        <script>
+            function facultyWorkloadTable() {
+                return {
+                    allData: [],
+                    filteredData: [],
+                    workloadFilter: 'all',
+                    sortField: 'percentage',
+                    sortDirection: 'desc',
+                    
+                    init() {
+                        this.allData = [
+                            {% if dashboard_data.faculty_loads|length > 0 %}
+                                {% for load_data in dashboard_data.faculty_loads %}
+                                {
+                                    id: {{ load_data.faculty.id }},
+                                    name: '{{ load_data.faculty.firstName|e('js') }} {{ load_data.faculty.lastName|e('js') }}',
+                                    initials: '{{ load_data.faculty.firstName|first }}{{ load_data.faculty.lastName|first }}',
+                                    current_load: {{ load_data.current_load }},
+                                    max_load: {{ load_data.max_load }},
+                                    percentage: {{ load_data.percentage }},
+                                    statusLabel: {{ load_data.percentage >= 100 ? '"Full"' : (load_data.percentage >= 85 ? '"Near"' : '"OK"') }}
+                                },
+                                {% endfor %}
+                            {% endif %}
+                        ];
+                        this.filterData();
+                    },
+                    
+                    filterData() {
+                        let filtered = [...this.allData];
+                        
+                        // Apply workload filter
+                        if (this.workloadFilter === 'overloaded') {
+                            filtered = filtered.filter(f => f.percentage >= 100);
+                        } else if (this.workloadFilter === 'near-full') {
+                            filtered = filtered.filter(f => f.percentage >= 85 && f.percentage < 100);
+                        } else if (this.workloadFilter === 'available') {
+                            filtered = filtered.filter(f => f.percentage < 85);
+                        }
+                        
+                        // Apply sorting
+                        filtered.sort((a, b) => {
+                            let aVal = a[this.sortField];
+                            let bVal = b[this.sortField];
+                            
+                            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                            
+                            if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+                            if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+                            return 0;
+                        });
+                        
+                        this.filteredData = filtered;
+                    },
+                    
+                    sortBy(field) {
+                        if (this.sortField === field) {
+                            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this.sortField = field;
+                            this.sortDirection = field === 'percentage' ? 'desc' : 'asc';
+                        }
+                        this.filterData();
+                    }
+                };
+            }
+        </script>
     </div>
 {% endblock %}

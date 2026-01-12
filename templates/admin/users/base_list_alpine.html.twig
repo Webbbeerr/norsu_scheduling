@@ -1,0 +1,635 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block main_content %}
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">{{ page_title }}</h1>
+            {% if user_type_description is defined %}
+                <p class="mt-1 text-sm text-gray-600">{{ user_type_description }}</p>
+            {% endif %}
+        </div>
+        {% block page_actions %}
+        <div class="flex space-x-3">
+            {% if user_type == 'all' %}
+                <a href="{{ path('admin_users_create') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Add New User
+                </a>
+            {% endif %}
+        </div>
+        {% endblock %}
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {% block stats_cards %}
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        {% block stat_icon %}
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                        </svg>
+                        {% endblock %}
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <p class="text-sm font-medium text-gray-600">{{ user_type == 'all' ? 'Total Users' : page_title }}</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ statistics.total ?? '0' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <p class="text-sm font-medium text-gray-600">Active</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ statistics.active ?? '0' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <p class="text-sm font-medium text-gray-600">Inactive</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ statistics.inactive ?? '0' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1">
+                    <p class="text-sm font-medium text-gray-600">This Month</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ statistics.thisMonth ?? '0' }}</p>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+    </div>
+
+    <script>
+        window.usersTableData = {
+            users: [
+                {% for user in users %}
+                {
+                    id: {{ user.id }},
+                    username: '{{ user.username|e('js') }}',
+                    fullName: '{{ user.fullName|e('js') }}',
+                    email: '{{ user.email|e('js') }}',
+                    employeeId: '{{ user.employeeId|default('')|e('js') }}',
+                    role: {{ user.role }},
+                    roleDisplayName: '{{ user.roleDisplayName|e('js') }}',
+                    departmentName: '{{ user.department ? user.department.name|e('js') : '' }}',
+                    departmentId: {{ user.department ? user.department.id : 'null' }},
+                    collegeId: {{ (user.department and user.department.college) ? user.department.college.id : 'null' }},
+                    isActive: {{ user.isActive ? 'true' : 'false' }},
+                    deactivateToken: '{{ csrf_token('deactivate_user_' ~ user.id) }}',
+                    activateToken: '{{ csrf_token('activate_user_' ~ user.id) }}',
+                    deleteToken: '{{ csrf_token('delete_user_' ~ user.id) }}'
+                }{{ not loop.last ? ',' : '' }}
+                {% endfor %}
+            ],
+            colleges: [
+                {% if colleges is defined %}
+                    {% for college in colleges %}
+                    { id: {{ college.id }}, name: '{{ college.name|e('js') }}' }{{ not loop.last ? ',' : '' }}
+                    {% endfor %}
+                {% endif %}
+            ],
+            departments: [
+                {% if departments is defined %}
+                    {% for department in departments %}
+                    { id: {{ department.id }}, name: '{{ department.name|e('js') }}', collegeId: {{ department.college.id }} }{{ not loop.last ? ',' : '' }}
+                    {% endfor %}
+                {% endif %}
+            ]
+        };
+    </script>
+
+    <!-- Users DataTable with Alpine.js -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" 
+         x-data="{
+            allData: window.usersTableData.users,
+            colleges: window.usersTableData.colleges,
+            allDepartments: window.usersTableData.departments,
+            filteredData: [],
+            paginatedData: [],
+            availableDepartments: [],
+            search: '',
+            statusFilter: 'all',
+            roleFilter: 'all',
+            collegeFilter: 'all',
+            departmentFilter: 'all',
+            sortField: 'username',
+            sortDirection: 'asc',
+            perPage: 25,
+            currentPage: 1,
+            totalPages: 1,
+            totalFiltered: 0,
+            startEntry: 0,
+            endEntry: 0,
+            
+            init() {
+                this.availableDepartments = [...this.allDepartments];
+                this.filterData();
+            },
+            
+            filterData() {
+                let filtered = [...this.allData];
+                
+                if (this.search) {
+                    const searchLower = this.search.toLowerCase();
+                    filtered = filtered.filter(user => 
+                        user.username.toLowerCase().includes(searchLower) ||
+                        user.fullName.toLowerCase().includes(searchLower) ||
+                        user.email.toLowerCase().includes(searchLower) ||
+                        user.employeeId.toLowerCase().includes(searchLower) ||
+                        user.departmentName.toLowerCase().includes(searchLower)
+                    );
+                }
+                
+                if (this.roleFilter !== 'all') {
+                    filtered = filtered.filter(user => user.role == this.roleFilter);
+                }
+                
+                if (this.statusFilter !== 'all') {
+                    filtered = filtered.filter(user => {
+                        if (this.statusFilter === 'active') return user.isActive;
+                        if (this.statusFilter === 'inactive') return !user.isActive;
+                        return true;
+                    });
+                }
+                
+                if (this.collegeFilter !== 'all') {
+                    filtered = filtered.filter(user => user.collegeId == this.collegeFilter);
+                }
+                
+                if (this.departmentFilter !== 'all') {
+                    filtered = filtered.filter(user => user.departmentId == this.departmentFilter);
+                }
+                
+                filtered.sort((a, b) => {
+                    let aVal = a[this.sortField] || '';
+                    let bVal = b[this.sortField] || '';
+                    
+                    if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                    if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                    
+                    if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                this.filteredData = filtered;
+                this.totalFiltered = filtered.length;
+                this.currentPage = 1;
+                this.updatePagination();
+            },
+            
+            updatePagination() {
+                this.totalPages = Math.ceil(this.totalFiltered / this.perPage) || 1;
+                const start = (this.currentPage - 1) * this.perPage;
+                const end = start + this.perPage;
+                this.paginatedData = this.filteredData.slice(start, end);
+                this.startEntry = this.totalFiltered > 0 ? start + 1 : 0;
+                this.endEntry = Math.min(end, this.totalFiltered);
+            },
+            
+            sortBy(field) {
+                if (this.sortField === field) {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortField = field;
+                    this.sortDirection = 'asc';
+                }
+                this.filterData();
+            },
+            
+            onCollegeChange() {
+                if (this.collegeFilter === 'all') {
+                    this.availableDepartments = [...this.allDepartments];
+                } else {
+                    this.availableDepartments = this.allDepartments.filter(
+                        dept => dept.collegeId == this.collegeFilter
+                    );
+                    if (this.departmentFilter !== 'all') {
+                        const exists = this.availableDepartments.some(d => d.id == this.departmentFilter);
+                        if (!exists) this.departmentFilter = 'all';
+                    }
+                }
+                this.filterData();
+            },
+            
+            onDepartmentChange() {
+                if (this.departmentFilter !== 'all') {
+                    const dept = this.allDepartments.find(d => d.id == this.departmentFilter);
+                    if (dept && dept.collegeId) {
+                        this.collegeFilter = dept.collegeId.toString();
+                        this.availableDepartments = this.allDepartments.filter(
+                            d => d.collegeId == dept.collegeId
+                        );
+                    }
+                }
+                this.filterData();
+            },
+            
+            clearFilters() {
+                this.search = '';
+                this.statusFilter = 'all';
+                this.roleFilter = 'all';
+                this.collegeFilter = 'all';
+                this.departmentFilter = 'all';
+                this.availableDepartments = [...this.allDepartments];
+                this.filterData();
+            },
+            
+            getRoleLabel(role) {
+                const labels = { '1': 'Administrator', '2': 'Department Head', '3': 'Faculty' };
+                return labels[role] || role;
+            },
+            
+            getCollegeName(collegeId) {
+                const college = this.colleges.find(c => c.id == collegeId);
+                return college ? college.name : collegeId;
+            },
+            
+            getDepartmentName(deptId) {
+                const dept = this.allDepartments.find(d => d.id == deptId);
+                return dept ? dept.name : deptId;
+            }
+         }">
+        
+        <!-- Table Controls -->
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                <!-- Search -->
+                <div class="flex-1 max-w-md">
+                    <div class="relative">
+                        <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" 
+                               x-model="search" 
+                               @input.debounce.300ms="filterData()"
+                               placeholder="Search users..." 
+                               style="padding-left: 2.5rem !important;"
+                               class="w-full pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex flex-nowrap items-center gap-2 overflow-x-auto">
+                    <!-- Role Filter -->
+                    {% if user_type == 'all' %}
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Role:</label>
+                        <select x-model="roleFilter" @change="filterData()" class="w-32 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                            <option value="all">All Roles</option>
+                            <option value="1">Admin</option>
+                            <option value="2">Dept Head</option>
+                            <option value="3">Faculty</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Status Filter -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Status:</label>
+                        <select x-model="statusFilter" @change="filterData()" class="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <!-- College Filter -->
+                    {% if user_type in ['all', 'department_heads', 'faculty'] %}
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <label class="text-xs font-medium text-gray-700 whitespace-nowrap">College:</label>
+                        <select x-model="collegeFilter" @change="onCollegeChange()" class="w-36 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                            <option value="all">All Colleges</option>
+                            <template x-for="college in colleges" :key="college.id">
+                                <option :value="college.id" x-text="college.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- Department Filter -->
+                    {% if user_type in ['all', 'department_heads', 'faculty'] %}
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Department:</label>
+                        <select x-model="departmentFilter" @change="onDepartmentChange()" class="w-40 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                            <option value="all">All Departments</option>
+                            <template x-for="dept in availableDepartments" :key="dept.id">
+                                <option :value="dept.id" x-text="dept.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- Entries per page -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <label class="text-xs font-medium text-gray-700 whitespace-nowrap">Show:</label>
+                        <select x-model.number="perPage" @change="currentPage = 1; updatePagination()" class="w-16 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Filters Display -->
+            <div x-show="search || statusFilter !== 'all' || roleFilter !== 'all' || collegeFilter !== 'all' || departmentFilter !== 'all'" 
+                 class="mt-4 flex items-center gap-2 flex-wrap">
+                <span class="text-sm text-gray-600">Active filters:</span>
+                <template x-if="search">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Search: <span x-text="search"></span>
+                        <button @click="search = ''; filterData()" class="ml-1 hover:bg-blue-200 rounded-full p-0.5">×</button>
+                    </span>
+                </template>
+                <template x-if="roleFilter !== 'all'">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        Role: <span x-text="getRoleLabel(roleFilter)"></span>
+                        <button @click="roleFilter = 'all'; filterData()" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">×</button>
+                    </span>
+                </template>
+                <template x-if="statusFilter !== 'all'">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Status: <span x-text="statusFilter"></span>
+                        <button @click="statusFilter = 'all'; filterData()" class="ml-1 hover:bg-green-200 rounded-full p-0.5">×</button>
+                    </span>
+                </template>
+                <template x-if="collegeFilter !== 'all'">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        College: <span x-text="getCollegeName(collegeFilter)"></span>
+                        <button @click="collegeFilter = 'all'; departmentFilter = 'all'; onCollegeChange()" class="ml-1 hover:bg-indigo-200 rounded-full p-0.5">×</button>
+                    </span>
+                </template>
+                <template x-if="departmentFilter !== 'all'">
+                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                        Department: <span x-text="getDepartmentName(departmentFilter)"></span>
+                        <button @click="departmentFilter = 'all'; filterData()" class="ml-1 hover:bg-teal-200 rounded-full p-0.5">×</button>
+                    </span>
+                </template>
+                <button @click="clearFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    Clear all filters
+                </button>
+            </div>
+        </div>
+        
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('username')">
+                            <div class="flex items-center gap-2">
+                                <span>Username</span>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'username' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/></svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'username' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/></svg>
+                                </span>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('fullName')">
+                            <div class="flex items-center gap-2">
+                                <span>Name</span>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'fullName' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/></svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'fullName' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/></svg>
+                                </span>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
+                        {% if user_type == 'all' %}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        {% endif %}
+                        {% if user_type in ['all', 'department_heads', 'faculty'] %}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        {% endif %}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('isActive')">
+                            <div class="flex items-center gap-2">
+                                <span>Status</span>
+                                <span class="flex flex-col">
+                                    <svg class="w-3 h-3" :class="sortField === 'isActive' && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"/></svg>
+                                    <svg class="w-3 h-3 -mt-1" :class="sortField === 'isActive' && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"/></svg>
+                                </span>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-if="paginatedData.length === 0">
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                </svg>
+                                <p class="mt-2 text-sm font-medium">No users found</p>
+                                <p class="text-xs text-gray-400">Try adjusting your filters</p>
+                            </td>
+                        </tr>
+                    </template>
+                    <template x-for="user in paginatedData" :key="user.id">
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900" x-text="user.username"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900" x-text="user.fullName"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500" x-text="user.email"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500" x-text="user.employeeId"></div>
+                            </td>
+                            {% if user_type == 'all' %}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                      :class="{
+                                          'bg-red-100 text-red-800': user.role == 1,
+                                          'bg-yellow-100 text-yellow-800': user.role == 2,
+                                          'bg-green-100 text-green-800': user.role == 3
+                                      }"
+                                      x-text="user.roleDisplayName"></span>
+                            </td>
+                            {% endif %}
+                            {% if user_type in ['all', 'department_heads', 'faculty'] %}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500" x-text="user.departmentName || '-'"></div>
+                            </td>
+                            {% endif %}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                      :class="user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                      x-text="user.isActive ? 'Active' : 'Inactive'"></span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a :href="`{{ path('admin_users_view', {id: '__ID__'}) }}`.replace('__ID__', user.id)" 
+                                       class="text-blue-600 hover:text-blue-900 inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-50 transition" 
+                                       title="View">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                    </a>
+                                    <a :href="`{{ path('admin_users_edit', {id: '__ID__'}) }}`.replace('__ID__', user.id)" 
+                                       class="text-indigo-600 hover:text-indigo-900 inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-indigo-50 transition" 
+                                       title="Edit">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </a>
+                                    <template x-if="user.isActive">
+                                        <form method="POST" :action="`{{ path('admin_users_deactivate', {id: '__ID__'}) }}`.replace('__ID__', user.id)" class="inline m-0">
+                                            <input type="hidden" name="_token" :value="user.deactivateToken">
+                                            <button type="submit" 
+                                                    @click="if (!confirm('Are you sure you want to deactivate this user?')) $event.preventDefault()"
+                                                    class="text-yellow-600 hover:text-yellow-900 inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-yellow-50 transition" 
+                                                    title="Deactivate">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </template>
+                                    <template x-if="!user.isActive">
+                                        <form method="POST" :action="`{{ path('admin_users_activate', {id: '__ID__'}) }}`.replace('__ID__', user.id)" class="inline m-0">
+                                            <input type="hidden" name="_token" :value="user.activateToken">
+                                            <button type="submit" 
+                                                    class="text-green-600 hover:text-green-900 inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-green-50 transition" 
+                                                    title="Activate">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </template>
+                                    <form method="POST" :action="`{{ path('admin_users_delete', {id: '__ID__'}) }}`.replace('__ID__', user.id)" class="inline m-0">
+                                        <input type="hidden" name="_token" :value="user.deleteToken">
+                                        <button type="submit" 
+                                                @click="if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) $event.preventDefault()"
+                                                class="text-red-600 hover:text-red-900 inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-50 transition" 
+                                                title="Delete">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button @click="if(currentPage > 1) { currentPage--; updatePagination(); }" 
+                            :disabled="currentPage === 1"
+                            :class="{ 'opacity-50 cursor-not-allowed': currentPage === 1 }"
+                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>
+                    <button @click="if(currentPage < totalPages) { currentPage++; updatePagination(); }" 
+                            :disabled="currentPage === totalPages"
+                            :class="{ 'opacity-50 cursor-not-allowed': currentPage === totalPages }"
+                            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing
+                            <span class="font-medium" x-text="startEntry"></span>
+                            to
+                            <span class="font-medium" x-text="endEntry"></span>
+                            of
+                            <span class="font-medium" x-text="totalFiltered"></span>
+                            results
+                            <template x-if="totalFiltered !== allData.length">
+                                <span class="text-gray-500">(filtered from <span x-text="allData.length"></span> total)</span>
+                            </template>
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <button @click="if(currentPage > 1) { currentPage--; updatePagination(); }" 
+                                    :disabled="currentPage === 1"
+                                    :class="{ 'opacity-50 cursor-not-allowed': currentPage === 1 }"
+                                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+
+                            <template x-for="page in (totalPages <= 7 ? Array.from({length: totalPages}, (_, i) => i + 1) : [1, '...', Math.max(2, currentPage - 1), currentPage, Math.min(totalPages - 1, currentPage + 1), '...', totalPages].filter((v, i, a) => a.indexOf(v) === i && v <= totalPages))" :key="page">
+                                <button @click="if(page !== '...') { currentPage = page; updatePagination(); }" 
+                                        :class="page === currentPage ? 
+                                            'relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600 z-10' : 
+                                            page === '...' ? 
+                                            'relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 cursor-default' :
+                                            'relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50'"
+                                        :disabled="page === '...'"
+                                        x-text="page">
+                                </button>
+                            </template>
+
+                            <button @click="if(currentPage < totalPages) { currentPage++; updatePagination(); }" 
+                                    :disabled="currentPage === totalPages"
+                                    :class="{ 'opacity-50 cursor-not-allowed': currentPage === totalPages }"
+                                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
