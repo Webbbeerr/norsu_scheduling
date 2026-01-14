@@ -961,7 +961,13 @@
             alert('Prerequisites feature coming soon!');
         }
 
-        function saveSubjects() {
+        async function saveSubjects() {
+            // Validate that a term is selected
+            if (!currentTermId) {
+                alert('Please select a term first. Use "Add Custom Term" or "Generate Default Terms" to create terms, then click "Add Subject" on a specific term.');
+                return;
+            }
+            
             // Collect all course data
             const courseItems = document.querySelectorAll('.course-item');
             const courses = [];
@@ -1000,38 +1006,37 @@
             
             if (!isValid) return;
             
-            // Determine the endpoint based on whether a specific term is selected
-            let endpoint;
-            if (currentTermId) {
-                // Adding to a specific term
-                endpoint = `/admin/curricula/terms/${currentTermId}/subjects/add-multiple`;
-            } else {
-                // Adding directly to curriculum (will be organized into terms based on year_level and semester)
-                endpoint = `/admin/curricula/{{ curriculum.id }}/subjects/add-multiple`;
-            }
-            
-            // Send to server
-            fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ courses })
-            })
-            .then(response => response.json())
-            .then(data => {
+            // Use the new batch endpoint
+            try {
+                const response = await fetch(`/admin/curricula/terms/${currentTermId}/subjects/add-batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ courses })
+                });
+                
+                const data = await response.json();
+                
                 if (data.success) {
-                    alert(`Successfully added ${courses.length} subject(s)!`);
+                    let message = `Successfully added ${data.added_count} subject(s)!`;
+                    if (data.errors && data.errors.length > 0) {
+                        message += `\n\nWarnings/Errors:\n${data.errors.join('\n')}`;
+                    }
+                    alert(message);
                     closeAddSubjectModal();
                     location.reload();
                 } else {
-                    alert('Error: ' + data.message);
+                    let errorMessage = 'Error: ' + data.message;
+                    if (data.errors && data.errors.length > 0) {
+                        errorMessage += '\n\nDetails:\n' + data.errors.join('\n');
+                    }
+                    alert(errorMessage);
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
                 alert('Error adding subjects. Please try again.');
-            });
+            }
         }
 
         // Upload Curriculum Modal Functions

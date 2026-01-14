@@ -1205,6 +1205,87 @@ class AdminController extends AbstractController
         }
     }
 
+    #[Route('/curricula/terms/{termId}/subjects/add-batch', name: 'curriculum_subjects_add_batch', requirements: ['termId' => '\d+'], methods: ['POST'])]
+    public function addSubjectsBatchToTerm(
+        int $termId,
+        Request $request,
+        \App\Service\CurriculumSubjectService $curriculumSubjectService,
+        \App\Repository\CurriculumTermRepository $curriculumTermRepository,
+        \App\Repository\SubjectRepository $subjectRepository,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $term = $curriculumTermRepository->find($termId);
+        if (!$term) {
+            return new JsonResponse(['success' => false, 'message' => 'Term not found.'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $courses = $data['courses'] ?? [];
+
+        if (empty($courses)) {
+            return new JsonResponse(['success' => false, 'message' => 'No courses provided.'], 400);
+        }
+
+        $successCount = 0;
+        $errors = [];
+        $addedSubjects = [];
+
+        foreach ($courses as $index => $course) {
+            try {
+                // Find or create the subject
+                $subject = $subjectRepository->findOneBy(['code' => $course['code']]);
+                
+                if (!$subject) {
+                    // Create new subject
+                    $subject = new \App\Entity\Subject();
+                    $subject->setCode($course['code']);
+                    $subject->setTitle($course['title']);
+                    $subject->setUnits($course['units'] ?? 3);
+                    $subject->setLectureHours($course['lecture_hours'] ?? 3);
+                    $subject->setLabHours($course['lab_hours'] ?? 0);
+                    $subject->setType($course['type'] ?? 'lecture');
+                    $subject->setIsActive(true);
+                    
+                    // Set department if curriculum has one
+                    if ($term->getCurriculum()->getDepartment()) {
+                        $subject->setDepartment($term->getCurriculum()->getDepartment());
+                    }
+                    
+                    $entityManager->persist($subject);
+                    $entityManager->flush();
+                }
+
+                // Add subject to term
+                $curriculumSubject = $curriculumSubjectService->addSubjectToTerm($term, $subject);
+                $successCount++;
+                $addedSubjects[] = [
+                    'id' => $curriculumSubject->getId(),
+                    'code' => $subject->getCode(),
+                    'title' => $subject->getTitle(),
+                    'units' => $subject->getUnits(),
+                ];
+            } catch (\Exception $e) {
+                $errors[] = "Course " . ($index + 1) . " ({$course['code']}): " . $e->getMessage();
+            }
+        }
+
+        if ($successCount > 0) {
+            return new JsonResponse([
+                'success' => true,
+                'message' => "Successfully added {$successCount} subject(s).",
+                'added_count' => $successCount,
+                'subjects' => $addedSubjects,
+                'errors' => $errors
+            ]);
+        } else {
+            return new JsonResponse([
+                'success' => false,
+                'message' => 'Failed to add any subjects.',
+                'errors' => $errors
+            ], 400);
+        }
+    }
+
     #[Route('/curricula/subjects/{id}/remove', name: 'curriculum_subjects_remove', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function removeSubjectFromTerm(
         int $id,
