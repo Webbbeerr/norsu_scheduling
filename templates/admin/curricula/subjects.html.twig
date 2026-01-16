@@ -412,6 +412,22 @@
                 </button>
             </div>
 
+            <!-- Term Selector (shown when no specific term is selected) -->
+            <div id="termSelectorContainer" class="hidden p-6 bg-blue-50 border-b border-blue-200">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    Select Term <span class="text-red-500">*</span>
+                </label>
+                <select id="termSelector" 
+                        onchange="handleTermSelection()"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">-- Select a term --</option>
+                    {% for term in terms %}
+                        <option value="{{ term.id }}">{{ term.getDisplayName() }} ({{ term.curriculumSubjects|length }} subjects)</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-gray-600 mt-2">Choose which term these subjects will be added to</p>
+            </div>
+
             <!-- Modal Body -->
             <div class="p-6 max-h-[70vh] overflow-y-auto">
                 <div id="coursesContainer" class="space-y-6">
@@ -488,35 +504,6 @@
                                        min="0"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <p class="text-xs text-gray-500 mt-1">Per week</p>
-                            </div>
-
-                            <!-- Year Level -->
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                    Year Level <span class="text-red-500">*</span>
-                                </label>
-                                <select name="year_level[]" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        required>
-                                    <option value="1">1st Year</option>
-                                    <option value="2">2nd Year</option>
-                                    <option value="3">3rd Year</option>
-                                    <option value="4">4th Year</option>
-                                </select>
-                            </div>
-
-                            <!-- Semester -->
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                    Semester <span class="text-red-500">*</span>
-                                </label>
-                                <select name="semester[]" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        required>
-                                    <option value="1">First Semester</option>
-                                    <option value="2">Second Semester</option>
-                                    <option value="3">Summer</option>
-                                </select>
                             </div>
 
                             <!-- Course Type -->
@@ -772,19 +759,37 @@
         let courseCounter = 1;
 
         function openDirectAddSubjectModal() {
-            // Open the Add Subject modal without requiring a specific term
-            // This allows adding subjects that will be organized into terms later
-            currentTermId = null; // No specific term selected
+            // Check if there are any terms available
+            const termCards = document.querySelectorAll('.term-card');
+            if (termCards.length === 0) {
+                alert('Please select a term first. Use "Add Custom Term" or "Generate Default Terms" to create terms, then click "Add Subject" on a specific term.');
+                return;
+            }
+            
+            // Open modal with term selector visible
+            currentTermId = null;
+            document.getElementById('termSelectorContainer').classList.remove('hidden');
+            document.getElementById('termSelector').value = '';
             document.getElementById('addSubjectModal').classList.remove('hidden');
+            
             // Reset to one empty course form
             courseCounter = 1;
             const coursesContainer = document.getElementById('coursesContainer');
             coursesContainer.innerHTML = createCourseBlock(1);
         }
+        
+        function handleTermSelection() {
+            const selector = document.getElementById('termSelector');
+            currentTermId = selector.value ? parseInt(selector.value) : null;
+        }
 
         function openAddSubjectModal(termId) {
             currentTermId = termId;
+            
+            // Hide term selector since term is already specified
+            document.getElementById('termSelectorContainer').classList.add('hidden');
             document.getElementById('addSubjectModal').classList.remove('hidden');
+            
             // Reset to one empty course form
             courseCounter = 1;
             const coursesContainer = document.getElementById('coursesContainer');
@@ -793,6 +798,8 @@
 
         function closeAddSubjectModal() {
             document.getElementById('addSubjectModal').classList.add('hidden');
+            document.getElementById('termSelectorContainer').classList.add('hidden');
+            document.getElementById('termSelector').value = '';
             currentTermId = null;
             courseCounter = 1;
         }
@@ -849,29 +856,6 @@
                             <input type="number" name="lab[]" value="0" min="0"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             <p class="text-xs text-gray-500 mt-1">Per week</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                Year Level <span class="text-red-500">*</span>
-                            </label>
-                            <select name="year_level[]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                <option value="1">1st Year</option>
-                                <option value="2">2nd Year</option>
-                                <option value="3">3rd Year</option>
-                                <option value="4">4th Year</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-1">
-                                Semester <span class="text-red-500">*</span>
-                            </label>
-                            <select name="semester[]" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                <option value="1">First Semester</option>
-                                <option value="2">Second Semester</option>
-                                <option value="3">Summer</option>
-                            </select>
                         </div>
 
                         <div>
@@ -990,8 +974,6 @@
                 const units = item.querySelector('input[name="units[]"]').value;
                 const lec = item.querySelector('input[name="lec[]"]').value;
                 const lab = item.querySelector('input[name="lab[]"]').value;
-                const yearLevel = item.querySelector('select[name="year_level[]"]').value;
-                const semester = item.querySelector('select[name="semester[]"]').value;
                 const courseType = item.querySelector('select[name="course_type[]"]').value;
                 const required = item.querySelector('input[name="required[]"]').checked;
                 
@@ -1007,8 +989,6 @@
                     units: parseInt(units),
                     lecture_hours: parseInt(lec),
                     lab_hours: parseInt(lab),
-                    year_level: parseInt(yearLevel),
-                    semester: parseInt(semester),
                     type: courseType,
                     is_required: required
                 });
@@ -1026,7 +1006,23 @@
                     body: JSON.stringify({ courses })
                 });
                 
-                const data = await response.json();
+                // Get response text first
+                const responseText = await response.text();
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    console.error('Server error:', responseText);
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('Invalid JSON response:', responseText);
+                    throw new Error('Server returned invalid response. Please check the browser console for details.');
+                }
                 
                 if (data.success) {
                     // Show success message without blocking
@@ -1086,7 +1082,21 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error adding subjects. Please try again.');
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md';
+                errorMsg.innerHTML = `
+                    <div class="flex items-start">
+                        <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <div class="font-semibold mb-1">Error</div>
+                            <div class="text-sm">${error.message || 'Error adding subjects. Please try again.'}</div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(errorMsg);
+                setTimeout(() => errorMsg.remove(), 8000);
             }
         }
 

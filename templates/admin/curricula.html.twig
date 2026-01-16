@@ -609,8 +609,8 @@
         });
 
         // Prevent Enter key from submitting forms (global handler for all inputs except submit buttons)
-        $('body').on('keypress', 'input:not([type="submit"])', function(e) {
-            if (e.which === 13) {
+        document.addEventListener('keypress', function(e) {
+            if (e.which === 13 && e.target.tagName === 'INPUT' && e.target.type !== 'submit') {
                 e.preventDefault();
                 return false;
             }

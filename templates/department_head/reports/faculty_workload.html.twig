@@ -1,9 +1,273 @@
 {% extends 'department_head/base.html.twig' %}
 
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    @media print {
+        /* Hide elements not needed in print */
+        nav, .no-print, button, form, .print-hide,
+        [onclick*="toggleDetails"], 
+        td button {
+            display: none !important;
+        }
+        
+        /* Page setup */
+        @page {
+            size: A4;
+            margin: 1.5cm 1cm;
+        }
+        
+        body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            font-size: 10pt;
+        }
+        
+        /* Print header */
+        .print-header {
+            display: block !important;
+            text-align: center;
+            border-bottom: 3px solid #1e40af;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .print-header h1 {
+            font-size: 24pt;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 0.25rem;
+        }
+        
+        .print-header .subtitle {
+            font-size: 11pt;
+            color: #4b5563;
+        }
+        
+        .print-header .meta {
+            font-size: 9pt;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+        
+        /* Statistics cards in print */
+        .print-stats {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            page-break-inside: avoid;
+        }
+        
+        .print-stats .stat-card {
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem;
+            text-align: center;
+            background: #f9fafb;
+        }
+        
+        .print-stats .stat-label {
+            font-size: 8pt;
+            color: #6b7280;
+            font-weight: 600;
+        }
+        
+        .print-stats .stat-value {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #111827;
+        }
+        
+        .print-stats .stat-unit {
+            font-size: 7pt;
+            color: #9ca3af;
+        }
+        
+        /* Main content adjustments */
+        .p-6, .p-8 {
+            padding: 0 !important;
+        }
+        
+        .mb-8 {
+            margin-bottom: 1rem !important;
+        }
+        
+        /* Table styling for print */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            page-break-inside: auto;
+        }
+        
+        thead {
+            display: table-header-group;
+            background: #1e40af !important;
+            color: white !important;
+        }
+        
+        thead th {
+            background: #1e40af !important;
+            color: white !important;
+            font-weight: 600;
+            padding: 0.5rem 0.25rem;
+            text-align: left;
+            border: 1px solid #1e3a8a;
+        }
+        
+        tbody tr {
+            page-break-inside: avoid;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        tbody td {
+            padding: 0.4rem 0.25rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 8pt;
+            font-weight: 600;
+        }
+        
+        .status-overloaded {
+            background: #fee2e2 !important;
+            color: #991b1b !important;
+        }
+        
+        .status-optimal {
+            background: #d1fae5 !important;
+            color: #065f46 !important;
+        }
+        
+        .status-underloaded {
+            background: #fef3c7 !important;
+            color: #92400e !important;
+        }
+        
+        /* Progress bar for print */
+        .progress-bar {
+            width: 80px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: currentColor;
+        }
+        
+        /* Expanded details for print */
+        .faculty-details {
+            display: block !important;
+            page-break-inside: avoid;
+        }
+        
+        .details-table {
+            margin-top: 0.5rem;
+            margin-left: 1rem;
+            width: calc(100% - 1rem);
+            font-size: 8pt;
+            background: #f9fafb;
+        }
+        
+        .details-table thead {
+            background: #6b7280 !important;
+        }
+        
+        .details-table td {
+            padding: 0.25rem 0.3rem;
+        }
+        
+        /* Footer for print */
+        .print-footer {
+            display: block !important;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            font-size: 8pt;
+            color: #6b7280;
+            text-align: center;
+        }
+        
+        /* Hide/show specific elements */
+        .screen-only {
+            display: none !important;
+        }
+        
+        .print-only {
+            display: block !important;
+        }
+        
+        /* Faculty member rows */
+        .faculty-row {
+            page-break-inside: avoid;
+        }
+    }
+    
+    /* Default hide print-only elements */
+    .print-only {
+        display: none;
+    }
+    
+    .print-header {
+        display: none;
+    }
+</style>
+{% endblock %}
+
 {% block main_content %}
 <div class="p-6 lg:p-8">
+    <!-- Print Header (Only visible when printing) -->
+    <div class="print-header print-only">
+        <h1>Faculty Workload Report</h1>
+        <div class="subtitle">{{ dashboard_data.department.name }}</div>
+        <div class="meta">
+            {% if selected_academic_year and selected_semester %}
+                {% for year in academic_years %}
+                    {% if year.id == selected_academic_year %}
+                        Academic Year: {{ year.year }} | Semester: {{ selected_semester }}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            | Generated: {{ "now"|date("F d, Y g:i A") }}
+        </div>
+    </div>
+
+    <!-- Print Statistics Summary (Only visible when printing) -->
+    <div class="print-stats print-only">
+        <div class="stat-card">
+            <div class="stat-label">TOTAL FACULTY</div>
+            <div class="stat-value">{{ statistics.total_faculty }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">OVERLOADED</div>
+            <div class="stat-value" style="color: #dc2626;">{{ statistics.overloaded }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">OPTIMAL</div>
+            <div class="stat-value" style="color: #059669;">{{ statistics.optimal }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">UNDERLOADED</div>
+            <div class="stat-value" style="color: #d97706;">{{ statistics.underloaded }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">AVG LOAD</div>
+            <div class="stat-value">{{ statistics.average_load }}</div>
+            <div class="stat-unit">units</div>
+        </div>
+    </div>
+
     <!-- Page Header -->
-    <div class="mb-8">
+    <div class="mb-8 screen-only">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Faculty Workload Report</h1>
@@ -41,7 +305,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 screen-only print-hide">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
         <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
@@ -88,7 +352,7 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8 screen-only">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -182,10 +446,10 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for faculty in workload_data %}
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 faculty-row">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
+                                        <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium screen-only">
                                             {{ faculty.name|split(' ')|map(n => n|slice(0,1))|join }}
                                         </div>
                                         <div class="ml-4">
@@ -202,7 +466,7 @@
                                     <div class="text-xs text-gray-500">units</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5 screen-only">
                                         {% set percentage = faculty.percentage > 100 ? 100 : faculty.percentage %}
                                         <div class="h-2.5 rounded-full {% if faculty.status == 'overloaded' %}bg-red-600{% elseif faculty.status == 'underloaded' %}bg-yellow-500{% else %}bg-green-600{% endif %}" style="width: {{ percentage }}%"></div>
                                     </div>
@@ -210,22 +474,22 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     {% if faculty.status == 'overloaded' %}
-                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="status-badge status-overloaded px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                            <svg class="w-4 h-4 mr-1 screen-only" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                             </svg>
                                             Overloaded
                                         </span>
                                     {% elseif faculty.status == 'underloaded' %}
-                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="status-badge status-underloaded px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            <svg class="w-4 h-4 mr-1 screen-only" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
                                             Underloaded
                                         </span>
                                     {% else %}
-                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="status-badge status-optimal px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                            <svg class="w-4 h-4 mr-1 screen-only" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                             </svg>
                                             Optimal
@@ -233,19 +497,19 @@
                                     {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button onclick="toggleDetails({{ faculty.id }})" class="text-blue-600 hover:text-blue-900">
+                                    <button onclick="toggleDetails({{ faculty.id }})" class="text-blue-600 hover:text-blue-900 screen-only">
                                         View Details
                                     </button>
                                 </td>
                             </tr>
-                            <!-- Details Row (Hidden by default) -->
-                            <tr id="details-{{ faculty.id }}" class="hidden bg-gray-50">
+                            <!-- Details Row (Hidden by default on screen, shown in print) -->
+                            <tr id="details-{{ faculty.id }}" class="hidden faculty-details">
                                 <td colspan="6" class="px-6 py-4">
                                     <div class="bg-white rounded-lg p-4 border border-gray-200">
-                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Course Assignments</h4>
+                                        <h4 class="text-sm font-semibold text-gray-900 mb-3">Course Assignments ({{ faculty.course_count }})</h4>
                                         {% if faculty.courses|length > 0 %}
                                             <div class="overflow-x-auto">
-                                                <table class="min-w-full divide-y divide-gray-200">
+                                                <table class="min-w-full divide-y divide-gray-200 details-table">
                                                     <thead class="bg-gray-50">
                                                         <tr>
                                                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Course Code</th>
@@ -261,8 +525,22 @@
                                                                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ course.code }}</td>
                                                                 <td class="px-4 py-2 text-sm text-gray-900">{{ course.name }}</td>
                                                                 <td class="px-4 py-2 text-sm text-gray-900">{{ course.units }}</td>
-                                                                <td class="px-4 py-2 text-sm text-gray-500">{{ course.schedule }}</td>
-                                                                <td class="px-4 py-2 text-sm text-gray-500">{{ course.room }}</td>
+                                                                <td class="px-4 py-2 text-sm text-gray-500">
+                                                                    {% if course.schedule %}
+                                                                        {{ course.schedule }}
+                                                                    {% elseif course.dayPattern %}
+                                                                        {{ course.dayPattern }} {{ course.startTime|date('g:i A') }}-{{ course.endTime|date('g:i A') }}
+                                                                    {% else %}
+                                                                        <span class="text-gray-400">Not scheduled</span>
+                                                                    {% endif %}
+                                                                </td>
+                                                                <td class="px-4 py-2 text-sm text-gray-500">
+                                                                    {% if course.room %}
+                                                                        {{ course.room }}
+                                                                    {% else %}
+                                                                        <span class="text-gray-400">TBA</span>
+                                                                    {% endif %}
+                                                                </td>
                                                             </tr>
                                                         {% endfor %}
                                                     </tbody>
@@ -288,6 +566,22 @@
             </div>
         {% endif %}
     </div>
+
+    <!-- Print Footer (Only visible when printing) -->
+    <div class="print-footer print-only">
+        <div style="margin-bottom: 0.5rem;">
+            <strong>{{ dashboard_data.department.name }}</strong> - Faculty Workload Report
+        </div>
+        <div>
+            Generated on {{ "now"|date("F d, Y") }} at {{ "now"|date("g:i A") }}
+            {% if app.user %}
+                by {{ app.user.firstName }} {{ app.user.lastName }}
+            {% endif %}
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 7pt; color: #9ca3af;">
+            This document is confidential and intended for internal use only.
+        </div>
+    </div>
 </div>
 
 <script>
@@ -303,5 +597,19 @@ function toggleDetails(facultyId) {
         detailsRow.classList.add('hidden');
     }
 }
+
+// Automatically expand all details when printing
+window.addEventListener('beforeprint', function() {
+    document.querySelectorAll('[id^="details-"]').forEach(row => {
+        row.classList.remove('hidden');
+    });
+});
+
+// Optionally collapse them back after printing (for screen view)
+window.addEventListener('afterprint', function() {
+    document.querySelectorAll('[id^="details-"]').forEach(row => {
+        row.classList.add('hidden');
+    });
+});
 </script>
 {% endblock %}

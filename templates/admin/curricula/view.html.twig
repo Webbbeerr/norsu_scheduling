@@ -576,7 +576,10 @@
     {{ parent() }}
     
     <script>
-        let selectedViewFile = null;
+    (function() {
+        'use strict';
+        
+        let curriculumViewUploadFile = null;
 
         function openUploadModal() {
             document.getElementById('uploadModal').classList.remove('hidden');
@@ -613,7 +616,7 @@
                 return;
             }
 
-            selectedViewFile = file;
+            curriculumViewUploadFile = file;
             
             // Show file info
             document.getElementById('fileName').textContent = file.name;
@@ -624,7 +627,7 @@
 
         function clearFile(event) {
             if (event) event.stopPropagation();
-            selectedViewFile = null;
+            curriculumViewUploadFile = null;
             document.getElementById('fileInput').value = '';
             document.getElementById('fileInfo').classList.add('hidden');
             document.getElementById('uploadButton').disabled = true;
@@ -641,13 +644,13 @@
         }
 
         function uploadCurriculum() {
-            if (!selectedViewFile) {
+            if (!curriculumViewUploadFile) {
                 alert('Please select a file to upload.');
                 return;
             }
 
             const formData = new FormData();
-            formData.append('curriculum_file', selectedViewFile);
+            formData.append('curriculum_file', curriculumViewUploadFile);
             formData.append('curriculum_id', '{{ curriculum.id }}');
             formData.append('validate_only', document.getElementById('validateOnly').checked ? '1' : '0');
             formData.append('auto_create_terms', document.getElementById('autoCreateTerms').checked ? '1' : '0');
@@ -713,6 +716,7 @@
                 closeUploadModal();
             }
         }
+    })();
     </script>
 {% endblock %}
 </div>

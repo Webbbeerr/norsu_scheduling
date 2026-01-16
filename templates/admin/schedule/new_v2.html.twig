@@ -259,7 +259,7 @@
                                 📊 How many sections do you want to create?
                             </label>
                             <select id="section_count" name="section_count"
-                                    class="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 transition text-lg font-medium"
+                                    class="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 transition text-sm"
                                     onchange="generateSectionColumns()">
                                 <option value="" selected>Select number of sections...</option>
                                 <option value="1">1 Section</option>
@@ -560,7 +560,7 @@ function getNextAvailableSectionIndex(existingSections) {
 // Create a single section column HTML
 function createSectionColumn(index, defaultSection) {
     return `
-        <div id="section-column-${index}" class="border-2 border-gray-200 rounded-lg p-6 bg-gradient-to-br from-white to-gray-50 hover:border-blue-300 transition relative shadow-sm">
+        <div id="section-column-${index}" class="border-2 border-gray-200 rounded-lg p-5 bg-gradient-to-br from-white to-gray-50 hover:border-blue-300 transition relative shadow-sm min-h-[420px]">
             
             <!-- Conflict Details Sidebar -->
             <div id="conflict-details-${index}" class="hidden absolute top-0 right-3 bg-white border-2 border-red-400 rounded-lg shadow-lg p-3 z-10 max-w-xs">
@@ -575,7 +575,7 @@ function createSectionColumn(index, defaultSection) {
                 </div>
             </div>
             
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-lg text-gray-800">Section ${index + 1}</h3>
                 <div class="flex items-center gap-2">
                     <span id="conflict-badge-${index}" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 cursor-pointer" onclick="toggleConflictDetails(${index})">Unchecked</span>
@@ -583,10 +583,10 @@ function createSectionColumn(index, defaultSection) {
                 </div>
             </div>
             
-            <div class="space-y-3">
+            <div class="space-y-4">
                 <!-- Section Name -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Section Name <span class="text-red-500">*</span>
                     </label>
                     <div class="relative">
@@ -596,20 +596,20 @@ function createSectionColumn(index, defaultSection) {
                                required
                                oninput="recheckAllSections()"
                                onblur="validateSectionName(${index})"
-                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                         <div id="section-status-${index}" class="hidden absolute right-2 top-1/2 -translate-y-1/2"></div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-0.5" id="section-hint-${index}">Section identifier</p>
+                    <p class="text-xs text-gray-500 mt-1" id="section-hint-${index}">Section identifier</p>
                 </div>
                 
                 <!-- Room -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Room <span class="text-red-500">*</span>
                     </label>
                     <select name="sections[${index}][room]" required
                             onchange="fetchRoomSchedules(this.value); recheckAllSections();"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                         <option value="">Select room...</option>
                         ${roomsData.map(room => `
                             <option value="${room.id}" data-capacity="${room.capacity}">
@@ -621,12 +621,12 @@ function createSectionColumn(index, defaultSection) {
                 
                 <!-- Day Pattern -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Day Pattern <span class="text-red-500">*</span>
                     </label>
                     <select name="sections[${index}][day_pattern]" required
                             onchange="recheckAllSections()"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                         <option value="">Select...</option>
                         <option value="M-W-F">Mon-Wed-Fri</option>
                         <option value="T-TH">Tue-Thu</option>
@@ -640,12 +640,12 @@ function createSectionColumn(index, defaultSection) {
                 
                 <!-- Time Slot -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Time Slot <span class="text-red-500">*</span>
                     </label>
                     <select name="sections[${index}][time_slot]" required
                             onchange="setTimeValues(${index}, this.value); recheckAllSections();"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                         <option value="">Select time...</option>
                         ${timeSlots.map((slot, idx) => `
                             <option value="${idx}" data-start="${slot.start}" data-end="${slot.end}">
@@ -659,13 +659,13 @@ function createSectionColumn(index, defaultSection) {
                 
                 <!-- Enrolled Students -->
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         Enrolled Students
                     </label>
                     <input type="number" name="sections[${index}][enrolled_students]" 
                            placeholder="0"
                            min="0" max="999"
-                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm">
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                 </div>
             </div>
         </div>

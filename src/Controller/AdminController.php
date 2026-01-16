@@ -1399,31 +1399,32 @@ class AdminController extends AbstractController
         ]));
     }
 
-    #[Route('/subjects/create', name: 'subjects_create')]
-    public function createSubject(Request $request, \App\Service\SubjectService $subjectService): Response
-    {
-        $subject = new \App\Entity\Subject();
-        $subject->setIsActive(true);
-        
-        $form = $this->createForm(\App\Form\SubjectFormType::class, $subject);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            try {
-                $subjectService->createSubject($subject);
-                $this->addFlash('success', 'Subject created successfully.');
-                // Redirect with semester filter cleared so the new subject shows up
-                return $this->redirectToRoute('admin_subjects', ['clear_semester' => '1']);
-            } catch (\Exception $e) {
-                $this->addFlash('error', 'Error creating subject: ' . $e->getMessage());
-            }
-        }
-
-        return $this->render('admin/subjects/create.html.twig', array_merge($this->getBaseTemplateData(), [
-            'page_title' => 'Create Subject',
-            'form' => $form->createView(),
-        ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
-    }
+    // Removed: Create subject route - subjects are now created through Curricula management
+    // #[Route('/subjects/create', name: 'subjects_create')]
+    // public function createSubject(Request $request, \App\Service\SubjectService $subjectService): Response
+    // {
+    //     $subject = new \App\Entity\Subject();
+    //     $subject->setIsActive(true);
+    //     
+    //     $form = $this->createForm(\App\Form\SubjectFormType::class, $subject);
+    //     $form->handleRequest($request);
+    //
+    //     if ($form->isSubmitted() && $form->isValid()) {
+    //         try {
+    //             $subjectService->createSubject($subject);
+    //             $this->addFlash('success', 'Subject created successfully.');
+    //             // Redirect with semester filter cleared so the new subject shows up
+    //             return $this->redirectToRoute('admin_subjects', ['clear_semester' => '1']);
+    //         } catch (\Exception $e) {
+    //             $this->addFlash('error', 'Error creating subject: ' . $e->getMessage());
+    //         }
+    //     }
+    //
+    //     return $this->render('admin/subjects/create.html.twig', array_merge($this->getBaseTemplateData(), [
+    //         'page_title' => 'Create Subject',
+    //         'form' => $form->createView(),
+    //     ]), new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+    // }
 
     #[Route('/subjects/{id}/edit', name: 'subjects_edit')]
     public function editSubject(int $id, Request $request, \App\Service\SubjectService $subjectService): Response

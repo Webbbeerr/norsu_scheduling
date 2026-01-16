@@ -1052,7 +1052,7 @@ class DepartmentHeadService
                         'name' => $subject->getTitle() ?? 'Untitled',
                         'units' => $subject->getUnits() ?? 0,
                         'schedule' => $scheduleTime ?: 'TBA',
-                        'room' => $schedule->getRoom() ? $schedule->getRoom()->getName() : 'TBA',
+                        'room' => $schedule->getRoom() ? $schedule->getRoom()->getCode() : null,
                     ];
                 }
             }            // Determine status
