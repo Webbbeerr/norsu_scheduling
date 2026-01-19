@@ -244,7 +244,7 @@ class UserService
     public function isUsernameAvailable(string $username, ?int $excludeUserId = null): bool
     {
         $qb = $this->userRepository->createQueryBuilder('u')
-            ->where('u.username = :username')
+            ->where('LOWER(u.username) = LOWER(:username)')
             ->setParameter('username', $username);
 
         if ($excludeUserId) {
@@ -261,7 +261,7 @@ class UserService
     public function isEmailAvailable(string $email, ?int $excludeUserId = null): bool
     {
         $qb = $this->userRepository->createQueryBuilder('u')
-            ->where('u.email = :email')
+            ->where('LOWER(u.email) = LOWER(:email)')
             ->setParameter('email', $email);
 
         if ($excludeUserId) {

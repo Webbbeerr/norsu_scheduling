@@ -45,11 +45,11 @@ class TeachingLoadPdfService
         $totals = $this->calculateTotals($schedules, $semester);
 
         // Generate the PDF content
-        $this->generateHeader($pdf, $totals['semester'], $academicYear);
+        $this->generateHeader($pdf, $totals['semester'], $academicYear, $faculty);
         $this->generateInfoBox($pdf, $faculty);
         $this->generateScheduleTable($pdf, $schedules, $totals);
         $this->generateBottomSection($pdf, $schedules, $totals, $faculty);
-        $this->generateFooterSection($pdf);
+        $this->generateFooterSection($pdf, $faculty);
 
         // Return PDF as string
         return $pdf->Output('', 'S');
@@ -132,34 +132,44 @@ class TeachingLoadPdfService
         ];
     }
 
-    private function generateHeader(TCPDF $pdf, ?string $semester, AcademicYear $academicYear): void
+    private function generateHeader(TCPDF $pdf, ?string $semester, AcademicYear $academicYear, User $faculty): void
     {
-        // Add the three header logos
+        // Add the two header logos
         $logoPath1 = __DIR__ . '/../../public/images/loadform/headers.png';  // Main university header
         $logoPath2 = __DIR__ . '/../../public/images/loadform/middlelogo1.png';     // GCL/ISO certification
-        $logoPath3 = __DIR__ . '/../../public/images/loadform/logo2.jpg';     // SASTE TAI logo
 
         $logoHeight = 20;
         
-        // Position the three logos across the header
-        // Logo 1: NORSU header - limit width to avoid overlap
+        // Calculate center position for logos
+        $pageWidth = $pdf->getPageWidth();
+        $logo1Width = 145;
+        $logo2Width = 25; // GCL logo approximate width
+        $spaceBetween = 5;
+        $totalWidth = $logo1Width + $spaceBetween + $logo2Width;
+        $startX = ($pageWidth - $totalWidth) / 2;
+        
+        // Position the two logos centered
+        // Logo 1: NORSU header
         if (file_exists($logoPath1)) {
-            $pdf->Image($logoPath1, 12.7, 9.5, 140, $logoHeight, '', '', '', true, 150);
+            $pdf->Image($logoPath1, $startX, 9.5, $logo1Width, $logoHeight, '', '', '', true, 150);
         }
-        // Logo 2: GCL/ISO certification (positioned after headers.png ends, slightly higher)
+        // Logo 2: GCL/ISO certification
         if (file_exists($logoPath2)) {
-            $pdf->Image($logoPath2, 155, 7, 0, $logoHeight, '', '', '', true, 150);
-        }
-        // Logo 3: SASTE TAI (right side)
-        if (file_exists($logoPath3)) {
-            $pdf->Image($logoPath3, 177, 8, 0, $logoHeight, '', '', '', true, 150);
+            $pdf->Image($logoPath2, $startX + $logo1Width + $spaceBetween, 7, 0, $logoHeight, '', '', '', true, 150);
         }
 
         $pdf->SetY(30 );
 
-        // Office title
+        // Office title - fetch college name dynamically
         $pdf->SetFont('times', 'B', 11);
-        $pdf->Cell(0, 5, 'Office of the Dean, College of College of Arts and Sciences', 0, 1, 'C');
+        // Get college name - try from faculty's college first, then from department's college
+        $collegeName = 'College of Arts and Sciences'; // Default fallback
+        if ($faculty->getCollege()) {
+            $collegeName = $faculty->getCollege()->getName();
+        } elseif ($faculty->getDepartment() && $faculty->getDepartment()->getCollege()) {
+            $collegeName = $faculty->getDepartment()->getCollege()->getName();
+        }
+        $pdf->Cell(0, 5, 'Office of the Dean, ' . $collegeName, 0, 1, 'C');
 
         // Document title
         $pdf->SetFont('times', 'B', 11);
@@ -224,7 +234,7 @@ class TeachingLoadPdfService
         
         // Define column widths - total available width is page width minus margins
         // Legal paper = 215.9mm, margins = 12.7mm each side, so available = 190.5mm
-        $colWidths = [17, 26, 24, 47, 20, 18, 22, 16.5]; // Total = 190.5mm exactly
+        $colWidths = [60, 17, 26, 16.5, 18, 22, 31]; // Total = 190.5mm exactly
         $startX = 12.7; // Align to left margin (same as margins)
         
         // Table header with advanced formatting
@@ -235,34 +245,31 @@ class TeachingLoadPdfService
         
         // Calculate required height for multi-line headers
         $maxHeaderLines = max(
-            $pdf->getNumLines('DAY', $colWidths[0]),
-            $pdf->getNumLines('TIME', $colWidths[1]),
-            $pdf->getNumLines("Course Code\nwith Section", $colWidths[2]),
-            $pdf->getNumLines('Course Description', $colWidths[3]),
-            $pdf->getNumLines('ROOM', $colWidths[4]),
-            $pdf->getNumLines("NO. of\nUNITS\nHANDLED", $colWidths[5]),
-            $pdf->getNumLines("NO. of\nCONTACT\nHOURS per\nWEEK", $colWidths[6]),
-            $pdf->getNumLines("NO. of\nSTUD.", $colWidths[7])
+            $pdf->getNumLines("SUBJECT\nw/ SECTION", $colWidths[0]),
+            $pdf->getNumLines('DAY', $colWidths[1]),
+            $pdf->getNumLines('TIME', $colWidths[2]),
+            $pdf->getNumLines("NO. of\nSTUD.", $colWidths[3]),
+            $pdf->getNumLines("NO. of\nUNITS\nHANDLED", $colWidths[4]),
+            $pdf->getNumLines("NO. of\nCONTACT\nHOURS per\nWEEK", $colWidths[5]),
+            $pdf->getNumLines('ROOM', $colWidths[6])
         );
         $headerHeight = max($maxHeaderLines * 4, 14); // Auto-adjust based on content with better spacing
         
         // Draw header using MultiCell for perfect text wrapping and vertical centering
         $x = $startX;
-        $pdf->MultiCell($colWidths[0], $headerHeight, 'DAY', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[0], $headerHeight, "SUBJECT\nw/ SECTION", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[0];
-        $pdf->MultiCell($colWidths[1], $headerHeight, 'TIME', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[1], $headerHeight, 'DAY', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[1];
-        $pdf->MultiCell($colWidths[2], $headerHeight, "Course Code\nwith Section", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[2], $headerHeight, 'TIME', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[2];
-        $pdf->MultiCell($colWidths[3], $headerHeight, 'Course Description', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[3], $headerHeight, "NO. of\nSTUD.", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[3];
-        $pdf->MultiCell($colWidths[4], $headerHeight, 'ROOM', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[4], $headerHeight, "NO. of\nUNITS\nHANDLED", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[4];
-        $pdf->MultiCell($colWidths[5], $headerHeight, "NO. of\nUNITS\nHANDLED", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[5], $headerHeight, "NO. of\nCONTACT\nHOURS per\nWEEK", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[5];
-        $pdf->MultiCell($colWidths[6], $headerHeight, "NO. of\nCONTACT\nHOURS per\nWEEK", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
-        $x += $colWidths[6];
-        $pdf->MultiCell($colWidths[7], $headerHeight, "NO. of\nSTUD.", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+        $pdf->MultiCell($colWidths[6], $headerHeight, 'ROOM', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         
         $pdf->SetY($headerY + $headerHeight);
 
@@ -280,19 +287,20 @@ class TeachingLoadPdfService
                 // Get day pattern (already formatted with hyphens like M-W-F, T-TH)
                 $dayPattern = $schedule->getDayPattern();
                 $timeText = $schedule->getStartTime()->format('g:i') . '-' . $schedule->getEndTime()->format('g:i A');
-                $courseCode = $schedule->getSubject()->getCode() . ' ' . $schedule->getSection();
+                $courseCode = $schedule->getSubject()->getCode();
                 $courseTitle = $schedule->getSubject()->getTitle();
+                $subjectWithSection = $courseCode . ' ' . $schedule->getSection() . ' - ' . $courseTitle;
                 $roomName = $schedule->getRoom()->getCode();
                 $units = (string)$schedule->getSubject()->getUnits();
                 $students = (string)$schedule->getEnrolledStudents();
                 
                 // Calculate required height based on all cells
                 $maxLines = max(
-                    $pdf->getNumLines($dayPattern, $colWidths[0]),
-                    $pdf->getNumLines($timeText, $colWidths[1]),
-                    $pdf->getNumLines($courseCode, $colWidths[2]),
-                    $pdf->getNumLines($courseTitle, $colWidths[3]),
-                    $pdf->getNumLines($roomName, $colWidths[4]),
+                    $pdf->getNumLines($subjectWithSection, $colWidths[0]),
+                    $pdf->getNumLines($dayPattern, $colWidths[1]),
+                    $pdf->getNumLines($timeText, $colWidths[2]),
+                    $pdf->getNumLines($students, $colWidths[3]),
+                    $pdf->getNumLines($roomName, $colWidths[6]),
                     1
                 );
                 
@@ -300,21 +308,19 @@ class TeachingLoadPdfService
                 
                 // Draw each cell with MultiCell for automatic wrapping and vertical centering
                 $x = $startX;
-                $pdf->MultiCell($colWidths[0], $rowHeight, $dayPattern, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[0], $rowHeight, $subjectWithSection, 1, 'L', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[0];
-                $pdf->MultiCell($colWidths[1], $rowHeight, $timeText, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[1], $rowHeight, $dayPattern, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[1];
-                $pdf->MultiCell($colWidths[2], $rowHeight, $courseCode, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[2], $rowHeight, $timeText, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[2];
-                $pdf->MultiCell($colWidths[3], $rowHeight, $courseTitle, 1, 'L', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[3], $rowHeight, $students, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[3];
-                $pdf->MultiCell($colWidths[4], $rowHeight, $roomName, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[4], $rowHeight, $units, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[4];
                 $pdf->MultiCell($colWidths[5], $rowHeight, $units, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 $x += $colWidths[5];
-                $pdf->MultiCell($colWidths[6], $rowHeight, $units, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
-                $x += $colWidths[6];
-                $pdf->MultiCell($colWidths[7], $rowHeight, $students, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+                $pdf->MultiCell($colWidths[6], $rowHeight, $roomName, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
                 
                 $pdf->SetY($rowY + $rowHeight);
             }
@@ -327,31 +333,29 @@ class TeachingLoadPdfService
             $totalHeight = 6;
             
             $x = $startX;
-            // Empty cell with border - Day column (no right border)
-            $pdf->MultiCell($colWidths[0], $totalHeight, '', 'LTB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            // TOTAL text in Subject column
+            $pdf->MultiCell($colWidths[0], $totalHeight, 'TOTAL', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[0];
-            // Empty cell with border - Time column (no right border)
-            $pdf->MultiCell($colWidths[1], $totalHeight, '', 'TB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            // Empty cells
+            $pdf->MultiCell($colWidths[1], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[1];
-            // TOTAL text in Course Code with Section column (no right border)
-            $pdf->MultiCell($colWidths[2], $totalHeight, 'TOTAL', 'TB', 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            $pdf->MultiCell($colWidths[2], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[2];
-            // Empty cell with border - Description column
-            $pdf->MultiCell($colWidths[3], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            // Total students
+            $pdf->MultiCell($colWidths[3], $totalHeight, (string)$totals['totalStudents'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[3];
-            // Empty cell with border - Room column
-            $pdf->MultiCell($colWidths[4], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            // Total units
+            $pdf->MultiCell($colWidths[4], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[4];
-            // Total values
+            // Total contact hours (same as units)
             $pdf->MultiCell($colWidths[5], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             $x += $colWidths[5];
-            $pdf->MultiCell($colWidths[6], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
-            $x += $colWidths[6];
-            $pdf->MultiCell($colWidths[7], $totalHeight, (string)$totals['totalStudents'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+            // Empty cell for Room
+            $pdf->MultiCell($colWidths[6], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             
             $pdf->SetY($totalY + $totalHeight);
 
-            // Consultation Period row - NO merged cells, maintain vertical grid lines
+            // Consultation Period row
             $pdf->SetFont('times', '', 8);
             $pdf->SetFillColor(255, 255, 255);
             
@@ -359,17 +363,18 @@ class TeachingLoadPdfService
             $consultHeight = 8;
             
             $x = $startX;
-            // Consultation Period label
+            // Consultation Period label in Subject column
             $pdf->MultiCell($colWidths[0], $consultHeight, 'Consultation Period', 1, 'L', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $x += $colWidths[0];
+            // Empty cell for Day
+            $pdf->MultiCell($colWidths[1], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $x += $colWidths[1];
             // Time in bold
             $pdf->SetFont('times', 'B', 8);
-            $pdf->MultiCell($colWidths[1], $consultHeight, 'MWF 10-11 PM', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+            $pdf->MultiCell($colWidths[2], $consultHeight, 'MWF 10-11 PM', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $pdf->SetFont('times', '', 8);
-            $x += $colWidths[1];
-            // Individual empty cells to maintain vertical grid lines
-            $pdf->MultiCell($colWidths[2], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $x += $colWidths[2];
+            // Empty cells for remaining columns
             $pdf->MultiCell($colWidths[3], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $x += $colWidths[3];
             $pdf->MultiCell($colWidths[4], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
@@ -377,8 +382,6 @@ class TeachingLoadPdfService
             $pdf->MultiCell($colWidths[5], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             $x += $colWidths[5];
             $pdf->MultiCell($colWidths[6], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[6];
-            $pdf->MultiCell($colWidths[7], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
             
             $pdf->SetY($consultY + $consultHeight);
         }
@@ -408,15 +411,15 @@ class TeachingLoadPdfService
         // Row 1: No. of Preparation (spans both columns)
         $pdf->Cell($leftColWidth + $rightColWidth, $rowHeight, 'No. of Preparation: ' . $numberOfPreparations, 0, 1, 'L');
         
-        // Row 2: Total Units (left column only)
-        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Units/Week: ' . $totals['totalUnits'], 0, 1, 'L');
-        
-        // Row 3: Total Hours (left) and Total Students (right)
-        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week: ' . number_format($totals['totalHours'], 0), 0, 0, 'L');
-        $pdf->Cell($rightColWidth, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'R');
+        // Row 2: Total Hours (left) and Total Students (positioned to the right)
+        $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week.: ' . number_format($totals['totalHours'], 0), 0, 0, 'L');
+        $pdf->Cell(10, $rowHeight, '', 0, 0, 'L'); // Spacing between the two fields
+        $pdf->Cell($rightColWidth - 10, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'L');
         
         // Row 4: Other Designation (spans both columns)
         $pdf->Cell(0, $rowHeight, 'Other Designation/Special Assignments:', 0, 1, 'L');
+        
+        $pdf->Ln(5);
         
         // Row 5: Highest Educational Attainment (spans both columns) - with fillable field
         $y = $pdf->GetY();
@@ -426,7 +429,7 @@ class TeachingLoadPdfService
         $pdf->TextField('educational_attainment', 135, $rowHeight, ['strokeColor' => [200, 200, 200], 'lineWidth' => 0.3], [], $x, $y);
         $pdf->Ln($rowHeight);
         
-        $pdf->Ln(3);
+        $pdf->Ln(6);
         $pdf->Cell(0, 5, 'Certified Correct:', 0, 1, 'L');
         
         $pdf->Ln(5);
@@ -449,7 +452,7 @@ class TeachingLoadPdfService
         $pdf->Ln(8);
     }
 
-    private function generateFooterSection(TCPDF $pdf): void
+    private function generateFooterSection(TCPDF $pdf, $faculty): void
     {
         // Calculate footer position from the bottom of the page
         // Legal paper height is 355.6mm, with bottom margin of 8mm
@@ -458,51 +461,74 @@ class TeachingLoadPdfService
         
         // Footer table dimensions
         $footerTableHeight = 12; // 3 rows * 4mm
-        $gapBeforeTable = 2;
+        $gapBeforeTable = 5; // Increased gap before footer table
         
         // Calculate starting Y position (work backwards from bottom)
         $footerTableY = $pageHeight - $bottomMargin - $footerTableHeight;
-        $presidentSectionY = $footerTableY - $gapBeforeTable - 25; // President section needs ~25mm
-        $signatureStartY = $presidentSectionY - 25; // Two-column signatures need ~25mm
+        
+        // Calculate total height needed for signature sections
+        // Attested/Noted section: 25mm (label + name + line + title + gap)
+        // Recommending section: 27mm (label + name + line + title + gap)
+        // Approved section: 25mm (label + name + line + title)
+        $totalSignatureHeight = 80; // Increased to move signatures higher
+        
+        $signatureStartY = $footerTableY - $gapBeforeTable - $totalSignatureHeight;
         
         $pdf->SetFont('times', '', 11);
         
         // Signature section at calculated Y position
         $pdf->SetY($signatureStartY);
         
-        // Left side - Attested by (centered at calculated position)
+        // First row - Attested by (left) and Noted by (right)
         $pdf->SetXY(15, $signatureStartY);
-        $pdf->Cell(90, 5, 'Attested by:', 0, 0, 'C');
+        $pdf->Cell(90, 5, 'Attested by:', 0, 0, 'L');
         
-        // Right side - Recommending Approval (centered at calculated position)
         $pdf->SetXY(110, $signatureStartY);
-        $pdf->Cell(85, 5, 'Recommending Approval:', 0, 1, 'C');
+        $pdf->Cell(85, 5, 'Noted by:', 0, 1, 'L');
         
         // Names at calculated position
         $nameY = $signatureStartY + 10;
         $pdf->SetFont('times', 'B', 11);
         $pdf->SetXY(15, $nameY);
-        $pdf->Cell(90, 5, 'DR. PRISCILLA S. CIELO', 0, 0, 'C');
+        
+        // Get dean name - try from faculty's college first, then from department's college
+        $deanName = 'NAME'; // Default fallback
+        if ($faculty->getCollege() && $faculty->getCollege()->getDean()) {
+            $deanName = strtoupper($faculty->getCollege()->getDean());
+        } elseif ($faculty->getDepartment() && $faculty->getDepartment()->getCollege() && $faculty->getDepartment()->getCollege()->getDean()) {
+            $deanName = strtoupper($faculty->getDepartment()->getCollege()->getDean());
+        }
+        
+        $pdf->Cell(90, 5, $deanName, 0, 0, 'L');
         
         $pdf->SetXY(110, $nameY);
-        $pdf->Cell(85, 5, 'ROSE MARIE T. PINILI, E.d., Ph.D.', 0, 1, 'C');
-        
-        // Draw lines under names at calculated position
-        $pdf->SetLineWidth(0.3);
-        $lineY = $nameY + 5;
-        $pdf->Line(25, $lineY, 95, $lineY); // Left line
-        $pdf->Line(120, $lineY, 185, $lineY); // Right line
+        $pdf->Cell(85, 5, 'RYAN O. TAYCO, Ph.D.', 0, 1, 'L');
         
         // Titles at calculated position
         $pdf->SetFont('times', '', 11);
-        $titleY = $lineY + 1;
+        $titleY = $nameY + 6;
         $pdf->SetXY(15, $titleY);
-        $pdf->Cell(90, 5, 'Dean', 0, 0, 'C');
+        $pdf->Cell(90, 5, 'Dean', 0, 0, 'L');
         $pdf->SetXY(110, $titleY);
-        $pdf->Cell(85, 5, 'Vice President for Academic Affairs', 0, 1, 'C');
+        $pdf->Cell(85, 5, 'Campus Director,  MC I & II and Pamplona Campus', 0, 1, 'L');
+        
+        // Recommending Approval section (centered)
+        $recommendingY = $titleY + 18;
+        $pdf->SetXY(0, $recommendingY);
+        $pdf->Cell(0, 5, 'Recommending Approval:', 0, 1, 'C');
+        
+        $pdf->SetFont('times', 'B', 11);
+        $recommendingNameY = $recommendingY + 10;
+        $pdf->SetXY(0, $recommendingNameY);
+        $pdf->Cell(0, 5, 'LIBERTINE C. DE GUZMAN, Ed.D.', 0, 1, 'C');
+        
+        $pdf->SetFont('times', '', 11);
+        $recommendingTitleY = $recommendingNameY + 6;
+        $pdf->SetXY(0, $recommendingTitleY);
+        $pdf->Cell(0, 5, 'Vice President for Academic Affairs', 0, 1, 'C');
         
         // Approved section at calculated position
-        $approvedY = $titleY + 10;
+        $approvedY = $recommendingTitleY + 11;
         $pdf->SetXY(0, $approvedY);
         $pdf->Cell(0, 5, 'Approved:', 0, 1, 'C');
         
@@ -511,12 +537,8 @@ class TeachingLoadPdfService
         $pdf->SetXY(0, $approvedNameY);
         $pdf->Cell(0, 5, 'Hon. NOEL MARJON E. YASI, Psy.D.', 0, 1, 'C');
         
-        // Draw line under president name at calculated position
-        $approvedLineY = $approvedNameY + 5;
-        $pdf->Line(($pdf->getPageWidth() - 130) / 2, $approvedLineY, ($pdf->getPageWidth() + 130) / 2, $approvedLineY);
-        
         $pdf->SetFont('times', '', 11);
-        $pdf->SetXY(0, $approvedLineY + 1);
+        $pdf->SetXY(0, $approvedNameY + 6);
         $pdf->Cell(0, 5, 'University President', 0, 1, 'C');
         
         // Footer table - always at the absolute bottom
