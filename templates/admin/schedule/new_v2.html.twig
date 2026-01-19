@@ -476,7 +476,7 @@ let allRoomSchedules = {};
 // Rooms data for dropdowns
 const roomsData = [
     {% for room in rooms %}
-    {id: {{ room.id }}, code: '{{ room.code }}', name: '{{ room.name|default('') }}', capacity: {{ room.capacity }}}{{ loop.last ? '' : ',' }}
+    {id: {{ room.id }}, code: {{ room.code|json_encode|raw }}, name: {{ room.name|default('')|json_encode|raw }}, capacity: {{ room.capacity|default(0) }}}{{ loop.last ? '' : ',' }}
     {% endfor %}
 ];
 
@@ -613,7 +613,7 @@ function createSectionColumn(index, defaultSection) {
                         <option value="">Select room...</option>
                         ${roomsData.map(room => `
                             <option value="${room.id}" data-capacity="${room.capacity}">
-                                ${room.code}${room.name ? ' - ' + room.name : ''}
+                                ${room.code}${room.name ? ' - ' + room.name.replace(/[<>"']/g, '') : ''}
                             </option>
                         `).join('')}
                     </select>
@@ -1781,7 +1781,7 @@ function filterSubjectsBySemester() {
     const filterSelect = document.getElementById('semester-view-filter');
     const subjectSelect = document.getElementById('subject');
     const filterStatusText = document.getElementById('filter-status-text');
-    const activeSemester = '{{ activeSemester }}';
+    const activeSemester = '{{ activeSemester|default("") }}';
     
     const filterValue = filterSelect.value;
     const options = subjectSelect.querySelectorAll('option');

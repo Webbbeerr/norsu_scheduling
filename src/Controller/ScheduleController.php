@@ -188,6 +188,12 @@ class ScheduleController extends AbstractController
         $selectedDepartment = null;
         if ($departmentId) {
             $selectedDepartment = $this->entityManager->getRepository(\App\Entity\Department::class)->find($departmentId);
+            
+            // If department not found, log and redirect
+            if (!$selectedDepartment) {
+                $this->addFlash('error', 'Department not found. Please select a valid department.');
+                return $this->redirectToRoute('app_schedule_index');
+            }
         }
 
         // Get active semester and academic year
