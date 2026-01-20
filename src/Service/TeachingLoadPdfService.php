@@ -102,16 +102,10 @@ class TeachingLoadPdfService
             $totalHours += ($hours * $daysPerWeek);
             
             // Calculate contact hours per week
-            // For Saturday-only or Sunday-only classes, contact hours = 5
-            // For other patterns, contact hours = units
-            $dayPattern = $schedule->getDayPattern();
-            $normalizedPattern = strtoupper(trim($dayPattern));
-            if ($normalizedPattern === 'SAT' || $normalizedPattern === 'SATURDAY' || 
-                $normalizedPattern === 'SUN' || $normalizedPattern === 'SUNDAY') {
-                $totalContactHours += 5;
-            } else {
-                $totalContactHours += $schedule->getSubject()->getUnits();
-            }
+            // Contact hours = lecture hours + lab hours
+            $lectureHours = $schedule->getSubject()->getLectureHours() ?? 0;
+            $labHours = $schedule->getSubject()->getLabHours() ?? 0;
+            $totalContactHours += ($lectureHours + $labHours);
             
             // Calculate max capacity for this schedule
             // If subject has lab hours > 0, max capacity is 35, otherwise 40
@@ -315,15 +309,11 @@ class TeachingLoadPdfService
                 $maxCapacity = ($schedule->getSubject()->getLabHours() > 0) ? 35 : 40;
                 $students = (string)$maxCapacity;
                 
-                // Calculate contact hours per week based on day pattern
-                // For Saturday-only or Sunday-only classes, contact hours = 5
-                // For other patterns, contact hours = units
-                $contactHours = $units;
-                $normalizedPattern = strtoupper(trim($dayPattern));
-                if ($normalizedPattern === 'SAT' || $normalizedPattern === 'SATURDAY' || 
-                    $normalizedPattern === 'SUN' || $normalizedPattern === 'SUNDAY') {
-                    $contactHours = '5';
-                }
+                // Calculate contact hours per week
+                // Contact hours = lecture hours + lab hours
+                $lectureHours = $schedule->getSubject()->getLectureHours() ?? 0;
+                $labHours = $schedule->getSubject()->getLabHours() ?? 0;
+                $contactHours = (string)($lectureHours + $labHours);
                 
                 // Calculate required height based on all cells
                 $maxLines = max(
@@ -461,14 +451,15 @@ class TeachingLoadPdfService
         $pdf->Ln($rowHeight);
         
         $pdf->Ln(6);
-        $pdf->Cell(0, 5, 'Certified Correct:', 0, 1, 'L');
+        $pdf->Cell(0, 5, 'Certified Correct:', 0, 1, 'C');
         
         $pdf->Ln(5);
         $pdf->SetFont('times', 'B', 11);
         
         // Calculate center position for name
         $nameWidth = 65; // approximate width for the name area
-        $startX = 15;
+        $pageWidth = $pdf->getPageWidth();
+        $startX = ($pageWidth - $nameWidth) / 2;
         $pdf->SetX($startX);
         $pdf->Cell($nameWidth, 5, strtoupper($faculty->getFirstName() . ' ' . $this->getMiddleInitial($faculty) . $faculty->getLastName()), 0, 1, 'C');
         

@@ -2,7 +2,7 @@
 cmds = ["install-php-extensions gd zip exif intl"]
 
 [phases.install]
-cmds = ["composer install --optimize-autoloader --no-scripts --no-interaction"]
+cmds = ["composer install --optimize-autoloader --no-scripts --no-interaction --ignore-platform-req=ext-gd"]
 
 [start]
 cmd = "frankenphp php-server --listen 0.0.0.0:$PORT"
