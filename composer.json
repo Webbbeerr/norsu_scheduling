@@ -46,7 +46,8 @@
         "symfony/yaml": "7.3.*",
         "tecnickcom/tcpdf": "^6.10.1",
         "twig/extra-bundle": "^2.12|^3.22.2",
-        "twig/twig": "^2.12|^3.22.2"
+        "twig/twig": "^2.12|^3.22.2",
+        "ext-gd": "*"
     },
     "config": {
         "allow-plugins": {
@@ -100,7 +101,6 @@
         }
     },
     "config": {
-        "platform-check": false,
         "allow-plugins": {
             "symfony/flex": true,
             "symfony/runtime": true
