@@ -62,6 +62,9 @@ class Schedule
     #[ORM\Column(name: 'is_conflicted', type: Types::BOOLEAN, options: ['default' => false])]
     private ?bool $isConflicted = false;
 
+    #[ORM\Column(name: 'is_overload', type: Types::BOOLEAN, options: ['default' => false])]
+    private ?bool $isOverload = false;
+
     #[ORM\Column(name: 'status', type: Types::STRING, length: 20, options: ['default' => 'active'])]
     private ?string $status = 'active';
 
@@ -80,6 +83,7 @@ class Schedule
         $this->status = 'active';
         $this->enrolledStudents = 0;
         $this->isConflicted = false;
+        $this->isOverload = false;
     }
 
     /**
@@ -258,6 +262,17 @@ class Schedule
     public function setIsConflicted(?bool $isConflicted): self
     {
         $this->isConflicted = $isConflicted;
+        return $this;
+    }
+
+    public function getIsOverload(): ?bool
+    {
+        return $this->isOverload;
+    }
+
+    public function setIsOverload(?bool $isOverload): self
+    {
+        $this->isOverload = $isOverload;
         return $this;
     }
 

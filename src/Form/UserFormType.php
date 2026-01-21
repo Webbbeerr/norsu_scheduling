@@ -140,7 +140,8 @@ class UserFormType extends AbstractType
                     'disabled' => $options['is_department_head'], // Disable for department heads
                 ],
                 'label' => 'Role',
-                'placeholder' => 'Select a role',
+                'placeholder' => false, // Remove placeholder to force selection
+                'required' => true, // Explicitly mark as required
                 'constraints' => [
                     new NotBlank([
                         'message' => 'Please select a role',

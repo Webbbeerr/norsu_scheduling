@@ -76,6 +76,12 @@
                     {{ form_widget(form.address) }}
                     {{ form_errors(form.address) }}
                 </div>
+
+                <div class="mt-6">
+                    {{ form_label(form.otherDesignation, null, {'label_attr': {'class': 'block text-sm font-medium text-gray-700'}}) }}
+                    {{ form_widget(form.otherDesignation) }}
+                    {{ form_errors(form.otherDesignation) }}
+                </div>
             </div>
 
             <!-- Professional Information Section -->

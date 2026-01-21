@@ -1221,4 +1221,49 @@ class ScheduleController extends AbstractController
             return $this->redirectToRoute('app_schedule_faculty_loading');
         }
     }
+
+    #[Route('/faculty-loading/toggle-overload/{id}', name: 'app_schedule_faculty_loading_toggle_overload', methods: ['POST'])]
+    public function toggleFacultyLoadingOverload(Schedule $schedule): Response
+    {
+        // Check if the schedule has a faculty assigned
+        if (!$schedule->getFaculty()) {
+            return $this->json(['success' => false, 'message' => 'Schedule must have a faculty assigned'], 400);
+        }
+
+        // Toggle the overload status
+        $newOverloadStatus = !$schedule->getIsOverload();
+        $schedule->setIsOverload($newOverloadStatus);
+
+        try {
+            $this->entityManager->flush();
+            
+            // Log the activity
+            $this->activityLogService->log(
+                $newOverloadStatus ? 'schedule.overload_enabled' : 'schedule.overload_disabled',
+                sprintf(
+                    "Schedule %s as overload: %s - %s (%s)",
+                    $newOverloadStatus ? 'marked' : 'unmarked',
+                    $schedule->getFaculty()->getFullName(),
+                    $schedule->getSubject()->getTitle(),
+                    $schedule->getSection()
+                ),
+                'Schedule',
+                $schedule->getId(),
+                [
+                    'faculty_name' => $schedule->getFaculty()->getFullName(),
+                    'subject' => $schedule->getSubject()->getTitle(),
+                    'section' => $schedule->getSection(),
+                    'is_overload' => $newOverloadStatus
+                ]
+            );
+            
+            return $this->json([
+                'success' => true,
+                'isOverload' => $newOverloadStatus,
+                'message' => $newOverloadStatus ? 'Schedule marked as overload' : 'Overload status removed'
+            ]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
 }

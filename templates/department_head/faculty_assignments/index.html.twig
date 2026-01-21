@@ -368,6 +368,8 @@
 </div>
 
 <script>
+// OVERLOAD FEATURE VERSION: 2.0.20260120
+console.log('Faculty Assignments Script Loaded - Overload Feature v2.0');
 // Faculty data object with all assigned schedules
 const facultyData = {
     {% for member in faculty %}
@@ -391,7 +393,8 @@ const facultyData = {
                     endTime: '{{ schedule.endTime|date('g:i A')|e('js') }}',
                     endTimeRaw: '{{ schedule.endTime|date('H:i')|e('js') }}',
                     room: '{{ schedule.room ? (schedule.room.code ~ (schedule.room.name ? ' - ' ~ schedule.room.name : ''))|e('js') : 'TBA' }}',
-                    roomCode: '{{ schedule.room ? schedule.room.code|e('js') : '' }}'
+                    roomCode: '{{ schedule.room ? schedule.room.code|e('js') : '' }}',
+                    isOverload: {{ schedule.isOverload ? 'true' : 'false' }}
                 },
                 {% endfor %}
             ]
@@ -543,8 +546,11 @@ function showTemporaryMessage(message, type = 'success') {
 
 // Refresh loaded subjects list with conflict detection
 function refreshLoadedSubjectsList() {
+    console.log('refreshLoadedSubjectsList called');
     const container = document.getElementById('loadedSubjectsList');
     const faculty = facultyData[currentFacultyId];
+    console.log('Faculty data:', faculty);
+    console.log('Current faculty ID:', currentFacultyId);
     
     if (!faculty || faculty.assignedSchedules.length === 0) {
         container.innerHTML = `
@@ -561,7 +567,10 @@ function refreshLoadedSubjectsList() {
     const loadedConflicts = detectLoadedConflicts();
     let html = '';
     
+    console.log('Generating HTML for schedules:', faculty.assignedSchedules);
+    
     faculty.assignedSchedules.forEach(schedule => {
+        console.log('Processing schedule:', schedule.id, 'isOverload:', schedule.isOverload);
         const conflicts = loadedConflicts.get(schedule.id) || [];
         const hasConflict = conflicts.length > 0;
         
@@ -577,7 +586,15 @@ function refreshLoadedSubjectsList() {
                     ${conflicts.map(c => `${c.subjectCode} ${c.section} (${c.dayPattern}, ${c.startTime} - ${c.endTime})`).join(', ')}
                 </div>
             ` : ''}
-            <div class="${hasConflict ? 'bg-red-50' : 'bg-white'} border-b ${hasConflict ? 'border-red-200' : 'border-green-200'} hover:bg-opacity-80 transition-colors">
+            ${schedule.isOverload ? `
+                <div class="bg-amber-500 text-white px-3 py-1.5 text-xs font-semibold flex items-center gap-2">
+                    <svg class="h-3.5 w-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                    </svg>
+                    <span>OVERLOAD</span>
+                </div>
+            ` : ''}
+            <div class="${hasConflict ? 'bg-red-50' : schedule.isOverload ? 'bg-amber-50' : 'bg-white'} border-b ${hasConflict ? 'border-red-200' : schedule.isOverload ? 'border-amber-200' : 'border-green-200'} hover:bg-opacity-80 transition-colors">
                 <div class="p-4">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
@@ -607,20 +624,32 @@ function refreshLoadedSubjectsList() {
                                 </div>
                             </div>
                         </div>
-                        <button onclick="unassignSchedule(${schedule.id})" 
-                                class="ml-3 p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
-                                title="Remove assignment">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleOverload(${schedule.id})" 
+                                    class="p-2 ${schedule.isOverload ? 'text-white bg-amber-500 hover:bg-amber-600' : 'text-amber-500 bg-amber-50 hover:bg-amber-100 border border-amber-300'} rounded-lg transition-colors font-medium"
+                                    title="${schedule.isOverload ? 'Remove overload status' : 'Mark as overload'}">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                                </svg>
+                            </button>
+                            <button onclick="unassignSchedule(${schedule.id})" 
+                                    class="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                    title="Remove assignment">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
     });
     
+    console.log('Final HTML length:', html.length);
+    console.log('Setting innerHTML');
     container.innerHTML = html;
+    console.log('innerHTML set successfully');
 }
 
 // Add schedule back to unassigned list
@@ -795,7 +824,8 @@ async function confirmLoadSubject() {
                         endTime: endTime,
                         endTimeRaw: row.dataset.endTime,
                         room: scheduleCell.querySelector('div:nth-child(3)').textContent.trim(),
-                        roomCode: scheduleCell.querySelector('div:nth-child(3)').textContent.trim()
+                        roomCode: scheduleCell.querySelector('div:nth-child(3)').textContent.trim(),
+                        isOverload: false
                     };
                     
                     // Add to faculty data
@@ -829,6 +859,45 @@ async function confirmLoadSubject() {
     button.innerHTML = '<svg class="inline-block h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Assign Selected Schedules';
     
     showTemporaryMessage(`${successCount} subject(s) assigned successfully!`, 'success');
+}
+
+// Toggle overload status for a schedule
+async function toggleOverload(scheduleId) {
+    try {
+        const response = await fetch(`{{ path('department_head_faculty_assignments') }}/toggle-overload/${scheduleId}`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Update the schedule in facultyData
+            const faculty = facultyData[currentFacultyId];
+            const schedule = faculty.assignedSchedules.find(s => s.id === scheduleId);
+            
+            if (schedule) {
+                schedule.isOverload = result.isOverload;
+            }
+            
+            // Refresh the loaded subjects list to update UI
+            refreshLoadedSubjectsList();
+            
+            // Update the loaded count display
+            document.getElementById('loadedCount').textContent = faculty.assignedSchedules.length;
+            document.getElementById('facultyLoadedCount').textContent = faculty.assignedSchedules.length;
+            
+            showTemporaryMessage(result.message, 'success');
+        } else {
+            showTemporaryMessage(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling overload:', error);
+        showTemporaryMessage('Error updating overload status', 'error');
+    }
 }
 
 // Unassign schedule with real-time UI update (NO page reload)

@@ -82,6 +82,15 @@ class ProfileType extends AbstractType
                     'rows' => 3
                 ]
             ])
+            ->add('otherDesignation', TextareaType::class, [
+                'label' => 'Other Designation/Special Assignments',
+                'required' => false,
+                'attr' => [
+                    'class' => 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500',
+                    'placeholder' => 'Enter other designation or special assignments',
+                    'rows' => 3
+                ]
+            ])
             ->add('college', EntityType::class, [
                 'class' => College::class,
                 'choice_label' => 'name',

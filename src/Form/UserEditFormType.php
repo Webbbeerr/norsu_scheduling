@@ -105,6 +105,14 @@ class UserEditFormType extends AbstractType
                     'placeholder' => 'Enter address'
                 ],
             ])
+            ->add('otherDesignation', TextareaType::class, [
+                'label' => 'Other Designation/Special Assignments',
+                'required' => false,
+                'attr' => [
+                    'rows' => 3,
+                    'placeholder' => 'Enter other designation or special assignments'
+                ],
+            ])
             ->add('role', ChoiceType::class, [
                 'choices' => [
                     'Administrator' => 1,

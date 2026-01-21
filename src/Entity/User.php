@@ -98,6 +98,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'preferred_semester_filter', length: 20, nullable: true)]
     private ?string $preferredSemesterFilter = null;
 
+    #[ORM\Column(name: 'other_designation', type: 'text', nullable: true)]
+    private ?string $otherDesignation = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -432,6 +435,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPreferredSemesterFilter(?string $preferredSemesterFilter): static
     {
         $this->preferredSemesterFilter = $preferredSemesterFilter;
+        return $this;
+    }
+
+    public function getOtherDesignation(): ?string
+    {
+        return $this->otherDesignation;
+    }
+
+    public function setOtherDesignation(?string $otherDesignation): static
+    {
+        $this->otherDesignation = $otherDesignation;
         return $this;
     }
 }

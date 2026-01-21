@@ -1821,6 +1821,80 @@ class DepartmentHeadController extends AbstractController
         }
     }
 
+    #[Route('/faculty-assignments/toggle-overload/{id}', name: 'faculty_assignments_toggle_overload', methods: ['POST'])]
+    public function toggleOverload(Schedule $schedule, Request $request): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $department = $user->getDepartment();
+
+        if (!$department) {
+            return $this->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        // Check if the schedule has a faculty assigned
+        if (!$schedule->getFaculty()) {
+            return $this->json(['success' => false, 'message' => 'Schedule must have a faculty assigned'], 400);
+        }
+
+        // Check if the schedule's department is in the same department or department group
+        $scheduleDepartment = $schedule->getSubject()->getDepartment();
+        $isAuthorized = false;
+        
+        if ($scheduleDepartment->getId() === $department->getId()) {
+            $isAuthorized = true;
+        } else {
+            // Check if both departments are in the same group
+            $departmentGroup = $department->getDepartmentGroup();
+            $scheduleDepartmentGroup = $scheduleDepartment->getDepartmentGroup();
+            
+            if ($departmentGroup && $scheduleDepartmentGroup && 
+                $departmentGroup->getId() === $scheduleDepartmentGroup->getId()) {
+                $isAuthorized = true;
+            }
+        }
+
+        if (!$isAuthorized) {
+            return $this->json(['success' => false, 'message' => 'Unauthorized - schedule not in your department or department group'], 403);
+        }
+
+        // Toggle the overload status
+        $newOverloadStatus = !$schedule->getIsOverload();
+        $schedule->setIsOverload($newOverloadStatus);
+
+        try {
+            $this->entityManager->flush();
+            
+            // Log the activity
+            $this->activityLogService->log(
+                $newOverloadStatus ? 'schedule.overload_enabled' : 'schedule.overload_disabled',
+                sprintf(
+                    "Schedule %s as overload: %s - %s (%s)",
+                    $newOverloadStatus ? 'marked' : 'unmarked',
+                    $schedule->getFaculty()->getFullName(),
+                    $schedule->getSubject()->getTitle(),
+                    $schedule->getSection()
+                ),
+                'Schedule',
+                $schedule->getId(),
+                [
+                    'faculty_name' => $schedule->getFaculty()->getFullName(),
+                    'subject' => $schedule->getSubject()->getTitle(),
+                    'section' => $schedule->getSection(),
+                    'is_overload' => $newOverloadStatus
+                ]
+            );
+            
+            return $this->json([
+                'success' => true,
+                'isOverload' => $newOverloadStatus,
+                'message' => $newOverloadStatus ? 'Schedule marked as overload' : 'Overload status removed'
+            ]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
     #[Route('/faculty-assignments/view/{id}', name: 'faculty_assignments_view', methods: ['GET'])]
     public function viewFacultyAssignments(int $id, Request $request): Response
     {
@@ -1890,6 +1964,7 @@ class DepartmentHeadController extends AbstractController
                 'endTime' => $schedule->getEndTime()->format('g:i A'),
                 'room' => $schedule->getRoom()->getCode(),
                 'units' => $schedule->getSubject()->getUnits(),
+                'isOverload' => $schedule->getIsOverload(),
             ];
         }
 

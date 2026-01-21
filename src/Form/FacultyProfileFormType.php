@@ -78,6 +78,15 @@ class FacultyProfileFormType extends AbstractType
                     'class' => 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
                     'placeholder' => 'e.g., Associate Professor, Instructor'
                 ]
+            ])
+            ->add('otherDesignation', TextareaType::class, [
+                'label' => 'Other Designation/Special Assignments',
+                'required' => false,
+                'attr' => [
+                    'class' => 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+                    'rows' => 3,
+                    'placeholder' => 'e.g., Program Coordinator, Research Lead, Committee Member'
+                ]
             ]);
     }
 

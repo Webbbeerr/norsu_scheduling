@@ -39,16 +39,45 @@ class TeachingLoadPdfService
         $pdf->AddPage();
 
         // Get schedules for this faculty
-        $schedules = $this->getSchedulesForFaculty($faculty, $academicYear, $semester);
+        $allSchedules = $this->getSchedulesForFaculty($faculty, $academicYear, $semester);
+        
+        // Separate regular and overload schedules
+        $regularSchedules = [];
+        $overloadSchedules = [];
+        foreach ($allSchedules as $schedule) {
+            if ($schedule->getIsOverload()) {
+                $overloadSchedules[] = $schedule;
+            } else {
+                $regularSchedules[] = $schedule;
+            }
+        }
 
-        // Calculate totals
-        $totals = $this->calculateTotals($schedules, $semester);
+        // Calculate totals for regular schedules
+        $regularTotals = $this->calculateTotals($regularSchedules, $semester);
+        
+        // Calculate totals for overload schedules
+        $overloadTotals = $this->calculateTotals($overloadSchedules, $semester);
+        
+        // Calculate combined totals (regular + overload)
+        $combinedTotals = [
+            'totalUnits' => $regularTotals['totalUnits'] + $overloadTotals['totalUnits'],
+            'totalHours' => $regularTotals['totalHours'] + $overloadTotals['totalHours'],
+            'totalContactHours' => $regularTotals['totalContactHours'] + $overloadTotals['totalContactHours'],
+            'totalStudents' => $regularTotals['totalStudents'] + $overloadTotals['totalStudents'],
+            'semester' => $regularTotals['semester']
+        ];
+        
+        // Check if there are overload schedules
+        $hasOverload = count($overloadSchedules) > 0;
 
         // Generate the PDF content
-        $this->generateHeader($pdf, $totals['semester'], $academicYear, $faculty);
+        $this->generateHeader($pdf, $regularTotals['semester'], $academicYear, $faculty);
         $this->generateInfoBox($pdf, $faculty);
-        $this->generateScheduleTable($pdf, $schedules, $totals);
-        $this->generateBottomSection($pdf, $schedules, $totals, $faculty);
+        
+        // Generate combined schedule table (regular and overload together)
+        $this->generateCombinedScheduleTable($pdf, $regularSchedules, $overloadSchedules, $regularTotals, $hasOverload, $combinedTotals);
+        
+        $this->generateBottomSection($pdf, $allSchedules, $combinedTotals, $faculty);
         $this->generateFooterSection($pdf, $faculty);
 
         // Return PDF as string
@@ -238,23 +267,20 @@ class TeachingLoadPdfService
         $pdf->Ln(3);
     }
 
-    private function generateScheduleTable(TCPDF $pdf, array $schedules, array $totals): void
+    private function generateCombinedScheduleTable(TCPDF $pdf, array $regularSchedules, array $overloadSchedules, array $regularTotals, bool $hasOverload, array $combinedTotals): void
     {
         // Set thin border for table cells
         $pdf->SetLineWidth(0.1);
         
-        // Define column widths - total available width is page width minus margins
-        // Legal paper = 215.9mm, margins = 12.7mm each side, so available = 190.5mm
-        $colWidths = [60, 17, 26, 16.5, 18, 22, 31]; // Total = 190.5mm exactly
-        $startX = 12.7; // Align to left margin (same as margins)
+        // Define column widths
+        $colWidths = [60, 17, 26, 16.5, 18, 22, 31];
+        $startX = 12.7;
         
-        // Table header with advanced formatting
+        // Generate table header
         $pdf->SetFont('times', 'B', 9);
         $pdf->SetFillColor(255, 255, 255);
         
         $headerY = $pdf->GetY();
-        
-        // Calculate required height for multi-line headers
         $maxHeaderLines = max(
             $pdf->getNumLines("SUBJECT\nw/ SECTION", $colWidths[0]),
             $pdf->getNumLines('DAY', $colWidths[1]),
@@ -264,9 +290,8 @@ class TeachingLoadPdfService
             $pdf->getNumLines("NO. of\nCONTACT\nHOURS per\nWEEK", $colWidths[5]),
             $pdf->getNumLines('ROOM', $colWidths[6])
         );
-        $headerHeight = max($maxHeaderLines * 4, 14); // Auto-adjust based on content with better spacing
+        $headerHeight = max($maxHeaderLines * 4, 14);
         
-        // Draw header using MultiCell for perfect text wrapping and vertical centering
         $x = $startX;
         $pdf->MultiCell($colWidths[0], $headerHeight, "SUBJECT\nw/ SECTION", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         $x += $colWidths[0];
@@ -283,6 +308,261 @@ class TeachingLoadPdfService
         $pdf->MultiCell($colWidths[6], $headerHeight, 'ROOM', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
         
         $pdf->SetY($headerY + $headerHeight);
+        
+        // Generate regular schedule rows
+        $pdf->SetFont('times', '', 10);
+        $this->generateScheduleRows($pdf, $regularSchedules, $colWidths, $startX);
+        
+        // Regular TOTAL row
+        $this->generateTotalRow($pdf, $regularTotals, $colWidths, $startX);
+        
+        // If there are overload schedules, add OVERLOAD section
+        if ($hasOverload) {
+            // OVERLOAD header row (blue background, spanning all columns)
+            $pdf->SetFont('times', 'B', 10);
+            $pdf->SetFillColor(173, 216, 230); // Light blue background
+            $totalWidth = array_sum($colWidths);
+            $overloadY = $pdf->GetY();
+            $pdf->MultiCell($totalWidth, 6, 'OVERLOAD', 1, 'C', true, 1, $startX, $overloadY, true, 0, false, true, 6, 'M');
+            
+            // Generate overload schedule rows
+            $pdf->SetFont('times', '', 10);
+            $this->generateScheduleRows($pdf, $overloadSchedules, $colWidths, $startX);
+            
+            // Overload TOTAL row
+            $overloadTotals = $this->calculateTotals($overloadSchedules, null);
+            $this->generateTotalRow($pdf, $overloadTotals, $colWidths, $startX);
+        }
+        
+        // Add Research and Extension row if units >= 24
+        if ($combinedTotals['totalUnits'] >= 24) {
+            $pdf->SetFont('times', '', 10);
+            $pdf->SetFillColor(255, 255, 255);
+            $researchY = $pdf->GetY();
+            $researchHeight = 6;
+            
+            $x = $startX;
+            $pdf->MultiCell($colWidths[0], $researchHeight, 'Research and Extension', 1, 'L', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            $x += $colWidths[0];
+            
+            // Merge Day and Time columns into one cell with fillable field
+            $mergedWidth = $colWidths[1] + $colWidths[2];
+            
+            // Draw the merged cell border first
+            $pdf->MultiCell($mergedWidth, $researchHeight, '', 1, 'C', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            
+            // Create fillable text field slightly smaller to fit inside the merged cell
+            $fieldPadding = 0.5;
+            $fieldWidth = $mergedWidth - ($fieldPadding * 2);
+            $fieldHeight = $researchHeight - ($fieldPadding * 2);
+            $fieldX = $x + $fieldPadding;
+            $fieldY = $researchY + $fieldPadding;
+            
+            // Set font for the text field
+            $pdf->SetFont('times', '', 9);
+            
+            $pdf->TextField('research_extension_time', $fieldWidth, $fieldHeight, array(
+                'borderStyle' => 'none',
+                'backgroundColor' => array(255, 255, 255),
+                'alignment' => 'center'
+            ), array('v' => ''), $fieldX, $fieldY);
+            
+            $x += $mergedWidth;
+            $pdf->MultiCell($colWidths[3], $researchHeight, '', 1, 'C', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            $x += $colWidths[3];
+            $pdf->MultiCell($colWidths[4], $researchHeight, '', 1, 'C', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            $x += $colWidths[4];
+            $pdf->MultiCell($colWidths[5], $researchHeight, '', 1, 'C', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            $x += $colWidths[5];
+            $pdf->MultiCell($colWidths[6], $researchHeight, '', 1, 'C', false, 0, $x, $researchY, true, 0, false, true, $researchHeight, 'M');
+            
+            $pdf->SetY($researchY + $researchHeight);
+        }
+        
+        // Add consultation period row as part of the same continuous table
+        $pdf->SetFont('times', '', 10);
+        $pdf->SetFillColor(255, 255, 255);
+        $consultationY = $pdf->GetY();
+        $consultationHeight = 6;
+        
+        $x = $startX;
+        $pdf->MultiCell($colWidths[0], $consultationHeight, 'Consultation Period', 1, 'L', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        $x += $colWidths[0];
+        
+        // Merge Day and Time columns into one cell with fillable field
+        $mergedWidth = $colWidths[1] + $colWidths[2];
+        
+        // Draw the merged cell border first
+        $pdf->MultiCell($mergedWidth, $consultationHeight, '', 1, 'C', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        
+        // Create fillable text field slightly smaller to fit inside the merged cell
+        $fieldPadding = 0.5;
+        $fieldWidth = $mergedWidth - ($fieldPadding * 2);
+        $fieldHeight = $consultationHeight - ($fieldPadding * 2);
+        $fieldX = $x + $fieldPadding;
+        $fieldY = $consultationY + $fieldPadding;
+        
+        // Set font for the text field
+        $pdf->SetFont('times', '', 9);
+        
+        $pdf->TextField('consultation_time', $fieldWidth, $fieldHeight, array(
+            'borderStyle' => 'none',
+            'backgroundColor' => array(255, 255, 255),
+            'alignment' => 'center'
+        ), array('v' => 'MWF 10-11 PM'), $fieldX, $fieldY);
+        
+        $x += $mergedWidth;
+        $pdf->MultiCell($colWidths[3], $consultationHeight, '', 1, 'C', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        $x += $colWidths[3];
+        $pdf->MultiCell($colWidths[4], $consultationHeight, '', 1, 'C', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        $x += $colWidths[4];
+        $pdf->MultiCell($colWidths[5], $consultationHeight, '', 1, 'C', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        $x += $colWidths[5];
+        $pdf->MultiCell($colWidths[6], $consultationHeight, '', 1, 'C', false, 0, $x, $consultationY, true, 0, false, true, $consultationHeight, 'M');
+        
+        $pdf->SetY($consultationY + $consultationHeight);
+        
+        $pdf->Ln(2);
+    }
+
+    private function generateScheduleRows(TCPDF $pdf, array $schedules, array $colWidths, float $startX): void
+    {
+        if (empty($schedules)) {
+            return;
+        }
+        
+        foreach ($schedules as $schedule) {
+            $rowY = $pdf->GetY();
+            
+            $dayPattern = $schedule->getDayPattern();
+            $timeText = $schedule->getStartTime()->format('g:i') . '-' . $schedule->getEndTime()->format('g:i A');
+            $courseCode = $schedule->getSubject()->getCode();
+            $courseTitle = $schedule->getSubject()->getTitle();
+            $subjectWithSection = $courseCode . ' ' . $schedule->getSection() . ' - ' . $courseTitle;
+            $roomName = $schedule->getRoom()->getCode();
+            $units = (string)$schedule->getSubject()->getUnits();
+            
+            $maxCapacity = ($schedule->getSubject()->getLabHours() > 0) ? 35 : 40;
+            $students = (string)$maxCapacity;
+            
+            $lectureHours = $schedule->getSubject()->getLectureHours() ?? 0;
+            $labHours = $schedule->getSubject()->getLabHours() ?? 0;
+            $contactHours = (string)($lectureHours + $labHours);
+            
+            $maxLines = max(
+                $pdf->getNumLines($subjectWithSection, $colWidths[0]),
+                $pdf->getNumLines($dayPattern, $colWidths[1]),
+                $pdf->getNumLines($timeText, $colWidths[2]),
+                $pdf->getNumLines($students, $colWidths[3]),
+                $pdf->getNumLines($roomName, $colWidths[6]),
+                1
+            );
+            
+            $rowHeight = max($maxLines * 4.5, 6);
+            
+            $x = $startX;
+            $pdf->MultiCell($colWidths[0], $rowHeight, $subjectWithSection, 1, 'L', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[0];
+            $pdf->MultiCell($colWidths[1], $rowHeight, $dayPattern, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[1];
+            $pdf->MultiCell($colWidths[2], $rowHeight, $timeText, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[2];
+            $pdf->MultiCell($colWidths[3], $rowHeight, $students, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[3];
+            $pdf->MultiCell($colWidths[4], $rowHeight, $units, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[4];
+            $pdf->MultiCell($colWidths[5], $rowHeight, $contactHours, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            $x += $colWidths[5];
+            $pdf->MultiCell($colWidths[6], $rowHeight, $roomName, 1, 'C', false, 0, $x, $rowY, true, 0, false, true, $rowHeight, 'M');
+            
+            $pdf->SetY($rowY + $rowHeight);
+        }
+    }
+
+    private function generateTotalRow(TCPDF $pdf, array $totals, array $colWidths, float $startX): void
+    {
+        $pdf->SetFont('times', 'B', 8);
+        $pdf->SetFillColor(211, 211, 211);
+        
+        $totalY = $pdf->GetY();
+        $totalHeight = 6;
+        
+        $x = $startX;
+        $pdf->MultiCell($colWidths[0], $totalHeight, 'TOTAL', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[0];
+        $pdf->MultiCell($colWidths[1], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[1];
+        $pdf->MultiCell($colWidths[2], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[2];
+        $pdf->MultiCell($colWidths[3], $totalHeight, (string)$totals['totalStudents'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[3];
+        $pdf->MultiCell($colWidths[4], $totalHeight, (string)$totals['totalUnits'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[4];
+        $pdf->MultiCell($colWidths[5], $totalHeight, (string)$totals['totalContactHours'], 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        $x += $colWidths[5];
+        $pdf->MultiCell($colWidths[6], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
+        
+        $pdf->SetY($totalY + $totalHeight);
+    }
+
+    private function generateScheduleTable(TCPDF $pdf, array $schedules, array $totals, bool $isOverload = false): void
+    {
+        // If this is the overload section, add the OVERLOAD header
+        if ($isOverload) {
+            $pdf->Ln(2);
+            $pdf->SetFont('times', 'B', 10);
+            $pdf->SetFillColor(173, 216, 230); // Light blue background
+            $totalWidth = 190.5; // Total table width
+            $pdf->Cell($totalWidth, 6, 'OVERLOAD', 1, 1, 'C', true);
+            $pdf->Ln(1);
+        }
+        
+        // Set thin border for table cells
+        $pdf->SetLineWidth(0.1);
+        
+        // Define column widths - total available width is page width minus margins
+        // Legal paper = 215.9mm, margins = 12.7mm each side, so available = 190.5mm
+        $colWidths = [60, 17, 26, 16.5, 18, 22, 31]; // Total = 190.5mm exactly
+        $startX = 12.7; // Align to left margin (same as margins)
+        
+        // Only generate header for regular (non-overload) section
+        if (!$isOverload) {
+            // Table header with advanced formatting
+            $pdf->SetFont('times', 'B', 9);
+            $pdf->SetFillColor(255, 255, 255);
+            
+            $headerY = $pdf->GetY();
+            
+            // Calculate required height for multi-line headers
+            $maxHeaderLines = max(
+                $pdf->getNumLines("SUBJECT\nw/ SECTION", $colWidths[0]),
+                $pdf->getNumLines('DAY', $colWidths[1]),
+                $pdf->getNumLines('TIME', $colWidths[2]),
+                $pdf->getNumLines("NO. of\nSTUD.", $colWidths[3]),
+                $pdf->getNumLines("NO. of\nUNITS\nHANDLED", $colWidths[4]),
+                $pdf->getNumLines("NO. of\nCONTACT\nHOURS per\nWEEK", $colWidths[5]),
+                $pdf->getNumLines('ROOM', $colWidths[6])
+            );
+            $headerHeight = max($maxHeaderLines * 4, 14); // Auto-adjust based on content with better spacing
+            
+            // Draw header using MultiCell for perfect text wrapping and vertical centering
+            $x = $startX;
+            $pdf->MultiCell($colWidths[0], $headerHeight, "SUBJECT\nw/ SECTION", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[0];
+            $pdf->MultiCell($colWidths[1], $headerHeight, 'DAY', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[1];
+            $pdf->MultiCell($colWidths[2], $headerHeight, 'TIME', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[2];
+            $pdf->MultiCell($colWidths[3], $headerHeight, "NO. of\nSTUD.", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[3];
+            $pdf->MultiCell($colWidths[4], $headerHeight, "NO. of\nUNITS\nHANDLED", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[4];
+            $pdf->MultiCell($colWidths[5], $headerHeight, "NO. of\nCONTACT\nHOURS per\nWEEK", 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            $x += $colWidths[5];
+            $pdf->MultiCell($colWidths[6], $headerHeight, 'ROOM', 1, 'C', true, 0, $x, $headerY, true, 0, false, true, $headerHeight, 'M');
+            
+            $pdf->SetY($headerY + $headerHeight);
+        }
 
         // Table body with advanced formatting
         $pdf->SetFont('times', '', 10);
@@ -375,39 +655,46 @@ class TeachingLoadPdfService
             $pdf->MultiCell($colWidths[6], $totalHeight, '', 1, 'C', true, 0, $x, $totalY, true, 0, false, true, $totalHeight, 'M');
             
             $pdf->SetY($totalY + $totalHeight);
-
-            // Consultation Period row
-            $pdf->SetFont('times', '', 8);
-            $pdf->SetFillColor(255, 255, 255);
-            
-            $consultY = $pdf->GetY();
-            $consultHeight = 8;
-            
-            $x = $startX;
-            // Consultation Period label in Subject column
-            $pdf->MultiCell($colWidths[0], $consultHeight, 'Consultation Period', 1, 'L', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[0];
-            // Empty cell for Day
-            $pdf->MultiCell($colWidths[1], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[1];
-            // Time in bold
-            $pdf->SetFont('times', 'B', 8);
-            $pdf->MultiCell($colWidths[2], $consultHeight, 'MWF 10-11 PM', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $pdf->SetFont('times', '', 8);
-            $x += $colWidths[2];
-            // Empty cells for remaining columns
-            $pdf->MultiCell($colWidths[3], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[3];
-            $pdf->MultiCell($colWidths[4], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[4];
-            $pdf->MultiCell($colWidths[5], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            $x += $colWidths[5];
-            $pdf->MultiCell($colWidths[6], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
-            
-            $pdf->SetY($consultY + $consultHeight);
         }
 
         $pdf->Ln(2);
+    }
+
+    private function generateConsultationPeriodRow(TCPDF $pdf): void
+    {
+        // Define column widths (same as main table)
+        $colWidths = [60, 17, 26, 16.5, 18, 22, 31];
+        $startX = 12.7;
+        
+        // Consultation Period row
+        $pdf->SetFont('times', '', 8);
+        $pdf->SetFillColor(255, 255, 255);
+        
+        $consultY = $pdf->GetY();
+        $consultHeight = 8;
+        
+        $x = $startX;
+        // Consultation Period label in Subject column
+        $pdf->MultiCell($colWidths[0], $consultHeight, 'Consultation Period', 1, 'L', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $x += $colWidths[0];
+        // Empty cell for Day
+        $pdf->MultiCell($colWidths[1], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $x += $colWidths[1];
+        // Time in bold
+        $pdf->SetFont('times', 'B', 8);
+        $pdf->MultiCell($colWidths[2], $consultHeight, 'MWF 10-11 PM', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $pdf->SetFont('times', '', 8);
+        $x += $colWidths[2];
+        // Empty cells for remaining columns
+        $pdf->MultiCell($colWidths[3], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $x += $colWidths[3];
+        $pdf->MultiCell($colWidths[4], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $x += $colWidths[4];
+        $pdf->MultiCell($colWidths[5], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        $x += $colWidths[5];
+        $pdf->MultiCell($colWidths[6], $consultHeight, '', 1, 'C', false, 0, $x, $consultY, true, 0, false, true, $consultHeight, 'M');
+        
+        $pdf->SetY($consultY + $consultHeight);
     }
 
     private function generateBottomSection(TCPDF $pdf, array $schedules, array $totals, User $faculty): void
@@ -435,14 +722,75 @@ class TeachingLoadPdfService
         // Row 2: Total Hours (left) and Total Students (positioned to the right)
         $pdf->Cell($leftColWidth, $rowHeight, 'Total No. of Hrs./Week.: ' . number_format($totals['totalContactHours'], 0), 0, 0, 'L');
         $pdf->Cell(10, $rowHeight, '', 0, 0, 'L'); // Spacing between the two fields
-        $pdf->Cell($rightColWidth - 10, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'L');
+        $totalStudentsWidth = $rightColWidth - 10;
+        $pdf->Cell($totalStudentsWidth, $rowHeight, 'Total No. of Students: ' . $totals['totalStudents'], 0, 1, 'L');
         
-        // Row 4: Other Designation (spans both columns)
-        $pdf->Cell(0, $rowHeight, 'Other Designation/Special Assignments:', 0, 1, 'L');
+        // Row 4: Other Designation - first line extends to align with "70", wraps under "Other"
+        $y = $pdf->GetY();
+        $startX = $pdf->GetX();
+        $pdf->SetFont('times', '', 11);
+        
+        // Get the faculty's other designation from their profile
+        $otherDesignation = $faculty->getOtherDesignation() ?: '';
+        $designationText = $otherDesignation;
+        
+        // Write the label
+        $labelText = 'Other Designation/Special Assignments: ';
+        $labelWidth = $pdf->GetStringWidth($labelText);
+        $pdf->Cell($labelWidth, $rowHeight, $labelText, 0, 0, 'L');
+        
+        // Calculate available width for first line to align under "Students" text (not the number)
+        // This is leftColWidth + spacing + width of "Total No. of Students: "
+        $studentsLabelWidth = $pdf->GetStringWidth('Total No. of Students: ');
+        $firstLineWidth = $leftColWidth + 10 + $studentsLabelWidth - $labelWidth;
+        
+        // Calculate how much text fits on first line
+        $textWidth = $pdf->GetStringWidth($designationText);
+        
+        if ($textWidth <= $firstLineWidth) {
+            // All text fits on first line
+            $pdf->Cell($firstLineWidth, $rowHeight, $designationText, 0, 1, 'L');
+        } else {
+            // Text needs to wrap - write first line
+            $firstLineText = '';
+            $remainingText = $designationText;
+            $words = explode(' ', $designationText);
+            
+            foreach ($words as $word) {
+                $testText = $firstLineText . ($firstLineText ? ' ' : '') . $word;
+                if ($pdf->GetStringWidth($testText) <= $firstLineWidth) {
+                    $firstLineText = $testText;
+                } else {
+                    $remainingText = substr($designationText, strlen($firstLineText));
+                    break;
+                }
+            }
+            
+            // If no words fit, just split at character level
+            if (empty($firstLineText)) {
+                for ($i = 0; $i < strlen($designationText); $i++) {
+                    $testText = substr($designationText, 0, $i + 1);
+                    if ($pdf->GetStringWidth($testText) > $firstLineWidth) {
+                        $firstLineText = substr($designationText, 0, $i);
+                        $remainingText = substr($designationText, $i);
+                        break;
+                    }
+                }
+            }
+            
+            // Write first line
+            $pdf->Cell($firstLineWidth, $rowHeight, $firstLineText, 0, 1, 'L');
+            
+            // Write second line starting from left margin (under "Other")
+            if (!empty(trim($remainingText))) {
+                $pdf->Cell(0, $rowHeight, trim($remainingText), 0, 1, 'L');
+            }
+        }
         
         $pdf->Ln(5);
         
         // Row 5: Highest Educational Attainment (spans both columns) - with fillable field
+        $pdf->SetFont('times', '', 11);
         $y = $pdf->GetY();
         $pdf->Cell(55, $rowHeight, 'Highest Educational Attainment: ', 0, 0, 'L');
         $x = $pdf->GetX();
