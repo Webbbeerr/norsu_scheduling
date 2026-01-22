@@ -1513,11 +1513,11 @@ let subjectsAlpineComponent = null;
 // Department Group Mapping - for filtering by department group
 const departmentGroupMap = {
     {% for deptId, groupDepts in departmentGroupMap %}
-    {{ deptId }}: [
+    "{{ deptId }}": [
         {% for groupDept in groupDepts %}
-        { id: {{ groupDept.id }}, name: '{{ groupDept.name|e('js') }}' },
+        { id: {{ groupDept.id }}, name: '{{ groupDept.name|e('js') }}' }{{ not loop.last ? ',' : '' }}
         {% endfor %}
-    ],
+    ]{% if not loop.last %},{% endif %}
     {% endfor %}
 };
 
