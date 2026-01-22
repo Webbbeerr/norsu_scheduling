@@ -619,7 +619,8 @@
                                     <template x-for="(room, index) in paginatedRooms" :key="room.id">
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4">
-                                                <div class="text-sm font-medium" x-text="room.name"></div>
+                                                <div class="text-sm font-medium text-gray-900" x-text="room.code"></div>
+                                                <div class="text-xs text-gray-500" x-text="room.name" x-show="room.name"></div>
                                             </td>
                                             <td class="px-6 py-4">
                                                 <div class="text-sm text-gray-900" x-text="room.building"></div>
@@ -1539,6 +1540,7 @@ function roomsTableData() {
                 {% set room = item[0] %}
                 {
                     id: {{ room.id ?? 0 }},
+                    code: '{{ room.code|default('')|e('js') }}',
                     name: '{{ room.name|default('')|e('js') }}',
                     building: '{{ room.building|default('')|e('js') }}',
                     capacity: {{ room.capacity ?? 0 }},
@@ -1609,6 +1611,7 @@ function roomsTableData() {
             const searchValue = document.getElementById('filterSearch')?.value.toLowerCase() || '';
             if (searchValue) {
                 filtered = filtered.filter(room => 
+                    room.code.toLowerCase().includes(searchValue) ||
                     room.name.toLowerCase().includes(searchValue) ||
                     room.building.toLowerCase().includes(searchValue)
                 );
