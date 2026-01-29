@@ -306,23 +306,37 @@ class ScheduleConflictDetector
         if (!$yearLevel) {
             return $conflicts;
         }
+        
+        // CRITICAL: Get the department from the curriculum to ensure we only check conflicts
+        // within the same department. Different departments have different students even if
+        // they use the same section names and year levels (e.g., ITS Year 4 Section A vs CSC Year 4 Section A)
+        $curriculum = $curriculumSubject->getCurriculum();
+        if (!$curriculum || !$curriculum->getDepartment()) {
+            error_log("[Block Sectioning Debug] No department found for curriculum - skipping conflict check");
+            return $conflicts;
+        }
+        
+        $department = $curriculum->getDepartment();
             
-        // Find all schedules with the SAME year level and section but DIFFERENT subjects
+        // Find all schedules with the SAME department, year level, and section but DIFFERENT subjects
         // The INNER JOIN ensures we only match schedules that ALSO have curriculum data
-        // This guarantees both schedules are from the same year level
+        // This guarantees both schedules are from the same department and year level
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('s')
             ->from(Schedule::class, 's')
             ->innerJoin('s.curriculumSubject', 'cs')  // INNER JOIN - excludes schedules without curriculum
             ->innerJoin('cs.curriculumTerm', 'ct')   // INNER JOIN - ensures curriculum term exists
+            ->innerJoin('cs.curriculum', 'c')        // INNER JOIN - ensures curriculum exists
             ->where('s.section = :section')
             ->andWhere('ct.year_level = :yearLevel')      // Must match EXACT year level
+            ->andWhere('c.department = :department')      // CRITICAL: Must be same department
             ->andWhere('s.subject != :subject')            // Different subject
             ->andWhere('s.academicYear = :academicYear')
             ->andWhere('s.semester = :semester')
             ->andWhere('s.status = :status')
             ->setParameter('section', $section)
             ->setParameter('yearLevel', $yearLevel)
+            ->setParameter('department', $department)
             ->setParameter('subject', $schedule->getSubject())
             ->setParameter('academicYear', $schedule->getAcademicYear())
             ->setParameter('semester', $schedule->getSemester())
@@ -337,8 +351,9 @@ class ScheduleConflictDetector
         
         // DEBUG: Log what we're comparing
         error_log(sprintf(
-            "[Block Sectioning Debug] Checking %s (Year %s, Section %s) against %d existing schedules",
+            "[Block Sectioning Debug] Checking %s (Dept: %s, Year %s, Section %s) against %d existing schedules",
             $schedule->getSubject()->getCode(),
+            $department->getName(),
             $yearLevel,
             $section,
             count($existingSchedules)
