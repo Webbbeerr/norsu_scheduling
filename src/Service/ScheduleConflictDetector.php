@@ -274,9 +274,7 @@ class ScheduleConflictDetector
      * Therefore, if two different subjects are scheduled for the same section at the same time,
      * students cannot attend both classes
      * 
-     * NOTE: This check ONLY runs when the schedule has curriculum data linked.
-     * This prevents false positives when comparing schedules from different year levels
-     * that happen to use the same section name (e.g., "Section A" in 1st and 2nd year).
+     * NOTE: This automatically looks up year level from curriculum structure (no manual linking needed)
      */
     private function checkBlockSectioningConflicts(Schedule $schedule, bool $excludeSelf = false): array
     {
@@ -288,54 +286,38 @@ class ScheduleConflictDetector
             return $conflicts;
         }
 
-        // Get the year level from the curriculum subject
-        $curriculumSubject = $schedule->getCurriculumSubject();
-        
-        // CRITICAL: Only check block sectioning conflicts if curriculum data is available
-        // Without curriculum data, we cannot accurately determine year level,
-        // which would cause false conflicts between different year levels using same section names
-        if (!$curriculumSubject || !$curriculumSubject->getCurriculumTerm()) {
-            // No curriculum data means we can't determine year level accurately
-            // Return empty to prevent false positives
+        $subject = $schedule->getSubject();
+        if (!$subject) {
             return $conflicts;
         }
+
+        // Automatically look up year level from curriculum_subjects → curriculum_terms
+        $yearLevel = $this->getYearLevelFromCurriculum($subject, $schedule->getSemester());
         
-        $yearLevel = $curriculumSubject->getCurriculumTerm()->getYearLevel();
-        
-        // Double check year level exists
+        // Skip if no year level found in curriculum
         if (!$yearLevel) {
             return $conflicts;
         }
         
-        // CRITICAL: Get the department from the curriculum to ensure we only check conflicts
-        // within the same department. Different departments have different students even if
-        // they use the same section names and year levels (e.g., ITS Year 4 Section A vs CSC Year 4 Section A)
-        $curriculum = $curriculumSubject->getCurriculum();
-        if (!$curriculum || !$curriculum->getDepartment()) {
-            error_log("[Block Sectioning Debug] No department found for curriculum - skipping conflict check");
+        // Get the department from the subject
+        $department = $subject->getDepartment();
+        if (!$department) {
+            error_log("[Block Sectioning Debug] No department found for subject - skipping conflict check");
             return $conflicts;
         }
-        
-        $department = $curriculum->getDepartment();
             
-        // Find all schedules with the SAME department, year level, and section but DIFFERENT subjects
-        // The INNER JOIN ensures we only match schedules that ALSO have curriculum data
-        // This guarantees both schedules are from the same department and year level
+        // Find all schedules with the SAME section in the SAME academic year and semester
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('s')
             ->from(Schedule::class, 's')
-            ->innerJoin('s.curriculumSubject', 'cs')  // INNER JOIN - excludes schedules without curriculum
-            ->innerJoin('cs.curriculumTerm', 'ct')   // INNER JOIN - ensures curriculum term exists
-            ->innerJoin('cs.curriculum', 'c')        // INNER JOIN - ensures curriculum exists
+            ->innerJoin('s.subject', 'subj')
             ->where('s.section = :section')
-            ->andWhere('ct.year_level = :yearLevel')      // Must match EXACT year level
-            ->andWhere('c.department = :department')      // CRITICAL: Must be same department
-            ->andWhere('s.subject != :subject')            // Different subject
+            ->andWhere('subj.department = :department')   // CRITICAL: Must be same department
+            ->andWhere('s.subject != :subject')           // Different subject
             ->andWhere('s.academicYear = :academicYear')
             ->andWhere('s.semester = :semester')
             ->andWhere('s.status = :status')
             ->setParameter('section', $section)
-            ->setParameter('yearLevel', $yearLevel)
             ->setParameter('department', $department)
             ->setParameter('subject', $schedule->getSubject())
             ->setParameter('academicYear', $schedule->getAcademicYear())
@@ -360,19 +342,21 @@ class ScheduleConflictDetector
         ));
 
         foreach ($existingSchedules as $existing) {
-            // DEBUG: Log each comparison
-            $existingYearLevelDebug = 'NULL';
-            if ($existing->getCurriculumSubject() && $existing->getCurriculumSubject()->getCurriculumTerm()) {
-                $existingYearLevelDebug = $existing->getCurriculumSubject()->getCurriculumTerm()->getYearLevel();
-            }
+            // Automatically look up year level for the existing schedule's subject
+            $existingYearLevel = $this->getYearLevelFromCurriculum($existing->getSubject(), $existing->getSemester());
             
             error_log(sprintf(
                 "[Block Sectioning Debug] Comparing with %s (Year %s, Section %s, Days: %s)",
                 $existing->getSubject()->getCode(),
-                $existingYearLevelDebug,
+                $existingYearLevel ?: 'NULL',
                 $existing->getSection(),
                 $existing->getDayPattern()
             ));
+            
+            // Only check conflict if both schedules have year level data AND they match
+            if (!$existingYearLevel || $existingYearLevel !== $yearLevel) {
+                continue;
+            }
             
             // Check if day patterns overlap AND times overlap
             if ($this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern())
@@ -654,4 +638,40 @@ class ScheduleConflictDetector
 
         return $conflictedSchedules;
     }
-}
+
+    /**
+     * Automatically look up year level from curriculum structure
+     * Searches curriculum_subjects → curriculum_terms based on subject and semester
+     * No manual linking required - works automatically like room/time conflicts
+     * 
+     * @param Subject $subject The subject to look up
+     * @param string $semester The semester (e.g., "1st Semester", "2nd Semester")
+     * @return int|null The year level (1-4) or null if not found in curriculum
+     */
+    private function getYearLevelFromCurriculum(Subject $subject, string $semester): ?int
+    {
+        try {
+            // Look up the subject in curriculum_subjects, join to curriculum_terms to get year_level
+            // Match by subject AND semester to get the correct year level
+            $qb = $this->entityManager->createQueryBuilder();
+            $qb->select('ct.year_level')
+                ->from('App\Entity\CurriculumSubject', 'cs')
+                ->innerJoin('cs.curriculumTerm', 'ct')
+                ->where('cs.subject = :subject')
+                ->andWhere('ct.semester = :semester')
+                ->setParameter('subject', $subject)
+                ->setParameter('semester', $semester)
+                ->setMaxResults(1);
+
+            $result = $qb->getQuery()->getOneOrNullResult();
+            
+            if ($result && isset($result['year_level'])) {
+                return (int) $result['year_level'];
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            error_log("[Year Level Lookup] Error looking up year level for subject {$subject->getCode()}: {$e->getMessage()}");
+            return null;
+        }
+    }

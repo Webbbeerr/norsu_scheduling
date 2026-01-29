@@ -121,6 +121,33 @@ class SubjectFormType extends AbstractType
                     new Assert\NotBlank(message: 'Subject type is required')
                 ]
             ])
+            ->add('yearLevel', ChoiceType::class, [
+                'label' => 'Year Level',
+                'required' => false,
+                'placeholder' => 'Select Year Level',
+                'choices' => [
+                    'Year 1' => 1,
+                    'Year 2' => 2,
+                    'Year 3' => 3,
+                    'Year 4' => 4
+                ],
+                'attr' => [
+                    'class' => 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150'
+                ]
+            ])
+            ->add('semester', ChoiceType::class, [
+                'label' => 'Semester',
+                'required' => false,
+                'placeholder' => 'Select Semester',
+                'choices' => [
+                    'First Semester' => 'First',
+                    'Second Semester' => 'Second',
+                    'Summer' => 'Summer'
+                ],
+                'attr' => [
+                    'class' => 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150'
+                ]
+            ])
             ->add('prerequisite', TextType::class, [
                 'label' => 'Prerequisite',
                 'required' => false,

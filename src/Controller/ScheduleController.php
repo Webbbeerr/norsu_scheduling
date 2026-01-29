@@ -12,7 +12,6 @@ use App\Service\SubjectService;
 use App\Service\ActivityLogService;
 use App\Service\SystemSettingsService;
 use App\Service\DashboardService;
-use App\Service\CurriculumLinkingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,7 +31,6 @@ class ScheduleController extends AbstractController
     private ActivityLogService $activityLogService;
     private SystemSettingsService $systemSettingsService;
     private DashboardService $dashboardService;
-    private CurriculumLinkingService $curriculumLinkingService;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -43,8 +41,7 @@ class ScheduleController extends AbstractController
         SubjectService $subjectService,
         ActivityLogService $activityLogService,
         SystemSettingsService $systemSettingsService,
-        DashboardService $dashboardService,
-        CurriculumLinkingService $curriculumLinkingService
+        DashboardService $dashboardService
     ) {
         $this->entityManager = $entityManager;
         $this->scheduleRepository = $scheduleRepository;
@@ -55,7 +52,6 @@ class ScheduleController extends AbstractController
         $this->activityLogService = $activityLogService;
         $this->systemSettingsService = $systemSettingsService;
         $this->dashboardService = $dashboardService;
-        $this->curriculumLinkingService = $curriculumLinkingService;
     }
 
     #[Route('/', name: 'app_schedule_index', methods: ['GET'])]
@@ -348,9 +344,6 @@ class ScheduleController extends AbstractController
                     $schedule->setNotes('');
                     $schedule->setStatus('active');
 
-                    // Auto-link curriculum for block sectioning conflict detection
-                    $this->curriculumLinkingService->autoLinkCurriculum($schedule);
-
                     // Parse and set time
                     try {
                         $schedule->setStartTime(new \DateTime($startTime));
@@ -547,9 +540,6 @@ class ScheduleController extends AbstractController
                 $schedule->setDayPattern($dayPattern);
                 $schedule->setStartTime(new \DateTime($startTime));
                 $schedule->setEndTime(new \DateTime($endTime));
-                
-                // Auto-link curriculum for block sectioning conflict detection
-                $this->curriculumLinkingService->autoLinkCurriculum($schedule);
                 
                 // Check for conflicts (excluding self)
                 $conflicts = $conflictDetector->detectConflicts($schedule, true);

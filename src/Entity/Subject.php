@@ -61,6 +61,12 @@ class Subject
     #[ORM\Column(name: 'deleted_at', type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $deletedAt = null;
 
+    #[ORM\Column(name: 'year_level', type: Types::INTEGER, nullable: true)]
+    private ?int $yearLevel = null;
+
+    #[ORM\Column(name: 'semester', type: Types::STRING, length: 20, nullable: true)]
+    private ?string $semester = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -230,6 +236,28 @@ class Subject
     public function setDeletedAt(?\DateTimeInterface $deletedAt): static
     {
         $this->deletedAt = $deletedAt;
+        return $this;
+    }
+
+    public function getYearLevel(): ?int
+    {
+        return $this->yearLevel;
+    }
+
+    public function setYearLevel(?int $yearLevel): static
+    {
+        $this->yearLevel = $yearLevel;
+        return $this;
+    }
+
+    public function getSemester(): ?string
+    {
+        return $this->semester;
+    }
+
+    public function setSemester(?string $semester): static
+    {
+        $this->semester = $semester;
         return $this;
     }
 
