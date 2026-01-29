@@ -245,6 +245,7 @@
                                             data-subject-title="{{ subject.title }}"
                                             data-subject-units="{{ subject.units }}"
                                             data-subject-semester="{{ subject.semester }}"
+                                            data-year-level="{{ subject.yearLevel ?? '' }}"
                                             class="subject-option subject-semester-{{ subject.semester }}">
                                         {{ subject.code }} - {{ subject.title }} ({{ subject.units }} units)
                                     </option>
@@ -468,9 +469,38 @@
 </div>
 
 <script>
+// ========== DIAGNOSTIC TESTS ==========
+// Run tests on page load to verify day overlap logic
+console.log('\n========== TESTING DAY OVERLAP FUNCTION ==========');
+
+// Test helper function
+function testDaysOverlap(pattern1, pattern2, expected) {
+    const days1 = pattern1.split('-');
+    const days2 = pattern2.split('-');
+    const result = days1.some(day => days2.includes(day));
+    const status = result === expected ? '✅ PASS' : '❌ FAIL';
+    console.log(`${status}: daysOverlap("${pattern1}", "${pattern2}") = ${result} (expected: ${expected})`);
+    if (result !== expected) {
+        console.log(`  days1: [${days1.join(', ')}]`);
+        console.log(`  days2: [${days2.join(', ')}]`);
+    }
+    return result === expected;
+}
+
+// Critical test cases
+testDaysOverlap('M-T-TH-F', 'T-TH', true);  // Should overlap on T and TH
+testDaysOverlap('M-W-F', 'T-TH', false);    // Should NOT overlap
+testDaysOverlap('M-T-W-TH-F', 'M-W-F', true); // Should overlap on M, W, F
+testDaysOverlap('T-TH', 'T-TH', true);      // Should overlap (exact match)
+testDaysOverlap('M-W', 'T-TH', false);      // Should NOT overlap
+
+console.log('========== DAY OVERLAP TESTS COMPLETE ==========\n');
+// ========== END DIAGNOSTIC TESTS ==========
+
 // Store existing schedules data
 let existingSchedules = {};
 let currentSubjectId = null; // Track which subject we're creating schedules for
+let subjectYearLevels = {}; // Store year level for each subject ID
 
 // Store all room schedules (for cross-subject conflict detection)
 let allRoomSchedules = {};
@@ -796,6 +826,10 @@ function checkSectionConflict(index) {
     const startTimeInput = document.getElementById(`start-time-${index}`);
     const endTimeInput = document.getElementById(`end-time-${index}`);
     
+    console.log(`\n=== CHECKING CONFLICTS FOR SECTION ${index + 1} ===`);
+    console.log(`Subject: ${subjectCode} (ID: ${subjectId})`);
+    console.log(`Semester: ${semester}, Academic Year: ${academicYear}`);
+    
     const badge = document.getElementById(`conflict-badge-${index}`);
     const column = document.getElementById(`section-column-${index}`);
     const conflictDetailsDiv = document.getElementById(`conflict-details-${index}`);
@@ -813,9 +847,12 @@ function checkSectionConflict(index) {
     const startTime = startTimeInput.value;
     const endTime = endTimeInput.value;
     
-    console.log(`=== Checking Section ${index + 1} ===`);
+    console.log(`\n=== Checking Section ${index + 1} ===`);
+    console.log('Subject:', subjectCode, '(ID:', subjectId, ')');
     console.log('Section:', section, 'Room:', roomId, roomText);
     console.log('Day:', dayPattern, 'Time:', startTime, '-', endTime);
+    console.log('Semester:', semester, 'Academic Year:', academicYear);
+    console.log('Subject Year Level:', subjectYearLevels[subjectId]);
     
     // Check if all required fields are filled
     if (!subjectId || !semester || !academicYear || !section || !roomId || !dayPattern || !startTime || !endTime) {
@@ -846,6 +883,8 @@ function checkSectionConflict(index) {
     }
     
     // 2. Check for room-time conflicts with existing schedules
+    console.log(`\n--- Checking ${Object.keys(existingSchedules).length} existing schedules for conflicts ---`);
+    
     for (const [key, schedule] of Object.entries(existingSchedules)) {
         if (schedule.semester === semester && schedule.yearId == academicYear) {
             // Check if same room
@@ -864,18 +903,39 @@ function checkSectionConflict(index) {
                 }
             }
             
-            // Check for block sectioning conflict (same section, same time, different subject)
+            // Check for block sectioning conflict (same section, same year level, different subject, overlapping schedule)
+            // Block sectioning means: students in the SAME section of the SAME year take ALL their classes together
+            // CONFLICT: Year 3 Section A at 7:00-8:30 M-W-F (ITS 308) vs Year 3 Section A at 7:00-8:30 M-W-F (ITS 310)
+            // NO CONFLICT: Year 2 Section A at 7:00-8:30 M-W-F vs Year 3 Section A at 7:00-8:30 M-W-F (different years)
+            // NO CONFLICT: Year 3 Section A at 7:00-8:30 T-TH vs Year 3 Section A at 7:00-8:30 M-W-F (different days)
             if (schedule.section === section && schedule.subjectId != subjectId) {
-                // Check if days overlap
-                if (daysOverlap(dayPattern, schedule.dayPattern)) {
-                    // Check if times overlap
-                    if (timesOverlap(startTime, endTime, schedule.startTime, schedule.endTime)) {
+                const scheduleYearLevel = schedule.yearLevel || null;
+                const currentYearLevel = subjectYearLevels[subjectId] || null;
+                
+                console.log(`Block sectioning check: ${schedule.subjectCode} Year ${scheduleYearLevel} Section ${schedule.section} vs ${subjectCode} Year ${currentYearLevel} Section ${section}`);
+                console.log(`  Days: ${schedule.dayPattern} vs ${dayPattern}`);
+                console.log(`  Times: ${schedule.startTime}-${schedule.endTime} vs ${startTime}-${endTime}`);
+                
+                // Only check if both have year level AND they match
+                if (scheduleYearLevel && currentYearLevel && scheduleYearLevel === currentYearLevel) {
+                    // Same year level - check day and time overlap
+                    const daysMatch = daysOverlap(dayPattern, schedule.dayPattern);
+                    const timesMatch = timesOverlap(startTime, endTime, schedule.startTime, schedule.endTime);
+                    
+                    console.log(`  Same year (${currentYearLevel}) - Days overlap: ${daysMatch}, Times overlap: ${timesMatch}`);
+                    
+                    if (daysMatch && timesMatch) {
+                        console.log(`  ❌ CONFLICT: Same section, same year, overlapping schedule`);
                         hasConflict = true;
                         conflictDetails.push({
                             type: 'block_sectioning',
-                            message: `<strong>${schedule.subjectCode} - Section ${schedule.section}</strong><br><span class="text-red-600">⚠️ BLOCK SECTIONING CONFLICT: Section ${section} students cannot attend both classes</span><br><span class="text-xs text-gray-600">${schedule.dayPattern} ${formatTimeAMPM(schedule.startTime)}-${formatTimeAMPM(schedule.endTime)}</span>`
+                            message: `<strong>${schedule.subjectCode} - Section ${schedule.section}</strong><br><span class="text-red-600">⚠️ BLOCK SECTIONING CONFLICT: Year ${currentYearLevel} Section ${section} students cannot attend both classes</span><br><span class="text-xs text-gray-600">${schedule.dayPattern} ${formatTimeAMPM(schedule.startTime)}-${formatTimeAMPM(schedule.endTime)}</span>`
                         });
+                    } else {
+                        console.log(`  ✓ No conflict: Different days or times`);
                     }
+                } else {
+                    console.log(`  ✓ No conflict: Different year levels (${scheduleYearLevel} vs ${currentYearLevel}) or missing year data`);
                 }
             }
         }
@@ -1012,10 +1072,16 @@ function toggleConflictDetails(index) {
 }
 
 // Helper: Check if day patterns overlap
+// Helper: Check if day patterns overlap
 function daysOverlap(pattern1, pattern2) {
     const days1 = pattern1.split('-');
     const days2 = pattern2.split('-');
-    return days1.some(day => days2.includes(day));
+    const overlap = days1.some(day => days2.includes(day));
+    console.log(`  daysOverlap("${pattern1}", "${pattern2}"):`);
+    console.log(`    days1: [${days1.join(', ')}]`);
+    console.log(`    days2: [${days2.join(', ')}]`);
+    console.log(`    overlap: ${overlap}`);
+    return overlap;
 }
 
 // Helper: Check if time ranges overlap
@@ -1147,6 +1213,36 @@ function fetchExistingSections(subjectId) {
             console.log('Count:', data.count);
             
             existingSchedules = data.schedules || {};
+            
+            console.log('=== PROCESSING SCHEDULE DATA ===');
+            console.log('Raw schedules received:', data.schedules);
+            console.log('Number of schedules:', Object.keys(existingSchedules).length);
+            
+            // Extract year levels for each subject for block sectioning checks
+            Object.entries(existingSchedules).forEach(([key, schedule]) => {
+                console.log(`Schedule ${key}:`, schedule);
+                console.log(`  Subject ID: ${schedule.subjectId}, Year Level: ${schedule.yearLevel}`);
+                
+                if (schedule.subjectId && schedule.yearLevel) {
+                    subjectYearLevels[schedule.subjectId] = schedule.yearLevel;
+                    console.log(`  → Mapped subject ${schedule.subjectId} to year level ${schedule.yearLevel}`);
+                }
+            });
+            
+            // CRITICAL FIX: Also get year level for the CURRENT subject being selected
+            const subjectSelect = document.getElementById('subject');
+            const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
+            const currentSubjectYearLevel = selectedOption?.getAttribute('data-year-level');
+            
+            if (currentSubjectYearLevel && currentSubjectYearLevel !== '') {
+                subjectYearLevels[currentSubjectId] = parseInt(currentSubjectYearLevel);
+                console.log(`  → Mapped CURRENT subject ${currentSubjectId} to year level ${currentSubjectYearLevel} (from dropdown)`);
+            }
+            
+            console.log('=== YEAR LEVEL MAPPING COMPLETE ===');
+            console.log('Subject Year Levels:', subjectYearLevels);
+            console.log('Current Subject ID:', currentSubjectId);
+            console.log('Current Subject Year Level:', subjectYearLevels[currentSubjectId]);
             
             // Regenerate section columns with correct starting letters
             const sectionCount = document.getElementById('section_count').value;

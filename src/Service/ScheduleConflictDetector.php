@@ -273,6 +273,10 @@ class ScheduleConflictDetector
      * In block sectioning, students in the same year level and section take ALL subjects together
      * Therefore, if two different subjects are scheduled for the same section at the same time,
      * students cannot attend both classes
+     * 
+     * NOTE: This check ONLY runs when the schedule has curriculum data linked.
+     * This prevents false positives when comparing schedules from different year levels
+     * that happen to use the same section name (e.g., "Section A" in 1st and 2nd year).
      */
     private function checkBlockSectioningConflicts(Schedule $schedule, bool $excludeSelf = false): array
     {
@@ -286,82 +290,109 @@ class ScheduleConflictDetector
 
         // Get the year level from the curriculum subject
         $curriculumSubject = $schedule->getCurriculumSubject();
-        $yearLevel = null;
         
-        if ($curriculumSubject && $curriculumSubject->getCurriculumTerm()) {
-            // PREFERRED METHOD: Use curriculum data for accurate year level
-            $yearLevel = $curriculumSubject->getCurriculumTerm()->getYearLevel();
+        // CRITICAL: Only check block sectioning conflicts if curriculum data is available
+        // Without curriculum data, we cannot accurately determine year level,
+        // which would cause false conflicts between different year levels using same section names
+        if (!$curriculumSubject || !$curriculumSubject->getCurriculumTerm()) {
+            // No curriculum data means we can't determine year level accurately
+            // Return empty to prevent false positives
+            return $conflicts;
+        }
+        
+        $yearLevel = $curriculumSubject->getCurriculumTerm()->getYearLevel();
+        
+        // Double check year level exists
+        if (!$yearLevel) {
+            return $conflicts;
+        }
             
-            // Find all schedules with the SAME year level and section but DIFFERENT subjects
-            $qb = $this->entityManager->createQueryBuilder();
-            $qb->select('s')
-                ->from(Schedule::class, 's')
-                ->join('s.curriculumSubject', 'cs')
-                ->join('cs.curriculumTerm', 'ct')
-                ->where('s.section = :section')
-                ->andWhere('ct.year_level = :yearLevel')
-                ->andWhere('s.subject != :subject') // Different subject - this is the key!
-                ->andWhere('s.academicYear = :academicYear')
-                ->andWhere('s.semester = :semester')
-                ->andWhere('s.status = :status')
-                ->setParameter('section', $section)
-                ->setParameter('yearLevel', $yearLevel)
-                ->setParameter('subject', $schedule->getSubject())
-                ->setParameter('academicYear', $schedule->getAcademicYear())
-                ->setParameter('semester', $schedule->getSemester())
-                ->setParameter('status', 'active');
+        // Find all schedules with the SAME year level and section but DIFFERENT subjects
+        // The INNER JOIN ensures we only match schedules that ALSO have curriculum data
+        // This guarantees both schedules are from the same year level
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb->select('s')
+            ->from(Schedule::class, 's')
+            ->innerJoin('s.curriculumSubject', 'cs')  // INNER JOIN - excludes schedules without curriculum
+            ->innerJoin('cs.curriculumTerm', 'ct')   // INNER JOIN - ensures curriculum term exists
+            ->where('s.section = :section')
+            ->andWhere('ct.year_level = :yearLevel')      // Must match EXACT year level
+            ->andWhere('s.subject != :subject')            // Different subject
+            ->andWhere('s.academicYear = :academicYear')
+            ->andWhere('s.semester = :semester')
+            ->andWhere('s.status = :status')
+            ->setParameter('section', $section)
+            ->setParameter('yearLevel', $yearLevel)
+            ->setParameter('subject', $schedule->getSubject())
+            ->setParameter('academicYear', $schedule->getAcademicYear())
+            ->setParameter('semester', $schedule->getSemester())
+            ->setParameter('status', 'active');
 
-            if ($excludeSelf && $schedule->getId()) {
-                $qb->andWhere('s.id != :scheduleId')
-                    ->setParameter('scheduleId', $schedule->getId());
-            }
-
-            $existingSchedules = $qb->getQuery()->getResult();
-        } else {
-            // FALLBACK METHOD: When curriculum data is not available,
-            // check for same section + different subject conflicts
-            // This assumes sections follow block sectioning model
-            $qb = $this->entityManager->createQueryBuilder();
-            $qb->select('s')
-                ->from(Schedule::class, 's')
-                ->where('s.section = :section')
-                ->andWhere('s.subject != :subject') // Different subject
-                ->andWhere('s.academicYear = :academicYear')
-                ->andWhere('s.semester = :semester')
-                ->andWhere('s.status = :status')
-                ->setParameter('section', $section)
-                ->setParameter('subject', $schedule->getSubject())
-                ->setParameter('academicYear', $schedule->getAcademicYear())
-                ->setParameter('semester', $schedule->getSemester())
-                ->setParameter('status', 'active');
-
-            if ($excludeSelf && $schedule->getId()) {
-                $qb->andWhere('s.id != :scheduleId')
-                    ->setParameter('scheduleId', $schedule->getId());
-            }
-
-            $existingSchedules = $qb->getQuery()->getResult();
+        if ($excludeSelf && $schedule->getId()) {
+            $qb->andWhere('s.id != :scheduleId')
+                ->setParameter('scheduleId', $schedule->getId());
         }
 
+        $existingSchedules = $qb->getQuery()->getResult();
+        
+        // DEBUG: Log what we're comparing
+        error_log(sprintf(
+            "[Block Sectioning Debug] Checking %s (Year %s, Section %s) against %d existing schedules",
+            $schedule->getSubject()->getCode(),
+            $yearLevel,
+            $section,
+            count($existingSchedules)
+        ));
+
         foreach ($existingSchedules as $existing) {
+            // DEBUG: Log each comparison
+            $existingYearLevelDebug = 'NULL';
+            if ($existing->getCurriculumSubject() && $existing->getCurriculumSubject()->getCurriculumTerm()) {
+                $existingYearLevelDebug = $existing->getCurriculumSubject()->getCurriculumTerm()->getYearLevel();
+            }
+            
+            error_log(sprintf(
+                "[Block Sectioning Debug] Comparing with %s (Year %s, Section %s, Days: %s)",
+                $existing->getSubject()->getCode(),
+                $existingYearLevelDebug,
+                $existing->getSection(),
+                $existing->getDayPattern()
+            ));
+            
             // Check if day patterns overlap AND times overlap
             if ($this->hasDayOverlap($schedule->getDayPattern(), $existing->getDayPattern())
                 && $this->hasTimeOverlap($schedule, $existing)) {
                 
-                // Get year level for display (if available)
-                $displayYearLevel = $yearLevel ?? 'Unknown';
-                $existingYearLevel = null;
-                
+                // Get year level for both schedules - they should be the same by query design
+                $existingYearLevel = 'Unknown';
                 if ($existing->getCurriculumSubject() && $existing->getCurriculumSubject()->getCurriculumTerm()) {
                     $existingYearLevel = $existing->getCurriculumSubject()->getCurriculumTerm()->getYearLevel();
                 }
+                
+                // SAFETY CHECK: This should never happen due to our query filter,
+                // but if year levels don't match, skip this conflict
+                if ($existingYearLevel !== $yearLevel) {
+                    error_log(sprintf(
+                        "[Block Sectioning Debug] SKIPPING conflict - Year levels don't match: %s vs %s",
+                        $yearLevel,
+                        $existingYearLevel
+                    ));
+                    continue; // Different year levels - not a real conflict
+                }
+                
+                error_log(sprintf(
+                    "[Block Sectioning Debug] CONFLICT FOUND: %s vs %s (both Year %s)",
+                    $schedule->getSubject()->getCode(),
+                    $existing->getSubject()->getCode(),
+                    $yearLevel
+                ));
 
                 $conflicts[] = [
                     'type' => 'block_sectioning_conflict',
                     'schedule' => $existing,
                     'message' => sprintf(
-                        'BLOCK SECTIONING CONFLICT: %sSection %s students cannot attend both %s and %s at the same time (%s, %s - %s). Faculty: %s, Room: %s',
-                        $yearLevel ? "Year $yearLevel " : '',
+                        'BLOCK SECTIONING CONFLICT: Year %s Section %s students cannot attend both %s and %s at the same time (%s, %s - %s). Faculty: %s, Room: %s',
+                        $yearLevel,
                         $section,
                         $schedule->getSubject()->getCode(),
                         $existing->getSubject()->getCode(),

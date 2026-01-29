@@ -223,11 +223,11 @@ class ScheduleController extends AbstractController
                 ->getQuery()
                 ->getResult();
             
-            // Enrich subjects with semester information
+            // Enrich subjects with semester and year level information
             foreach ($subjects as &$subject) {
-                // Get all semesters this subject appears in
-                $semesters = $this->entityManager->createQueryBuilder()
-                    ->select('DISTINCT ct.semester')
+                // Get all semesters and year levels this subject appears in
+                $semestersAndYears = $this->entityManager->createQueryBuilder()
+                    ->select('DISTINCT ct.semester, ct.year_level')
                     ->from('App\Entity\CurriculumSubject', 'cs')
                     ->innerJoin('cs.curriculumTerm', 'ct')
                     ->where('cs.subject = :subject')
@@ -235,11 +235,13 @@ class ScheduleController extends AbstractController
                     ->getQuery()
                     ->getScalarResult();
                 
-                // Add semester as a property (we'll use the first one for filtering)
-                if (!empty($semesters)) {
-                    $subject->semester = $semesters[0]['semester'];
+                // Add semester and year level as properties (we'll use the first one for filtering)
+                if (!empty($semestersAndYears)) {
+                    $subject->semester = $semestersAndYears[0]['semester'];
+                    $subject->yearLevel = $semestersAndYears[0]['year_level'];
                 } else {
-                    $subject->semester = ''; // No semester info
+                    $subject->semester = '';
+                    $subject->yearLevel = null;
                 }
             }
         }
@@ -747,10 +749,50 @@ class ScheduleController extends AbstractController
             $schedule->setStatus('active');
             
             // Set curriculum subject if provided (for block sectioning conflict detection)
+            // Try to auto-link based on subject + semester if not explicitly provided
             if (isset($data['curriculum_subject_id']) && $data['curriculum_subject_id']) {
                 $curriculumSubject = $this->entityManager->getRepository(CurriculumSubject::class)->find($data['curriculum_subject_id']);
                 if ($curriculumSubject) {
                     $schedule->setCurriculumSubject($curriculumSubject);
+                }
+            } else {
+                // Auto-link: Find curriculum subject matching the selected subject and semester
+                // Get department from the subject itself
+                $department = $subject->getDepartment();
+                
+                error_log(sprintf(
+                    "[Auto-Link Debug] Subject: %s, Semester: %s, Department: %s",
+                    $subject->getCode(),
+                    $data['semester'],
+                    $department ? $department->getName() : 'NULL'
+                ));
+                
+                if ($department) {
+                    $curriculumSubject = $this->entityManager->createQueryBuilder()
+                        ->select('cs')
+                        ->from(CurriculumSubject::class, 'cs')
+                        ->join('cs.curriculumTerm', 'ct')
+                        ->join('cs.curriculum', 'c')
+                        ->where('cs.subject = :subject')
+                        ->andWhere('ct.semester = :semester')
+                        ->andWhere('c.department = :department')
+                        ->setParameter('subject', $subject)
+                        ->setParameter('semester', $data['semester'])
+                        ->setParameter('department', $department)
+                        ->setMaxResults(1)
+                        ->getQuery()
+                        ->getOneOrNullResult();
+                    
+                    if ($curriculumSubject) {
+                        $schedule->setCurriculumSubject($curriculumSubject);
+                        $yearLevel = $curriculumSubject->getCurriculumTerm() ? $curriculumSubject->getCurriculumTerm()->getYearLevel() : 'NULL';
+                        error_log(sprintf(
+                            "[Auto-Link Debug] SUCCESS - Linked to curriculum (Year %s)",
+                            $yearLevel
+                        ));
+                    } else {
+                        error_log("[Auto-Link Debug] FAILED - No matching curriculum subject found");
+                    }
                 }
             }
             
@@ -779,6 +821,20 @@ class ScheduleController extends AbstractController
                 return $c['message'];
             }, $hardConflicts);
             
+            // Debug info for curriculum linking
+            $curriculumDebug = [];
+            if ($schedule->getCurriculumSubject()) {
+                $cs = $schedule->getCurriculumSubject();
+                $curriculumDebug = [
+                    'has_curriculum' => true,
+                    'curriculum_subject_id' => $cs->getId(),
+                    'year_level' => $cs->getCurriculumTerm() ? $cs->getCurriculumTerm()->getYearLevel() : 'N/A',
+                    'semester' => $cs->getCurriculumTerm() ? $cs->getCurriculumTerm()->getSemester() : 'N/A'
+                ];
+            } else {
+                $curriculumDebug = ['has_curriculum' => false];
+            }
+            
             return $this->json([
                 'has_conflicts' => !empty($hardConflicts),
                 'conflicts' => $conflictMessages,
@@ -793,7 +849,8 @@ class ScheduleController extends AbstractController
                     'end_time' => $schedule->getEndTime()->format('H:i'),
                     'total_conflicts' => count($conflicts),
                     'duplicate_conflicts' => count($duplicateConflicts),
-                    'hard_conflicts' => count($hardConflicts)
+                    'hard_conflicts' => count($hardConflicts),
+                    'curriculum' => $curriculumDebug
                 ]
             ]);
             
@@ -811,16 +868,19 @@ class ScheduleController extends AbstractController
     public function getExistingSections(int $subjectId): JsonResponse
     {
         try {
-            // Get all active schedules for this subject
+            // Get all active schedules for this subject WITH year level data
             $schedules = $this->scheduleRepository->createQueryBuilder('s')
                 ->select('s.section', 's.semester', 's.dayPattern', 
                          's.startTime', 's.endTime',
                          'r.id as roomId', 'r.code as roomCode',
                          'sub.code as subjectCode', 'sub.id as subjectId',
-                         'ay.year', 'ay.id as yearId')
+                         'ay.year', 'ay.id as yearId',
+                         'ct.year_level as yearLevel')
                 ->leftJoin('s.academicYear', 'ay')
                 ->leftJoin('s.room', 'r')
                 ->leftJoin('s.subject', 'sub')
+                ->leftJoin('s.curriculumSubject', 'cs')
+                ->leftJoin('cs.curriculumTerm', 'ct')
                 ->where('s.subject = :subjectId')
                 ->andWhere('s.status = :status')
                 ->setParameter('subjectId', $subjectId)
@@ -830,15 +890,19 @@ class ScheduleController extends AbstractController
             
             // Also get all schedules from OTHER subjects (for block sectioning conflict detection)
             // We need to check if same section at same time exists in other subjects
+            // Include curriculum year level data for accurate block sectioning
             $otherSchedules = $this->scheduleRepository->createQueryBuilder('s')
                 ->select('s.section', 's.semester', 's.dayPattern', 
                          's.startTime', 's.endTime',
                          'r.id as roomId', 'r.code as roomCode',
                          'sub.code as subjectCode', 'sub.id as subjectId',
-                         'ay.year', 'ay.id as yearId')
+                         'ay.year', 'ay.id as yearId',
+                         'ct.year_level as yearLevel')
                 ->leftJoin('s.academicYear', 'ay')
                 ->leftJoin('s.room', 'r')
                 ->leftJoin('s.subject', 'sub')
+                ->leftJoin('s.curriculumSubject', 'cs')
+                ->leftJoin('cs.curriculumTerm', 'ct')
                 ->where('s.subject != :subjectId')
                 ->andWhere('s.status = :status')
                 ->setParameter('subjectId', $subjectId)
@@ -853,12 +917,25 @@ class ScheduleController extends AbstractController
             $sections = [];
             $schedulesMap = [];
             
+            // Debug logging
+            error_log("[ExistingSections] Total schedules fetched: " . count($allSchedules));
+            
             foreach ($allSchedules as $schedule) {
                 $section = $schedule['section'];
                 $semester = $schedule['semester'];
                 $year = $schedule['year'];
                 $yearId = $schedule['yearId'];
                 $scheduleSubjectId = $schedule['subjectId'];
+                $yearLevel = $schedule['yearLevel'] ?? null;
+                
+                // Debug each schedule
+                error_log(sprintf(
+                    "[ExistingSections] Subject %s, Section %s, Year Level: %s, Semester: %s",
+                    $scheduleSubjectId,
+                    $section,
+                    $yearLevel ?? 'NULL',
+                    $semester
+                ));
                 
                 // Format time values
                 $startTime = $schedule['startTime'];
@@ -892,8 +969,15 @@ class ScheduleController extends AbstractController
                     'roomId' => $schedule['roomId'] ?? null,
                     'roomCode' => $schedule['roomCode'] ?? '',
                     'subjectCode' => $schedule['subjectCode'] ?? '',
-                    'subjectId' => $scheduleSubjectId
+                    'subjectId' => $scheduleSubjectId,
+                    'yearLevel' => $yearLevel  // Add year level for block sectioning
                 ];
+                
+                error_log(sprintf(
+                    "[ExistingSections] Added to map: %s -> Year Level: %s",
+                    $key,
+                    $yearLevel ?? 'NULL'
+                ));
             }
             
             // Sort sections alphabetically
