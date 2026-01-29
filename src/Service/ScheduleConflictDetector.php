@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Schedule;
+use App\Entity\Subject;
 use App\Repository\ScheduleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
