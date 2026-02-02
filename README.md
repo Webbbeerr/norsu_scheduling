@@ -67,49 +67,63 @@ A comprehensive web-based class scheduling and management system built with Symf
 
 ## 🚀 Installation
 
-### 1. Clone the Repository
+### Option 1: Docker Setup (Recommended)
+
+#### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/jdkwer/Norsu_Sced.git
 cd smart_scheduling_system
 ```
 
-### 2. Install Dependencies
+#### 2. Configure Environment
+
+Copy the `.env.example` file to `.env` and configure:
 
 ```bash
-composer install
+cp .env.example .env
 ```
 
-### 3. Configure Environment
-
-Copy the `.env` file and configure your database settings:
-
-```bash
-cp .env .env.local
-```
-
-Edit `.env.local`:
+Edit `.env` with your settings (pre-configured for Docker):
 
 ```env
-DATABASE_URL="mysql://username:password@127.0.0.1:3306/scheduling_db?serverVersion=8.0"
+# Database credentials
+MYSQL_ROOT_PASSWORD=SecureRoot2026!
+MYSQL_DATABASE=smart_scheduling
+MYSQL_USER=symfony
+MYSQL_PASSWORD=SymfonySecure2026!
+
+# Database URL (Docker)
+DATABASE_URL=mysql://symfony:SymfonySecure2026!@db:3306/smart_scheduling?serverVersion=8.0.31
+
+# Application Port
+APP_PORT=8000
+
+# phpMyAdmin Port
+PHPMYADMIN_PORT=8080
 ```
 
-### 4. Create Database and Run Migrations
+#### 3. Start Docker Containers
 
 ```bash
-# Create the database
-php bin/console doctrine:database:create
+# Start all services (app + database)
+docker compose up -d
 
-# Run migrations
-php bin/console doctrine:migrations:migrate
+# Optional: Start with phpMyAdmin
+docker compose --profile tools up -d
 ```
 
-### 5. Create Admin User
-
-Run the admin creation command:
+#### 4. Create Database Schema
 
 ```bash
-php bin/console app:create-admin
+# Create tables from entities
+docker compose exec app php bin/console doctrine:schema:update --force
+```
+
+#### 5. Create Admin User
+
+```bash
+docker compose exec app php bin/console app:create-admin
 ```
 
 You will be prompted for:
@@ -122,18 +136,50 @@ You will be prompted for:
 **Alternative**: Create admin with arguments:
 
 ```bash
-php bin/console app:create-admin admin admin@norsu.edu.ph secretpassword --first-name=John --last-name=Doe
+docker compose exec app php bin/console app:create-admin admin admin@norsu.edu.ph secretpassword --first-name=John --last-name=Doe
 ```
 
-### 6. Start the Development Server
+#### 6. Access the Application
+
+- **Application**: http://localhost:8000
+- **phpMyAdmin**: http://localhost:8080 (if started with `--profile tools`)
+  - Username: `root` or `symfony`
+  - Password: (as configured in `.env`)
+
+### Option 2: Traditional Installation
+
+#### 1. Install Dependencies
+
+```bash
+composer install
+```
+
+#### 2. Configure Environment
+
+Create `.env.local` and configure your local database:
+
+```env
+DATABASE_URL="mysql://username:password@127.0.0.1:3306/smart_scheduling?serverVersion=8.0"
+```
+
+#### 3. Create Database and Schema
+
+```bash
+php bin/console doctrine:database:create
+php bin/console doctrine:schema:update --force
+```
+
+#### 4. Create Admin User
+
+```bash
+php bin/console app:create-admin
+```
+
+#### 5. Start Development Server
 
 ```bash
 symfony server:start
-```
-
-Or use PHP's built-in server:
-
-```bash
+# OR
 php -S localhost:8000 -t public
 ```
 
@@ -204,24 +250,69 @@ Faculty members can:
 
 ## 🔧 Maintenance Commands
 
-### Create Admin User
+### Docker Commands
+
+#### Create Admin User
+```bash
+docker compose exec app php bin/console app:create-admin
+```
+
+#### Clean Orphaned Curricula
+```bash
+docker compose exec app php bin/console app:clean-orphaned-curricula
+```
+
+#### Clear Cache
+```bash
+docker compose exec app php bin/console cache:clear
+```
+
+#### Database Backup
+```bash
+docker compose exec db mysqldump -usymfony -pSymfonySecure2026! smart_scheduling > backup_$(date +%Y%m%d).sql
+```
+
+#### View Logs
+```bash
+# View application logs
+docker compose logs app
+
+# Follow logs in real-time
+docker compose logs -f app
+
+# View database logs
+docker compose logs db
+```
+
+#### Restart Services
+```bash
+# Restart all services
+docker compose restart
+
+# Restart specific service
+docker compose restart app
+```
+
+### Traditional Installation Commands
+
+#### Create Admin User
 ```bash
 php bin/console app:create-admin
 ```
 
-### Clean Orphaned Curricula
+#### Clean Orphaned Curricula
 ```bash
 php bin/console app:clean-orphaned-curricula
 ```
 
-### Clear Cache
+#### Clear Cache
 ```bash
 php bin/console cache:clear
 ```
 
-### Database Backup (Example)
+#### Database Backup
 ```bash
-mysqldump -u username -p scheduling_db > backup_$(date +%Y%m%d).sql
+mysqldump -u username -p smart_scheduling > backup_$(date +%Y%m%d).sql
 ```
 
 ## 🎨 Customization
@@ -244,18 +335,44 @@ Adjust system settings in:
 
 ## 🐛 Troubleshooting
 
-### Database Connection Issues
+### Docker Setup
+
+#### Database Connection Issues
+- Check if containers are running: `docker compose ps`
+- Check logs: `docker compose logs app`
+- Restart containers: `docker compose restart`
+- Verify `.env` database credentials match docker-compose.yml
+
+#### Permission Errors in Container
+```bash
+# Fix permissions inside container
+docker compose exec app chmod -R 777 var/
+```
+
+#### Cannot Access Application
+- Verify port 8000 is not in use: `netstat -ano | findstr :8000`
+- Check if containers are healthy: `docker compose ps`
+- Restart: `docker compose down && docker compose up -d`
+
+#### phpMyAdmin Cannot Connect
+- Verify phpMyAdmin is running: `docker compose --profile tools ps`
+- Use credentials from `.env`: root/SecureRoot2026! or symfony/SymfonySecure2026!
+- Restart: `docker compose restart phpmyadmin`
+
+### Traditional Installation
+
+#### Database Connection Issues
 - Verify database credentials in `.env.local`
 - Ensure MySQL/MariaDB service is running
 - Check database exists: `php bin/console doctrine:database:create`
 
-### Permission Errors
+#### Permission Errors
 ```bash
 # Fix file permissions
 chmod -R 777 var/
 ```
 
-### Clear Cache Issues
+#### Clear Cache Issues
 ```bash
 php bin/console cache:clear --no-warmup
 php bin/console cache:warmup
