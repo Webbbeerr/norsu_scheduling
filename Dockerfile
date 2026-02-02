@@ -34,8 +34,9 @@ COPY docker/nginx/default.conf /etc/nginx/sites-available/default
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install PHP dependencies without running post-install scripts
+# Post-install scripts will run when container starts with actual .env file
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Set permissions for var directory and create cache
 RUN mkdir -p /var/www/html/var/cache /var/www/html/var/log /var/www/html/var/sessions \
