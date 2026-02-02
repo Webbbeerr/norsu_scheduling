@@ -61,6 +61,9 @@
             "symfony/flex": true,
             "symfony/runtime": true
         },
+        "platform": {
+            "ext-zip": "1.0.0"
+        },
         "bump-after-update": true,
         "sort-packages": true
     },
