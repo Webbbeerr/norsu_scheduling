@@ -4,7 +4,7 @@ FROM composer:2 AS composer_stage
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --no-progress --prefer-dist
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
 
 FROM php:8.3-fpm
 
