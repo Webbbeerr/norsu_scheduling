@@ -1,11 +1,41 @@
 #!/bin/bash
 set -e
 
-# Ensure .env exists (Symfony requires it to boot)
-if [ ! -f /var/www/html/.env ]; then
-    echo "APP_ENV=${APP_ENV:-prod}" > /var/www/html/.env
-    echo "Created .env file with APP_ENV=${APP_ENV:-prod}"
+cd /var/www/html
+
+# ===== CRITICAL: Ensure .env file exists for Symfony =====
+# Symfony REQUIRES a .env file to boot. Even if env vars are set,
+# the runtime tries to read .env first. Create it with current env vars.
+echo "APP_ENV=${APP_ENV:-prod}" > /var/www/html/.env
+echo "APP_SECRET=${APP_SECRET:-change_me}" >> /var/www/html/.env
+if [ ! -z "$DATABASE_URL" ]; then
+    echo "DATABASE_URL=${DATABASE_URL}" >> /var/www/html/.env
 fi
+if [ ! -z "$MAILER_DSN" ]; then
+    echo "MAILER_DSN=${MAILER_DSN}" >> /var/www/html/.env
+fi
+if [ ! -z "$MESSENGER_TRANSPORT_DSN" ]; then
+    echo "MESSENGER_TRANSPORT_DSN=${MESSENGER_TRANSPORT_DSN}" >> /var/www/html/.env
+fi
+if [ ! -z "$DEFAULT_URI" ]; then
+    echo "DEFAULT_URI=${DEFAULT_URI}" >> /var/www/html/.env
+fi
+chown www-data:www-data /var/www/html/.env
+chmod 644 /var/www/html/.env
+echo "Created .env file with APP_ENV=${APP_ENV:-prod}"
+
+# ===== Ensure PHP-FPM passes environment variables =====
+# This is critical for Railway - without this, PHP-FPM workers won't see env vars
+PHP_FPM_ENV_CONF="/usr/local/etc/php-fpm.d/zz-env.conf"
+echo "[www]" > "$PHP_FPM_ENV_CONF"
+echo "clear_env = no" >> "$PHP_FPM_ENV_CONF"
+# Also explicitly pass key env vars to PHP-FPM
+for var in APP_ENV APP_SECRET DATABASE_URL MAILER_DSN MESSENGER_TRANSPORT_DSN DEFAULT_URI PORT; do
+    if [ ! -z "${!var}" ]; then
+        echo "env[$var] = ${!var}" >> "$PHP_FPM_ENV_CONF"
+    fi
+done
+echo "PHP-FPM environment configured"
 
 # Use PORT env variable or default to 80
 PORT=${PORT:-80}

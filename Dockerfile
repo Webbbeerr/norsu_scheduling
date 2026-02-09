@@ -47,6 +47,12 @@ RUN { \
     echo 'date.timezone=Asia/Manila'; \
     } > /usr/local/etc/php/conf.d/app.ini
 
+# Configure PHP-FPM to pass environment variables (critical for Railway)
+RUN { \
+    echo '[www]'; \
+    echo 'clear_env = no'; \
+    } > /usr/local/etc/php-fpm.d/zz-env.conf
+
 # Remove default nginx site
 RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
 
@@ -70,8 +76,10 @@ RUN chmod +x /usr/local/bin/start.sh
 # Copy application files (after vendor to leverage Docker cache)
 COPY . .
 
-# Create minimal .env for Symfony (real values come from Railway env vars)
-RUN echo 'APP_ENV=prod' > .env
+# Create .env for Symfony bootstrap (Railway env vars override these via clear_env=no)
+RUN echo 'APP_ENV=prod' > .env \
+    && echo 'APP_SECRET=change_me' >> .env \
+    && echo 'DATABASE_URL=' >> .env
 
 # Run Composer scripts now that we have the full source
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist \
@@ -80,10 +88,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progre
 # Create required directories and set permissions
 RUN mkdir -p var/cache var/log var/sessions public/curriculum_templates \
     && chown -R www-data:www-data var public/curriculum_templates \
-    && chmod -R 775 var
-
-# Ensure .env exists (must be LAST to avoid being overwritten)
-RUN echo 'APP_ENV=prod' > .env && chown www-data:www-data .env
+    && chmod -R 775 var \
+    && chown www-data:www-data .env \
+    && chmod 644 .env
 
 # Expose port (overridden by Railway's PORT env var)
 EXPOSE 80
