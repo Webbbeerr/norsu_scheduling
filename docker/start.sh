@@ -3,26 +3,30 @@ set -e
 
 cd /var/www/html
 
-# ===== CRITICAL: Ensure .env file exists for Symfony =====
-# Symfony REQUIRES a .env file to boot. Even if env vars are set,
-# the runtime tries to read .env first. Create it with current env vars.
-echo "APP_ENV=${APP_ENV:-prod}" > /var/www/html/.env
-echo "APP_SECRET=${APP_SECRET:-change_me}" >> /var/www/html/.env
+# ===== Supplement .env with Railway env vars (if available) =====
+# The .env file is committed to the repo with production defaults.
+# Only override specific values if Railway provides them as env vars.
 if [ ! -z "$DATABASE_URL" ]; then
-    echo "DATABASE_URL=${DATABASE_URL}" >> /var/www/html/.env
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=\"${DATABASE_URL}\"|" /var/www/html/.env
 fi
-if [ ! -z "$MAILER_DSN" ]; then
-    echo "MAILER_DSN=${MAILER_DSN}" >> /var/www/html/.env
+if [ ! -z "$APP_SECRET" ]; then
+    sed -i "s|^APP_SECRET=.*|APP_SECRET=${APP_SECRET}|" /var/www/html/.env
 fi
-if [ ! -z "$MESSENGER_TRANSPORT_DSN" ]; then
-    echo "MESSENGER_TRANSPORT_DSN=${MESSENGER_TRANSPORT_DSN}" >> /var/www/html/.env
+if [ ! -z "$APP_ENV" ]; then
+    sed -i "s|^APP_ENV=.*|APP_ENV=${APP_ENV}|" /var/www/html/.env
 fi
 if [ ! -z "$DEFAULT_URI" ]; then
-    echo "DEFAULT_URI=${DEFAULT_URI}" >> /var/www/html/.env
+    sed -i "s|^DEFAULT_URI=.*|DEFAULT_URI=${DEFAULT_URI}|" /var/www/html/.env
+fi
+if [ ! -z "$MAILER_DSN" ]; then
+    sed -i "s|^MAILER_DSN=.*|MAILER_DSN=${MAILER_DSN}|" /var/www/html/.env
+fi
+if [ ! -z "$MESSENGER_TRANSPORT_DSN" ]; then
+    sed -i "s|^MESSENGER_TRANSPORT_DSN=.*|MESSENGER_TRANSPORT_DSN=${MESSENGER_TRANSPORT_DSN}|" /var/www/html/.env
 fi
 chown www-data:www-data /var/www/html/.env
 chmod 644 /var/www/html/.env
-echo "Created .env file with APP_ENV=${APP_ENV:-prod}"
+echo "Environment configured (APP_ENV=$(grep ^APP_ENV .env | cut -d= -f2))"
 
 # ===== Ensure PHP-FPM passes environment variables =====
 # This is critical for Railway - without this, PHP-FPM workers won't see env vars
