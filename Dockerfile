@@ -70,6 +70,9 @@ RUN chmod +x /usr/local/bin/start.sh
 # Copy application files (after vendor to leverage Docker cache)
 COPY . .
 
+# Create minimal .env for Symfony (real values come from Railway env vars)
+RUN echo 'APP_ENV=prod' > .env
+
 # Run Composer scripts now that we have the full source
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist \
     || true
