@@ -38,7 +38,7 @@ RUN { \
     echo 'opcache.enable_cli=0'; \
     } > /usr/local/etc/php/conf.d/opcache.ini
 
-# Configure PHP-FPM for production
+# Configure PHP for production
 RUN { \
     echo 'upload_max_filesize=50M'; \
     echo 'post_max_size=50M'; \
@@ -47,7 +47,7 @@ RUN { \
     echo 'date.timezone=Asia/Manila'; \
     } > /usr/local/etc/php/conf.d/app.ini
 
-# Configure PHP-FPM to pass environment variables (critical for Railway)
+# Configure PHP-FPM to pass environment variables
 RUN { \
     echo '[www]'; \
     echo 'clear_env = no'; \
@@ -73,31 +73,46 @@ COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-# Copy application files (after vendor to leverage Docker cache)
+# Copy application files
 COPY . .
 
-# Create .env for Symfony bootstrap (Railway env vars override these via clear_env=no)
-RUN echo 'APP_ENV=prod' > .env \
-    && echo 'APP_SECRET=change_me' >> .env \
-    && echo 'DATABASE_URL=' >> .env
+# === CRITICAL: Create .env.local.php with baked-in production values ===
+# Symfony checks .env.local.php FIRST before .env file.
+# This eliminates the need for .env at runtime entirely.
+RUN php -r "\
+\$vars = [ \
+    'APP_ENV' => 'prod', \
+    'APP_DEBUG' => '0', \
+    'APP_SECRET' => '86d65f319c2756d34b934f31df998dbf', \
+    'DATABASE_URL' => 'mysql://root:pFPcUYsASVGzTccRsMuiDKxGaaONSefG@mysql.railway.internal:3306/railway?serverVersion=8.0', \
+    'MAILER_DSN' => 'null://null', \
+    'DEFAULT_URI' => 'https://norsuscheduling1-production.up.railway.app', \
+    'MESSENGER_TRANSPORT_DSN' => 'doctrine://default', \
+]; \
+file_put_contents('.env.local.php', '<?php return ' . var_export(\$vars, true) . ';' . PHP_EOL);"
+
+# Also create a minimal .env so Symfony doesn't complain during composer scripts
+RUN echo 'APP_ENV=prod' > .env
 
 # Run Composer scripts now that we have the full source
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist \
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist --ignore-platform-reqs \
     || true
 
 # Create required directories and set permissions
 RUN mkdir -p var/cache var/log var/sessions public/curriculum_templates \
-    && chown -R www-data:www-data var public/curriculum_templates \
-    && chmod -R 775 var \
-    && chown www-data:www-data .env \
-    && chmod 644 .env
+    && chown -R www-data:www-data var public/curriculum_templates .env.local.php \
+    && chmod -R 775 var
 
-# Expose port (overridden by Railway's PORT env var)
+# Warm up cache during build (uses .env.local.php values)
+RUN php bin/console cache:clear --env=prod --no-debug 2>&1 || true \
+    && php bin/console cache:warmup --env=prod --no-debug 2>&1 || true
+
+# Remove .env (not needed - .env.local.php handles everything)
+RUN rm -f .env
+
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-80}/health || exit 1
 
-# Start using startup script
 CMD ["/usr/local/bin/start.sh"]
