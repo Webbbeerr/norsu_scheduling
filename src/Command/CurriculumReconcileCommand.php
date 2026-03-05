@@ -72,7 +72,8 @@ class CurriculumReconcileCommand extends Command
         // List unlinked subjects for this curriculum's department
         $departmentId = $curriculum->getDepartmentId();
         $qb = $this->subjectRepository->createQueryBuilder('s')
-            ->leftJoin('App\\Entity\\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s AND cs.curriculum = :curr')
+            ->leftJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s')
+            ->leftJoin('cs.curriculumTerm', 'ct', 'WITH', 'ct.curriculum = :curr')
             ->andWhere('s.departmentId = :dept')
             ->andWhere('cs.id IS NULL')
             ->setParameter('dept', $departmentId)

@@ -34,7 +34,7 @@ class SubjectService
         if (!empty($filters['semester'])) {
             $qb->innerJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s.id')
                ->innerJoin('cs.curriculumTerm', 'ct')
-               ->innerJoin('cs.curriculum', 'c')
+               ->innerJoin('ct.curriculum', 'c')
                ->andWhere('ct.semester = :semester')
                ->setParameter('semester', $filters['semester'])
                ->groupBy('s.id');
@@ -49,7 +49,8 @@ class SubjectService
                 $semesterJoinAdded = true;
             }
             if (!$curriculumJoinAdded) {
-                $qb->innerJoin('cs.curriculum', 'c');
+                $qb->innerJoin('cs.curriculumTerm', 'ct');
+                $qb->innerJoin('ct.curriculum', 'c');
                 $curriculumJoinAdded = true;
             }
             $qb->andWhere('c.isPublished = :published')
@@ -74,7 +75,8 @@ class SubjectService
                 $semesterJoinAdded = true;
             }
             if (!$curriculumJoinAdded) {
-                $qb->leftJoin('cs.curriculum', 'c');
+                $qb->leftJoin('cs.curriculumTerm', 'ct');
+                $qb->leftJoin('ct.curriculum', 'c');
                 $curriculumJoinAdded = true;
             }
             

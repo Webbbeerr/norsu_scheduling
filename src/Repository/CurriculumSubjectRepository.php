@@ -61,7 +61,8 @@ class CurriculumSubjectRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('cs')
             ->join('cs.subject', 's')
-            ->where('cs.curriculum = :curriculumId')
+            ->join('cs.curriculumTerm', 'ct')
+            ->where('ct.curriculum = :curriculumId')
             ->setParameter('curriculumId', $curriculumId)
             ->orderBy('s.code', 'ASC')
             ->getQuery()
@@ -100,7 +101,8 @@ class CurriculumSubjectRepository extends ServiceEntityRepository
         $result = $this->createQueryBuilder('cs')
             ->select('SUM(s.units) as total_units')
             ->join('cs.subject', 's')
-            ->where('cs.curriculum = :curriculumId')
+            ->join('cs.curriculumTerm', 'ct')
+            ->where('ct.curriculum = :curriculumId')
             ->setParameter('curriculumId', $curriculumId)
             ->getQuery()
             ->getSingleScalarResult();

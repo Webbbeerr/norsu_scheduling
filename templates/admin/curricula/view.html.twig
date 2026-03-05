@@ -4,18 +4,23 @@
 <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <div class="mb-8">
-        <div class="flex items-center justify-between mb-4">
+        <!-- Back Button -->
+        <div class="mb-4 flex justify-end">
+            {% if curriculum.department and curriculum.department.id %}
+                <a href="{{ path('admin_curricula_by_department', {departmentId: curriculum.department.id}) }}" class="inline-flex items-center px-5 py-2.5 text-base font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2 text-sm"></i>Back to Curricula
+                </a>
+            {% else %}
+                <a href="{{ path('admin_curricula') }}" class="inline-flex items-center px-5 py-2.5 text-base font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition shadow-sm">
+                    <i class="fas fa-arrow-left mr-2 text-sm"></i>Back to Curricula
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Title Row -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                {% if curriculum.department and curriculum.department.id %}
-                    <a href="{{ path('admin_curricula_by_department', {departmentId: curriculum.department.id}) }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition shadow-sm mb-3">
-                        <i class="fas fa-arrow-left mr-2 text-xs"></i>Back to Curricula
-                    </a>
-                {% else %}
-                    <a href="{{ path('admin_curricula') }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition shadow-sm mb-3">
-                        <i class="fas fa-arrow-left mr-2 text-xs"></i>Back to Curricula
-                    </a>
-                {% endif %}
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center gap-3">
                     <h1 class="text-2xl font-bold text-gray-900">{{ curriculum.name }}</h1>
                     {% if curriculum.isPublished %}
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -31,20 +36,20 @@
                     ID: {{ curriculum.id }} &middot; Version {{ curriculum.version ?? 1 }}
                 </p>
             </div>
-            <div class="flex items-center space-x-2">
-                <a href="{{ path('admin_curriculum_subjects', {id: curriculum.id}) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition shadow-sm">
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <a href="{{ path('admin_curriculum_subjects', {id: curriculum.id}) }}" class="inline-flex items-center px-3.5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition shadow-sm">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                     </svg>
                     Manage Subjects
                 </a>
-                <button type="button" onclick="openUploadModal()" class="inline-flex items-center px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition shadow-sm">
+                <button type="button" onclick="openUploadModal()" class="inline-flex items-center px-3.5 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition shadow-sm">
                     <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                     </svg>
                     Upload
                 </button>
-                <a href="{{ path('admin_curricula_edit', {id: curriculum.id}) }}" class="inline-flex items-center px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition shadow-sm">
+                <a href="{{ path('admin_curricula_edit', {id: curriculum.id}) }}" class="inline-flex items-center px-3.5 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition shadow-sm">
                     <i class="fas fa-pen mr-1.5 text-xs"></i>Edit
                 </a>
             </div>
@@ -423,7 +428,7 @@
                             <ul class="text-sm text-blue-700 space-y-1">
                                 <li>• <strong>Supported formats:</strong> Excel (.xlsx, .xls) or CSV (.csv)</li>
                                 <li>• <strong>Required columns:</strong> Course Code, Course Title, Units, Lec, Lab, Year Level, Semester</li>
-                                <li>• <strong>Optional columns:</strong> Course Type, Required (yes/no), Prerequisites</li>
+                                <li>• <strong>Optional columns:</strong> Course Type, Required (yes/no)</li>
                                 <li>• <strong>Example:</strong> CS101, Introduction to CS, 3, 3, 0, 1, 1, lecture, yes</li>
                             </ul>
                         </div>

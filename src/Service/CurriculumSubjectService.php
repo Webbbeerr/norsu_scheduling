@@ -32,7 +32,6 @@ class CurriculumSubjectService
         }
 
         $curriculumSubject = new CurriculumSubject();
-        $curriculumSubject->setCurriculum($term->getCurriculum());
         $curriculumSubject->setCurriculumTerm($term);
         $curriculumSubject->setSubject($subject);
         $curriculumSubject->setSectionsMapping($sectionsMapping);

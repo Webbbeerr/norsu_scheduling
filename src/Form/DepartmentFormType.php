@@ -4,9 +4,9 @@ namespace App\Form;
 
 use App\Entity\College;
 use App\Entity\Department;
+use App\Entity\User;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -75,18 +75,23 @@ class DepartmentFormType extends AbstractType
                         ->orderBy('c.name', 'ASC');
                 }
             ])
-            ->add('headName', TextType::class, [
-                'label' => 'Department Head Name',
+            ->add('head', EntityType::class, [
+                'class' => User::class,
+                'choice_label' => function (User $user) {
+                    $name = trim(($user->getFirstname() ?? '') . ' ' . ($user->getLastname() ?? ''));
+                    return $name ?: $user->getUsername();
+                },
+                'label' => 'Department Head',
                 'required' => false,
-                'attr' => [
-                    'placeholder' => 'e.g., Dr. John Smith (Optional)'
-                ],
-                'constraints' => [
-                    new Assert\Length([
-                        'max' => 255,
-                        'maxMessage' => 'Department head name cannot be longer than {{ limit }} characters'
-                    ])
-                ]
+                'placeholder' => 'Select Department Head (Optional)',
+                'query_builder' => function ($repository) {
+                    return $repository->createQueryBuilder('u')
+                        ->where('u.deletedAt IS NULL')
+                        ->andWhere('u.isActive = :active')
+                        ->setParameter('active', true)
+                        ->orderBy('u.lastName', 'ASC')
+                        ->addOrderBy('u.firstName', 'ASC');
+                },
             ])
             ->add('contactEmail', EmailType::class, [
                 'label' => 'Contact Email',
@@ -101,10 +106,6 @@ class DepartmentFormType extends AbstractType
                         'maxMessage' => 'Contact email cannot be longer than {{ limit }} characters'
                     ])
                 ]
-            ])
-            ->add('isActive', CheckboxType::class, [
-                'label' => 'Active',
-                'required' => false
             ]);
     }
 

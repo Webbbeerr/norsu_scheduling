@@ -8,7 +8,6 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: CurriculumSubjectRepository::class)]
 #[ORM\Table(name: 'curriculum_subjects')]
 #[ORM\UniqueConstraint(name: 'unique_term_subject', columns: ['curriculum_term_id', 'subject_id'])]
-#[ORM\Index(name: 'idx_curriculum_subject', columns: ['curriculum_id'])]
 #[ORM\HasLifecycleCallbacks]
 class CurriculumSubject
 {
@@ -16,10 +15,6 @@ class CurriculumSubject
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
-
-    #[ORM\ManyToOne(targetEntity: Curriculum::class)]
-    #[ORM\JoinColumn(name: 'curriculum_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
-    private ?Curriculum $curriculum = null;
 
     #[ORM\ManyToOne(targetEntity: CurriculumTerm::class, inversedBy: 'curriculumSubjects')]
     #[ORM\JoinColumn(name: 'curriculum_term_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
@@ -55,15 +50,12 @@ class CurriculumSubject
         return $this->id;
     }
 
+    /**
+     * Get curriculum through the term (no longer stored directly)
+     */
     public function getCurriculum(): ?Curriculum
     {
-        return $this->curriculum;
-    }
-
-    public function setCurriculum(?Curriculum $curriculum): self
-    {
-        $this->curriculum = $curriculum;
-        return $this;
+        return $this->curriculumTerm?->getCurriculum();
     }
 
     public function getCurriculumTerm(): ?CurriculumTerm

@@ -8,17 +8,41 @@ use App\Entity\ActivityLog;
 use App\Entity\Schedule;
 use App\Entity\Room;
 use App\Entity\AcademicYear;
+use App\Entity\Department;
+use App\Entity\Curriculum;
+use App\Entity\Subject;
+use App\Form\AcademicYearFormType;
+use App\Form\CollegeFormType;
+use App\Form\CurriculumFormType;
+use App\Form\CurriculumTermFormType;
+use App\Form\DepartmentFormType;
+use App\Form\RoomFormType;
+use App\Form\SubjectFormType;
 use App\Form\UserFormType;
 use App\Form\UserEditFormType;
-use App\Form\CollegeFormType;
 use App\Repository\CollegeRepository;
+use App\Repository\CurriculumSubjectRepository;
+use App\Repository\CurriculumTermRepository;
 use App\Repository\DepartmentRepository;
 use App\Repository\AcademicYearRepository;
-use App\Service\DashboardService;
-use App\Service\UserService;
-use App\Service\CollegeService;
+use App\Repository\SubjectRepository;
+use App\Service\AcademicYearService;
 use App\Service\ActivityLogService;
+use App\Service\CollegeService;
+use App\Service\CurriculumService;
+use App\Service\CurriculumSubjectService;
+use App\Service\CurriculumTermService;
+use App\Service\CurriculumUploadService;
+use App\Service\DashboardService;
+use App\Service\DepartmentService;
+use App\Service\FacultyReportPdfService;
+use App\Service\RoomSchedulePdfService;
+use App\Service\RoomService;
+use App\Service\RoomsReportPdfService;
+use App\Service\SubjectService;
+use App\Service\SubjectsReportPdfService;
 use App\Service\SystemSettingsService;
+use App\Service\UserService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -521,7 +545,7 @@ class AdminController extends AbstractController
     // Department Management Routes
 
     #[Route('/departments', name: 'departments')]
-    public function departments(Request $request, \App\Service\DepartmentService $departmentService): Response
+    public function departments(Request $request, DepartmentService $departmentService): Response
     {
         // Handle is_active properly
         $isActiveParam = $request->query->get('is_active');
@@ -552,12 +576,12 @@ class AdminController extends AbstractController
     }
 
     #[Route('/departments/create', name: 'departments_create')]
-    public function createDepartment(Request $request, \App\Service\DepartmentService $departmentService): Response
+    public function createDepartment(Request $request, DepartmentService $departmentService): Response
     {
-        $department = new \App\Entity\Department();
+        $department = new Department();
         $department->setIsActive(true);
         
-        $form = $this->createForm(\App\Form\DepartmentFormType::class, $department);
+        $form = $this->createForm(DepartmentFormType::class, $department);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -599,7 +623,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/departments/{id}/edit', name: 'departments_edit')]
-    public function editDepartment(int $id, Request $request, \App\Service\DepartmentService $departmentService): Response
+    public function editDepartment(int $id, Request $request, DepartmentService $departmentService): Response
     {
         $department = $departmentService->getDepartmentById($id);
 
@@ -609,7 +633,7 @@ class AdminController extends AbstractController
         }
 
         // Create form with the department data
-        $form = $this->createForm(\App\Form\DepartmentFormType::class, $department);
+        $form = $this->createForm(DepartmentFormType::class, $department);
         
         // Only handle request if it's a POST (form submission)
         if ($request->isMethod('POST')) {
@@ -654,7 +678,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/departments/{id}', name: 'departments_view')]
-    public function viewDepartment(int $id, \App\Service\DepartmentService $departmentService): Response
+    public function viewDepartment(int $id, DepartmentService $departmentService): Response
     {
         $department = $departmentService->getDepartmentById($id);
 
@@ -670,7 +694,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/departments/{id}/delete', name: 'departments_delete', methods: ['POST'])]
-    public function deleteDepartment(int $id, Request $request, \App\Service\DepartmentService $departmentService): Response
+    public function deleteDepartment(int $id, Request $request, DepartmentService $departmentService): Response
     {
         if (!$this->isCsrfTokenValid('delete_department_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -701,7 +725,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/departments/{id}/toggle-status', name: 'departments_toggle_status', methods: ['POST'])]
-    public function toggleDepartmentStatus(int $id, Request $request, \App\Service\DepartmentService $departmentService): Response
+    public function toggleDepartmentStatus(int $id, Request $request, DepartmentService $departmentService): Response
     {
         if (!$this->isCsrfTokenValid('toggle_status_department_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -723,7 +747,7 @@ class AdminController extends AbstractController
     // Curricula Management Routes
 
     #[Route('/curricula', name: 'curricula')]
-    public function curricula(Request $request, \App\Service\CurriculumService $curriculumService): Response
+    public function curricula(Request $request, CurriculumService $curriculumService): Response
     {
         // Get all departments with curriculum counts
         $departments = $this->departmentRepository->findBy(['deletedAt' => null], ['name' => 'ASC']);
@@ -752,7 +776,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/department/{departmentId}', name: 'curricula_by_department', requirements: ['departmentId' => '\d+'])]
-    public function curriculaByDepartment(int $departmentId, Request $request, \App\Service\CurriculumService $curriculumService, \App\Service\DepartmentService $departmentService): Response
+    public function curriculaByDepartment(int $departmentId, Request $request, CurriculumService $curriculumService, DepartmentService $departmentService): Response
     {
         // Prevent timeout for large datasets
         set_time_limit(120);
@@ -809,9 +833,9 @@ class AdminController extends AbstractController
         int $departmentId, 
         string $semester,
         Request $request, 
-        \App\Service\CurriculumService $curriculumService, 
-        \App\Service\DepartmentService $departmentService,
-        \App\Repository\CurriculumTermRepository $curriculumTermRepository
+        CurriculumService $curriculumService, 
+        DepartmentService $departmentService,
+        CurriculumTermRepository $curriculumTermRepository
     ): Response
     {
         // Validate semester parameter - redirect if empty or whitespace only
@@ -857,9 +881,9 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/create', name: 'curricula_create', methods: ['GET', 'POST'])]
-    public function createCurriculum(Request $request, \App\Service\CurriculumService $curriculumService, \App\Service\DepartmentService $departmentService): Response
+    public function createCurriculum(Request $request, CurriculumService $curriculumService, DepartmentService $departmentService): Response
     {
-        $curriculum = new \App\Entity\Curriculum();
+        $curriculum = new Curriculum();
         $curriculum->setIsPublished(false);
         
         // Check if department is pre-selected (coming from department view)
@@ -880,7 +904,7 @@ class AdminController extends AbstractController
             $showDepartmentFields = true;
         }
         
-        $form = $this->createForm(\App\Form\CurriculumFormType::class, $curriculum, [
+        $form = $this->createForm(CurriculumFormType::class, $curriculum, [
             'show_department_fields' => $showDepartmentFields
         ]);
         $form->handleRequest($request);
@@ -925,7 +949,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/{id}/edit', name: 'curricula_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function editCurriculum(int $id, Request $request, \App\Service\CurriculumService $curriculumService): Response
+    public function editCurriculum(int $id, Request $request, CurriculumService $curriculumService): Response
     {
         $curriculum = $curriculumService->getCurriculumById($id);
 
@@ -934,7 +958,7 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_curricula');
         }
 
-        $form = $this->createForm(\App\Form\CurriculumFormType::class, $curriculum);
+        $form = $this->createForm(CurriculumFormType::class, $curriculum);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -974,7 +998,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/{id}', name: 'curricula_view', requirements: ['id' => '\d+'])]
-    public function viewCurriculum(int $id, \App\Service\CurriculumService $curriculumService): Response
+    public function viewCurriculum(int $id, CurriculumService $curriculumService): Response
     {
         $curriculum = $curriculumService->getCurriculumById($id);
 
@@ -990,7 +1014,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/{id}/delete', name: 'curricula_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function deleteCurriculum(int $id, Request $request, \App\Service\CurriculumService $curriculumService): Response
+    public function deleteCurriculum(int $id, Request $request, CurriculumService $curriculumService): Response
     {
         if (!$this->isCsrfTokenValid('delete_curriculum_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1025,7 +1049,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/curricula/{id}/toggle-publish', name: 'curricula_toggle_publish', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function toggleCurriculumPublish(int $id, Request $request, \App\Service\CurriculumService $curriculumService): Response
+    public function toggleCurriculumPublish(int $id, Request $request, CurriculumService $curriculumService): Response
     {
         if (!$this->isCsrfTokenValid('toggle_publish_curriculum_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1065,10 +1089,10 @@ class AdminController extends AbstractController
     public function manageCurriculumSubjects(
         int $id,
         Request $request,
-        \App\Service\CurriculumService $curriculumService,
-        \App\Service\CurriculumTermService $curriculumTermService,
-        \App\Service\CurriculumSubjectService $curriculumSubjectService,
-        \App\Repository\CurriculumTermRepository $curriculumTermRepository
+        CurriculumService $curriculumService,
+        CurriculumTermService $curriculumTermService,
+        CurriculumSubjectService $curriculumSubjectService,
+        CurriculumTermRepository $curriculumTermRepository
     ): Response {
         try {
             $curriculum = $curriculumService->getCurriculumById($id);
@@ -1096,9 +1120,9 @@ class AdminController extends AbstractController
     public function addCurriculumTerm(
         int $id,
         Request $request,
-        \App\Service\CurriculumService $curriculumService,
-        \App\Service\CurriculumTermService $curriculumTermService,
-        \App\Form\CurriculumTermFormType $formType
+        CurriculumService $curriculumService,
+        CurriculumTermService $curriculumTermService,
+        CurriculumTermFormType $formType
     ): Response {
         if (!$this->isCsrfTokenValid('add_curriculum_term_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1124,8 +1148,8 @@ class AdminController extends AbstractController
     public function generateDefaultTerms(
         int $id,
         Request $request,
-        \App\Service\CurriculumService $curriculumService,
-        \App\Service\CurriculumTermService $curriculumTermService
+        CurriculumService $curriculumService,
+        CurriculumTermService $curriculumTermService
     ): Response {
         if (!$this->isCsrfTokenValid('generate_terms_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1148,8 +1172,8 @@ class AdminController extends AbstractController
     public function deleteCurriculumTerm(
         int $id,
         Request $request,
-        \App\Service\CurriculumTermService $curriculumTermService,
-        \App\Repository\CurriculumTermRepository $curriculumTermRepository
+        CurriculumTermService $curriculumTermService,
+        CurriculumTermRepository $curriculumTermRepository
     ): Response {
         $term = $curriculumTermRepository->find($id);
         if (!$term) {
@@ -1178,9 +1202,9 @@ class AdminController extends AbstractController
     public function addSubjectToTerm(
         int $termId,
         Request $request,
-        \App\Service\CurriculumSubjectService $curriculumSubjectService,
-        \App\Repository\CurriculumTermRepository $curriculumTermRepository,
-        \App\Repository\SubjectRepository $subjectRepository
+        CurriculumSubjectService $curriculumSubjectService,
+        CurriculumTermRepository $curriculumTermRepository,
+        SubjectRepository $subjectRepository
     ): JsonResponse {
         $term = $curriculumTermRepository->find($termId);
         if (!$term) {
@@ -1216,9 +1240,9 @@ class AdminController extends AbstractController
     public function addSubjectsBatchToTerm(
         int $termId,
         Request $request,
-        \App\Service\CurriculumSubjectService $curriculumSubjectService,
-        \App\Repository\CurriculumTermRepository $curriculumTermRepository,
-        \App\Repository\SubjectRepository $subjectRepository,
+        CurriculumSubjectService $curriculumSubjectService,
+        CurriculumTermRepository $curriculumTermRepository,
+        SubjectRepository $subjectRepository,
         EntityManagerInterface $entityManager
     ): JsonResponse {
         $term = $curriculumTermRepository->find($termId);
@@ -1244,7 +1268,7 @@ class AdminController extends AbstractController
                 
                 if (!$subject) {
                     // Create new subject
-                    $subject = new \App\Entity\Subject();
+                    $subject = new Subject();
                     $subject->setCode($course['code']);
                     $subject->setTitle($course['title']);
                     $subject->setUnits($course['units'] ?? 3);
@@ -1297,8 +1321,8 @@ class AdminController extends AbstractController
     public function removeSubjectFromTerm(
         int $id,
         Request $request,
-        \App\Service\CurriculumSubjectService $curriculumSubjectService,
-        \App\Repository\CurriculumSubjectRepository $curriculumSubjectRepository
+        CurriculumSubjectService $curriculumSubjectService,
+        CurriculumSubjectRepository $curriculumSubjectRepository
     ): Response {
         $curriculumSubject = $curriculumSubjectRepository->find($id);
         if (!$curriculumSubject) {
@@ -1327,8 +1351,8 @@ class AdminController extends AbstractController
     public function getAvailableSubjects(
         int $id,
         Request $request,
-        \App\Repository\SubjectRepository $subjectRepository,
-        \App\Service\CurriculumService $curriculumService
+        SubjectRepository $subjectRepository,
+        CurriculumService $curriculumService
     ): JsonResponse {
         try {
             $curriculum = $curriculumService->getCurriculumById($id);
@@ -1367,7 +1391,7 @@ class AdminController extends AbstractController
     // ==================== SUBJECT MANAGEMENT ROUTES ====================
 
     #[Route('/subjects', name: 'subjects')]
-    public function subjects(Request $request, \App\Service\SubjectService $subjectService): Response
+    public function subjects(Request $request, SubjectService $subjectService): Response
     {
         // Use system-wide active semester as the default filter
         $semesterFilter = $this->systemSettingsService->getActiveSemester();
@@ -1408,12 +1432,12 @@ class AdminController extends AbstractController
 
     // Removed: Create subject route - subjects are now created through Curricula management
     // #[Route('/subjects/create', name: 'subjects_create')]
-    // public function createSubject(Request $request, \App\Service\SubjectService $subjectService): Response
+    // public function createSubject(Request $request, SubjectService $subjectService): Response
     // {
-    //     $subject = new \App\Entity\Subject();
+    //     $subject = new Subject();
     //     $subject->setIsActive(true);
     //     
-    //     $form = $this->createForm(\App\Form\SubjectFormType::class, $subject);
+    //     $form = $this->createForm(SubjectFormType::class, $subject);
     //     $form->handleRequest($request);
     //
     //     if ($form->isSubmitted() && $form->isValid()) {
@@ -1434,7 +1458,7 @@ class AdminController extends AbstractController
     // }
 
     #[Route('/subjects/{id}/edit', name: 'subjects_edit')]
-    public function editSubject(int $id, Request $request, \App\Service\SubjectService $subjectService): Response
+    public function editSubject(int $id, Request $request, SubjectService $subjectService): Response
     {
         $subject = $subjectService->getSubjectById($id);
 
@@ -1443,7 +1467,7 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_subjects');
         }
 
-        $form = $this->createForm(\App\Form\SubjectFormType::class, $subject);
+        $form = $this->createForm(SubjectFormType::class, $subject);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -1464,7 +1488,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/subjects/{id}', name: 'subjects_view')]
-    public function viewSubject(int $id, \App\Service\SubjectService $subjectService, DepartmentRepository $departmentRepository): Response
+    public function viewSubject(int $id, SubjectService $subjectService, DepartmentRepository $departmentRepository): Response
     {
         $subject = $subjectService->getSubjectById($id);
 
@@ -1483,7 +1507,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/subjects/{id}/delete', name: 'subjects_delete', methods: ['POST'])]
-    public function deleteSubject(int $id, Request $request, \App\Service\SubjectService $subjectService): Response
+    public function deleteSubject(int $id, Request $request, SubjectService $subjectService): Response
     {
         if (!$this->isCsrfTokenValid('delete_subject_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1502,7 +1526,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/subjects/{id}/toggle-active', name: 'subjects_toggle_active', methods: ['POST'])]
-    public function toggleSubjectActive(int $id, Request $request, \App\Service\SubjectService $subjectService): Response
+    public function toggleSubjectActive(int $id, Request $request, SubjectService $subjectService): Response
     {
         if (!$this->isCsrfTokenValid('toggle_active_subject_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -1697,7 +1721,7 @@ class AdminController extends AbstractController
         $yearFilter = $request->query->get('year');
 
         // Get teaching history for this faculty member
-        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
         $qb = $scheduleRepository->createQueryBuilder('s')
             ->leftJoin('s.faculty', 'f')
             ->leftJoin('s.subject', 'subj')
@@ -1747,7 +1771,7 @@ class AdminController extends AbstractController
         }
 
         // Get all academic years for filter dropdown
-        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+        $academicYears = $this->entityManager->getRepository(AcademicYear::class)
             ->createQueryBuilder('ay')
             ->where('ay.deletedAt IS NULL')
             ->orderBy('ay.year', 'DESC')
@@ -1793,7 +1817,7 @@ class AdminController extends AbstractController
         $yearFilter = $request->query->get('year');
 
         // Get teaching history
-        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
         $qb = $scheduleRepository->createQueryBuilder('s')
             ->leftJoin('s.faculty', 'f')
             ->leftJoin('s.subject', 'subj')
@@ -2316,7 +2340,7 @@ class AdminController extends AbstractController
         $activeSemester = $this->systemSettingsService->getActiveSemester();
         
         // Get all academic years for filter dropdown
-        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+        $academicYears = $this->entityManager->getRepository(AcademicYear::class)
             ->createQueryBuilder('ay')
             ->select('ay.year')
             ->distinct(true)
@@ -2326,7 +2350,7 @@ class AdminController extends AbstractController
         $years = array_column($academicYears, 'year');
         
         // Get all departments for filter dropdown
-        $departments = $this->entityManager->getRepository(\App\Entity\Department::class)
+        $departments = $this->entityManager->getRepository(Department::class)
             ->createQueryBuilder('d')
             ->where('d.deletedAt IS NULL')
             ->orderBy('d.name', 'ASC')
@@ -2352,7 +2376,7 @@ class AdminController extends AbstractController
         }
         
         // Load ALL rooms with schedule details (for client-side filtering)
-        $rooms = $this->entityManager->getRepository(\App\Entity\Room::class)
+        $rooms = $this->entityManager->getRepository(Room::class)
             ->createQueryBuilder('r')
             ->orderBy('r.building', 'ASC')
             ->addOrderBy('r.name', 'ASC')
@@ -2360,7 +2384,7 @@ class AdminController extends AbstractController
             ->getResult();
         
         // Load ALL schedules with department/year/semester info
-        $schedules = $this->entityManager->getRepository(\App\Entity\Schedule::class)
+        $schedules = $this->entityManager->getRepository(Schedule::class)
             ->createQueryBuilder('s')
             ->select('s', 'r', 'sub', 'd', 'u')
             ->leftJoin('s.room', 'r')
@@ -2405,7 +2429,7 @@ class AdminController extends AbstractController
         $facultyQuery = $this->entityManager->getRepository(User::class)
             ->createQueryBuilder('u')
             ->select('u', 'COUNT(s.id) as scheduleCount', 'SUM(sub.units) as totalUnits')
-            ->leftJoin(\App\Entity\Schedule::class, 's', 'WITH', 's.faculty = u')
+            ->leftJoin(Schedule::class, 's', 'WITH', 's.faculty = u')
             ->leftJoin('s.subject', 'sub')
             ->where('u.role = :role')
             ->andWhere('u.isActive = :active')
@@ -2452,7 +2476,7 @@ class AdminController extends AbstractController
         }
         
         // Load ALL subjects with schedule statistics
-        $subjects = $this->entityManager->getRepository(\App\Entity\Subject::class)
+        $subjects = $this->entityManager->getRepository(Subject::class)
             ->createQueryBuilder('sub')
             ->leftJoin('sub.department', 'd')
             ->where('sub.deletedAt IS NULL')
@@ -2554,7 +2578,7 @@ class AdminController extends AbstractController
         $departmentNames = [];
         $departmentDisplayName = '';
         if ($departmentId) {
-            $department = $this->entityManager->getRepository(\App\Entity\Department::class)->find($departmentId);
+            $department = $this->entityManager->getRepository(Department::class)->find($departmentId);
             if ($department) {
                 // Use department group name if available, otherwise use department name
                 if ($department->getDepartmentGroup()) {
@@ -2670,7 +2694,7 @@ class AdminController extends AbstractController
         $departmentNames = [];
         $departmentDisplayName = '';
         if ($departmentId) {
-            $department = $this->entityManager->getRepository(\App\Entity\Department::class)->find($departmentId);
+            $department = $this->entityManager->getRepository(Department::class)->find($departmentId);
             if ($department) {
                 // Use department group name if available, otherwise use department name
                 if ($department->getDepartmentGroup()) {
@@ -2796,7 +2820,7 @@ class AdminController extends AbstractController
         $departmentNames = [];
         $departmentDisplayName = '';
         if ($departmentId) {
-            $department = $this->entityManager->getRepository(\App\Entity\Department::class)->find($departmentId);
+            $department = $this->entityManager->getRepository(Department::class)->find($departmentId);
             if ($department) {
                 // Use department group name if available, otherwise use department name
                 if ($department->getDepartmentGroup()) {
@@ -2860,7 +2884,7 @@ class AdminController extends AbstractController
         }
         
         // Generate PDF using the service
-        $pdfService = new \App\Service\RoomsReportPdfService($this->entityManager);
+        $pdfService = new RoomsReportPdfService($this->entityManager);
         $pdfContent = $pdfService->generateRoomsReportPdf($filteredRooms, $year, $semester, $departmentDisplayName, $searchTerm);
         
         // Generate filename
@@ -2890,7 +2914,7 @@ class AdminController extends AbstractController
         $departmentNames = [];
         $departmentDisplayName = '';
         if ($departmentId) {
-            $department = $this->entityManager->getRepository(\App\Entity\Department::class)->find($departmentId);
+            $department = $this->entityManager->getRepository(Department::class)->find($departmentId);
             if ($department) {
                 // Use department group name if available, otherwise use department name
                 if ($department->getDepartmentGroup()) {
@@ -2960,7 +2984,7 @@ class AdminController extends AbstractController
         }
         
         // Generate PDF using the service
-        $pdfService = new \App\Service\FacultyReportPdfService($this->entityManager);
+        $pdfService = new FacultyReportPdfService($this->entityManager);
         $pdfContent = $pdfService->generateFacultyReportPdf($filteredFaculty, $year, $semester, $departmentDisplayName, $searchTerm);
         
         // Generate filename
@@ -2985,7 +3009,7 @@ class AdminController extends AbstractController
     {
         try {
             // Create PDF service
-            $pdfService = new \App\Service\SubjectsReportPdfService($this->entityManager);
+            $pdfService = new SubjectsReportPdfService($this->entityManager);
             
             // Generate PDF
             $pdfContent = $pdfService->generateSubjectsReportPdf(
@@ -3620,7 +3644,7 @@ class AdminController extends AbstractController
     // ==================== ROOM MANAGEMENT ====================
     
     #[Route('/rooms', name: 'rooms', methods: ['GET'])]
-    public function rooms(Request $request, \App\Service\RoomService $roomService): Response
+    public function rooms(Request $request, RoomService $roomService): Response
     {
         // Load ALL rooms for client-side filtering
         $filters = [
@@ -3660,10 +3684,10 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/create', name: 'rooms_create', methods: ['GET', 'POST'])]
-    public function createRoom(Request $request, \App\Service\RoomService $roomService): Response
+    public function createRoom(Request $request, RoomService $roomService): Response
     {
-        $room = new \App\Entity\Room();
-        $form = $this->createForm(\App\Form\RoomFormType::class, $room);
+        $room = new Room();
+        $form = $this->createForm(RoomFormType::class, $room);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -3700,7 +3724,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}/edit', name: 'rooms_edit', methods: ['GET', 'POST'])]
-    public function editRoom(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    public function editRoom(int $id, Request $request, RoomService $roomService): Response
     {
         $room = $roomService->getRoomById($id);
         
@@ -3709,7 +3733,7 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_rooms');
         }
 
-        $form = $this->createForm(\App\Form\RoomFormType::class, $room);
+        $form = $this->createForm(RoomFormType::class, $room);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -3744,7 +3768,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}', name: 'rooms_view', methods: ['GET'])]
-    public function viewRoom(int $id, \App\Service\RoomService $roomService): Response
+    public function viewRoom(int $id, RoomService $roomService): Response
     {
         $room = $roomService->getRoomById($id);
         
@@ -3759,7 +3783,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}/delete', name: 'rooms_delete', methods: ['POST'])]
-    public function deleteRoom(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    public function deleteRoom(int $id, Request $request, RoomService $roomService): Response
     {
         if ($this->isCsrfTokenValid('delete_room_' . $id, $request->request->get('_token'))) {
             $room = $roomService->getRoomById($id);
@@ -3789,7 +3813,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}/toggle-status', name: 'rooms_toggle_status', methods: ['POST'])]
-    public function toggleRoomStatus(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    public function toggleRoomStatus(int $id, Request $request, RoomService $roomService): Response
     {
         if ($this->isCsrfTokenValid('toggle_status_room_' . $id, $request->request->get('_token'))) {
             $room = $roomService->getRoomById($id);
@@ -3809,7 +3833,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}/history', name: 'rooms_history', methods: ['GET'])]
-    public function roomHistory(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    public function roomHistory(int $id, Request $request, RoomService $roomService): Response
     {
         $room = $roomService->getRoomById($id);
         
@@ -3834,7 +3858,7 @@ class AdminController extends AbstractController
         }
 
         // Get schedule history for this room
-        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
         $qb = $scheduleRepository->createQueryBuilder('s')
             ->leftJoin('s.room', 'r')
             ->leftJoin('s.subject', 'subj')
@@ -3860,7 +3884,7 @@ class AdminController extends AbstractController
         $scheduleHistory = $qb->getQuery()->getResult();
 
         // Get all academic years for filter dropdown
-        $academicYears = $this->entityManager->getRepository(\App\Entity\AcademicYear::class)
+        $academicYears = $this->entityManager->getRepository(AcademicYear::class)
             ->createQueryBuilder('ay')
             ->where('ay.deletedAt IS NULL')
             ->orderBy('ay.year', 'DESC')
@@ -3893,7 +3917,7 @@ class AdminController extends AbstractController
     }
 
     #[Route('/rooms/{id}/history/export', name: 'rooms_history_export', methods: ['GET'])]
-    public function exportRoomHistory(int $id, Request $request, \App\Service\RoomService $roomService): Response
+    public function exportRoomHistory(int $id, Request $request, RoomService $roomService): Response
     {
         $room = $roomService->getRoomById($id);
         
@@ -3907,7 +3931,7 @@ class AdminController extends AbstractController
         $yearFilter = $request->query->get('year');
 
         // Get schedule history
-        $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+        $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
         $qb = $scheduleRepository->createQueryBuilder('s')
             ->leftJoin('s.room', 'r')
             ->leftJoin('s.subject', 'subj')
@@ -3969,8 +3993,8 @@ class AdminController extends AbstractController
     public function generateRoomSchedulePdf(
         int $id, 
         Request $request,
-        \App\Service\RoomService $roomService,
-        \App\Service\RoomSchedulePdfService $pdfService
+        RoomService $roomService,
+        RoomSchedulePdfService $pdfService
     ): Response
     {
         $room = $roomService->getRoomById($id);
@@ -4020,11 +4044,11 @@ class AdminController extends AbstractController
 
     /**
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years', name: 'academic_years')]
-    public function academicYears(Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function academicYears(Request $request, AcademicYearService $academicYearService): Response
     {
         $isActiveParam = $request->query->get('is_active');
         $isActive = null;
@@ -4061,19 +4085,19 @@ class AdminController extends AbstractController
 
     /**
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years/create', name: 'academic_years_create')]
-    public function createAcademicYear(Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function createAcademicYear(Request $request, AcademicYearService $academicYearService): Response
     {
-        $academicYear = new \App\Entity\AcademicYear();
+        $academicYear = new AcademicYear();
         
         // Set suggested next year
         $suggestedYear = $academicYearService->generateNextYear();
         $academicYear->setYear($suggestedYear);
 
-        $form = $this->createForm(\App\Form\AcademicYearFormType::class, $academicYear);
+        $form = $this->createForm(AcademicYearFormType::class, $academicYear);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -4110,11 +4134,11 @@ class AdminController extends AbstractController
     /**
      * @param int $id
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years/{id}/edit', name: 'academic_years_edit', requirements: ['id' => '\d+'])]
-    public function editAcademicYear(int $id, Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function editAcademicYear(int $id, Request $request, AcademicYearService $academicYearService): Response
     {
         $academicYear = $academicYearService->getAcademicYearById($id);
 
@@ -4123,7 +4147,7 @@ class AdminController extends AbstractController
             return $this->redirectToRoute('admin_academic_years');
         }
 
-        $form = $this->createForm(\App\Form\AcademicYearFormType::class, $academicYear);
+        $form = $this->createForm(AcademicYearFormType::class, $academicYear);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -4157,11 +4181,11 @@ class AdminController extends AbstractController
     /**
      * @param int $id
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years/{id}/delete', name: 'academic_years_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function deleteAcademicYear(int $id, Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function deleteAcademicYear(int $id, Request $request, AcademicYearService $academicYearService): Response
     {
         if (!$this->isCsrfTokenValid('delete_academic_year_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -4196,11 +4220,11 @@ class AdminController extends AbstractController
     /**
      * @param int $id
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years/{id}/set-current', name: 'academic_years_set_current', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function setCurrentAcademicYear(int $id, Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function setCurrentAcademicYear(int $id, Request $request, AcademicYearService $academicYearService): Response
     {
         if (!$this->isCsrfTokenValid('set_current_year_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -4225,11 +4249,11 @@ class AdminController extends AbstractController
     /**
      * @param int $id
      * @param Request $request
-     * @param \App\Service\AcademicYearService $academicYearService
+     * @param AcademicYearService $academicYearService
      * @return Response
      */
     #[Route('/academic-years/{id}/toggle-status', name: 'academic_years_toggle_status', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function toggleAcademicYearStatus(int $id, Request $request, \App\Service\AcademicYearService $academicYearService): Response
+    public function toggleAcademicYearStatus(int $id, Request $request, AcademicYearService $academicYearService): Response
     {
         if (!$this->isCsrfTokenValid('toggle_status_year_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
@@ -4255,11 +4279,11 @@ class AdminController extends AbstractController
     // ==================== CURRICULUM UPLOAD ====================
 
     /**
-     * @param \App\Service\CurriculumUploadService $uploadService
+     * @param CurriculumUploadService $uploadService
      * @return Response
      */
     #[Route('/curricula/template/download', name: 'curriculum_download_template', methods: ['GET'])]
-    public function downloadCurriculumTemplate(\App\Service\CurriculumUploadService $uploadService): Response
+    public function downloadCurriculumTemplate(CurriculumUploadService $uploadService): Response
     {
         $csv = $uploadService->generateTemplate();
         $response = new Response($csv);
@@ -4271,16 +4295,16 @@ class AdminController extends AbstractController
     /**
      * @param Request $request
      * @param EntityManagerInterface $entityManager
-     * @param \App\Service\DepartmentService $departmentService
-     * @param \App\Service\CurriculumUploadService $uploadService
+     * @param DepartmentService $departmentService
+     * @param CurriculumUploadService $uploadService
      * @return JsonResponse
      */
     #[Route('/curricula/bulk-upload', name: 'curriculum_bulk_upload', methods: ['POST'])]
     public function bulkUploadCurriculum(
         Request $request,
         EntityManagerInterface $entityManager,
-        \App\Service\DepartmentService $departmentService,
-        \App\Service\CurriculumUploadService $uploadService
+        DepartmentService $departmentService,
+        CurriculumUploadService $uploadService
     ): JsonResponse
     {
         try {
@@ -4322,7 +4346,7 @@ class AdminController extends AbstractController
             
             try {
                 // Create curriculum
-                $curriculum = new \App\Entity\Curriculum();
+                $curriculum = new Curriculum();
                 $curriculum->setName($curriculumName);
                 $curriculum->setVersion((int)$version);
                 $curriculum->setDepartment($department);
@@ -4368,15 +4392,15 @@ class AdminController extends AbstractController
 
     /**
      * @param Request $request
-     * @param \App\Entity\Curriculum $curriculum
-     * @param \App\Service\CurriculumUploadService $uploadService
+     * @param Curriculum $curriculum
+     * @param CurriculumUploadService $uploadService
      * @return JsonResponse
      */
     #[Route('/curricula/{id}/upload', name: 'curriculum_upload', methods: ['POST'])]
     public function uploadCurriculum(
         Request $request, 
-        \App\Entity\Curriculum $curriculum,
-        \App\Service\CurriculumUploadService $uploadService
+        Curriculum $curriculum,
+        CurriculumUploadService $uploadService
     ): JsonResponse
     {
         try {
@@ -4420,7 +4444,7 @@ class AdminController extends AbstractController
     #[Route('/settings/system', name: 'system_settings')]
     public function systemSettings(Request $request): Response
     {
-        $academicYearRepository = $this->entityManager->getRepository(\App\Entity\AcademicYear::class);
+        $academicYearRepository = $this->entityManager->getRepository(AcademicYear::class);
         $activeYear = $this->systemSettingsService->getActiveAcademicYear();
         $activeSemester = $this->systemSettingsService->getActiveSemester();
         
@@ -4475,7 +4499,7 @@ class AdminController extends AbstractController
             }
 
             // Get schedule count for current semester (if exists)
-            $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+            $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
             $currentScheduleCount = 0;
             $currentYear = $this->systemSettingsService->getActiveAcademicYear();
             $currentSemester = $this->systemSettingsService->getActiveSemester();
@@ -4545,7 +4569,7 @@ class AdminController extends AbstractController
             
             // Get schedule count if there's an active semester
             if ($info['has_active']) {
-                $scheduleRepository = $this->entityManager->getRepository(\App\Entity\Schedule::class);
+                $scheduleRepository = $this->entityManager->getRepository(Schedule::class);
                 $activeYear = $this->systemSettingsService->getActiveAcademicYear();
                 $activeSemester = $this->systemSettingsService->getActiveSemester();
                 

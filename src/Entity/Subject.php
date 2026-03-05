@@ -43,9 +43,6 @@ class Subject
     #[Assert\NotBlank(message: 'Department is required')]
     private ?Department $department = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $prerequisite = null;
-
     #[ORM\Column(length: 50)]
     private ?string $type = 'lecture';
 
@@ -170,17 +167,6 @@ class Subject
     {
         // This method is kept for backward compatibility but should not be used
         // Use setDepartment() instead
-        return $this;
-    }
-
-    public function getPrerequisite(): ?string
-    {
-        return $this->prerequisite;
-    }
-
-    public function setPrerequisite(?string $prerequisite): static
-    {
-        $this->prerequisite = $prerequisite;
         return $this;
     }
 

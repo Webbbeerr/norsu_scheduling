@@ -177,7 +177,7 @@ class DepartmentService
         $withHead = $this->departmentRepository->createQueryBuilder('d')
             ->select('COUNT(d.id)')
             ->where('d.deletedAt IS NULL')
-            ->andWhere('d.headName IS NOT NULL')
+            ->andWhere('d.head IS NOT NULL')
             ->getQuery()
             ->getSingleScalarResult();
 

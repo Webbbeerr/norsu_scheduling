@@ -164,7 +164,6 @@ class CurriculumUploadService
                     'semester' => $this->parseSemester($row[6]), // Parse as string: '1st', '2nd', 'summer'
                     'type' => isset($row[7]) && trim($row[7]) !== '' ? trim($row[7]) : 'lecture',
                     'required' => isset($row[8]) ? $this->parseBoolean($row[8]) : true,
-                    'prerequisites' => isset($row[9]) && trim($row[9]) !== '' ? trim($row[9]) : null,
                     'row_number' => $rowNumber
                 ];
 
@@ -241,7 +240,6 @@ class CurriculumUploadService
                         'semester' => $this->parseSemester((string)$worksheet->getCell("G{$row}")->getValue()), // Parse as string
                         'type' => trim((string)$worksheet->getCell("H{$row}")->getValue()) ?: 'lecture',
                         'required' => $this->parseBoolean((string)$worksheet->getCell("I{$row}")->getValue()),
-                        'prerequisites' => trim((string)$worksheet->getCell("J{$row}")->getValue()) ?: null,
                         'row_number' => $row
                     ];
 
@@ -430,7 +428,6 @@ class CurriculumUploadService
 
                     // Create curriculum subject link
                     $curriculumSubject = new CurriculumSubject();
-                    $curriculumSubject->setCurriculum($curriculum);
                     $curriculumSubject->setCurriculumTerm($term);
                     $curriculumSubject->setSubject($subject);
                     $curriculumSubject->setCreatedAt(new \DateTimeImmutable());
@@ -610,32 +607,31 @@ class CurriculumUploadService
      */
     public function generateTemplate(): string
     {
-        $csv = "Subject Code,Descriptive Title,Units,Lec,Lab,Year Level,Semester,Subject Type,Required,Prerequisites\n";
+        $csv = "Subject Code,Descriptive Title,Units,Lec,Lab,Year Level,Semester,Subject Type,Required\n";
         $csv .= "# NORSU Curriculum Template - Bachelor of Science in Information Technology\n";
         $csv .= "# Semester values: 1st, 2nd, summer (or use 1, 2, 3)\n";
         $csv .= "# Subject Types: lecture, laboratory, lecture_lab, pe, nstp\n";
-        $csv .= "# Prerequisites: Use comma-separated subject codes (e.g., ITS 100, ITS 101)\n";
         $csv .= "#\n";
         $csv .= "# FIRST YEAR - First Semester\n";
-        $csv .= "GE 4,Mathematics in the Modern World,3,3,0,1,1st,lecture,yes,\n";
-        $csv .= "GE 5,Purposive Communication,3,3,0,1,1st,lecture,yes,\n";
-        $csv .= "ITS 100,Introduction to Computing,3,3,0,1,1st,lecture,yes,\n";
-        $csv .= "PE 1,Physical Education I,2,2,0,1,1st,pe,yes,\n";
-        $csv .= "NSTP 1,National Service Training Program I,3,3,0,1,1st,nstp,yes,\n";
+        $csv .= "GE 4,Mathematics in the Modern World,3,3,0,1,1st,lecture,yes\n";
+        $csv .= "GE 5,Purposive Communication,3,3,0,1,1st,lecture,yes\n";
+        $csv .= "ITS 100,Introduction to Computing,3,3,0,1,1st,lecture,yes\n";
+        $csv .= "PE 1,Physical Education I,2,2,0,1,1st,pe,yes\n";
+        $csv .= "NSTP 1,National Service Training Program I,3,3,0,1,1st,nstp,yes\n";
         $csv .= "#\n";
         $csv .= "# FIRST YEAR - Second Semester\n";
-        $csv .= "GE 1,Understanding the Self,3,3,0,1,2nd,lecture,yes,\n";
-        $csv .= "ITS 103,Discrete Mathematics,3,3,0,1,2nd,lecture,yes,\n";
-        $csv .= "ITS 104,Computer Programming I,2,1,3,1,2nd,lecture_lab,yes,ITS 100\n";
-        $csv .= "PE 2,Physical Education II,2,2,0,1,2nd,pe,yes,PE 1\n";
-        $csv .= "NSTP 2,National Service Training Program II,3,3,0,1,2nd,nstp,yes,NSTP 1\n";
+        $csv .= "GE 1,Understanding the Self,3,3,0,1,2nd,lecture,yes\n";
+        $csv .= "ITS 103,Discrete Mathematics,3,3,0,1,2nd,lecture,yes\n";
+        $csv .= "ITS 104,Computer Programming I,2,1,3,1,2nd,lecture_lab,yes\n";
+        $csv .= "PE 2,Physical Education II,2,2,0,1,2nd,pe,yes\n";
+        $csv .= "NSTP 2,National Service Training Program II,3,3,0,1,2nd,nstp,yes\n";
         $csv .= "#\n";
         $csv .= "# THIRD YEAR - Summer\n";
-        $csv .= "ITS 400,Internship 1 (300 hours),3,0,0,3,summer,internship,yes,Must have taken at least 90% of 1st to 3rd yr\n";
+        $csv .= "ITS 400,Internship 1 (300 hours),3,0,0,3,summer,internship,yes\n";
         $csv .= "#\n";
         $csv .= "# FOURTH YEAR - First Semester\n";
-        $csv .= "ITS 401,Internship 2 (500 hours),3,0,0,4,1st,internship,yes,ITS 400\n";
-        $csv .= "ITS 402,Capstone Project 1,3,0,3,4,1st,laboratory,yes,ITS 306\n";
+        $csv .= "ITS 401,Internship 2 (500 hours),3,0,0,4,1st,internship,yes\n";
+        $csv .= "ITS 402,Capstone Project 1,3,0,3,4,1st,laboratory,yes\n";
         
         return $csv;
     }

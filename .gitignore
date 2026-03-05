@@ -56,3 +56,7 @@ yarn-error.log*
 PRODUCTION_READINESS.md
 QUICK_START_PRODUCTION.md
 ###< production documentation ###
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###

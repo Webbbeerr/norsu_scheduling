@@ -311,7 +311,7 @@ class CollegeService
             $college->setDescription($data['description']);
         }
 
-        if (isset($data['dean'])) {
+        if (array_key_exists('dean', $data)) {
             $college->setDean($data['dean']);
         }
 

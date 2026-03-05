@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -115,5 +116,25 @@ class AppAuthenticator extends AbstractLoginFormAuthenticator
     protected function getLoginUrl(Request $request): string
     {
         return $this->urlGenerator->generate(self::LOGIN_ROUTE);
+    }
+
+    /**
+     * Override the entry point so AJAX / fetch requests get a JSON 401
+     * instead of being redirected to the HTML login page.
+     */
+    public function start(Request $request, ?AuthenticationException $authException = null): Response
+    {
+        if ($request->isXmlHttpRequest()
+            || $request->headers->get('Accept') === 'application/json'
+            || str_contains($request->headers->get('Accept', ''), 'application/json')
+        ) {
+            return new JsonResponse(
+                ['error' => 'Authentication required'],
+                Response::HTTP_UNAUTHORIZED,
+            );
+        }
+
+        // Default: redirect to login page for normal browser requests
+        return parent::start($request, $authException);
     }
 }

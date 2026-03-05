@@ -110,6 +110,10 @@ class Schedule
 
     public function getDayPatternLabel(): string
     {
+        if (!$this->dayPattern) {
+            return '';
+        }
+
         $labels = [
             'M-W-F' => 'Monday-Wednesday-Friday',
             'T-TH' => 'Tuesday-Thursday',

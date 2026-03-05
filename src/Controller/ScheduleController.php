@@ -9,6 +9,7 @@ use App\Repository\SubjectRepository;
 use App\Repository\AcademicYearRepository;
 use App\Service\SubjectService;
 use App\Service\ActivityLogService;
+use App\Service\NotificationService;
 use App\Service\SystemSettingsService;
 use App\Service\DashboardService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ class ScheduleController extends AbstractController
     private AcademicYearRepository $academicYearRepository;
     private SubjectService $subjectService;
     private ActivityLogService $activityLogService;
+    private NotificationService $notificationService;
     private SystemSettingsService $systemSettingsService;
     private DashboardService $dashboardService;
 
@@ -39,6 +41,7 @@ class ScheduleController extends AbstractController
         AcademicYearRepository $academicYearRepository,
         SubjectService $subjectService,
         ActivityLogService $activityLogService,
+        NotificationService $notificationService,
         SystemSettingsService $systemSettingsService,
         DashboardService $dashboardService
     ) {
@@ -49,6 +52,7 @@ class ScheduleController extends AbstractController
         $this->academicYearRepository = $academicYearRepository;
         $this->subjectService = $subjectService;
         $this->activityLogService = $activityLogService;
+        $this->notificationService = $notificationService;
         $this->systemSettingsService = $systemSettingsService;
         $this->dashboardService = $dashboardService;
     }
@@ -220,7 +224,7 @@ class ScheduleController extends AbstractController
                 ->from('App\Entity\Subject', 's')
                 ->leftJoin('App\Entity\CurriculumSubject', 'cs', 'WITH', 'cs.subject = s')
                 ->leftJoin('cs.curriculumTerm', 'ct')
-                ->leftJoin('cs.curriculum', 'c')
+                ->leftJoin('ct.curriculum', 'c')
                 ->where('s.deletedAt IS NULL')
                 ->andWhere('s.isActive = :active')
                 ->andWhere(
@@ -1306,6 +1310,8 @@ class ScheduleController extends AbstractController
                 return $this->json(['success' => false, 'message' => 'Schedule not found'], 404);
             }
             
+            $oldFaculty = $schedule->getFaculty(); // Capture before any change
+
             if ($facultyId) {
                 $faculty = $this->entityManager->getRepository(\App\Entity\User::class)->find($facultyId);
                 if (!$faculty) {
@@ -1327,7 +1333,6 @@ class ScheduleController extends AbstractController
                 );
             } else {
                 // Unassign faculty
-                $oldFaculty = $schedule->getFaculty();
                 $schedule->setFaculty(null);
                 
                 // Log the activity
@@ -1347,6 +1352,35 @@ class ScheduleController extends AbstractController
             }
             
             $this->entityManager->flush();
+
+            // Send notifications (isolated so assignment is never rolled back)
+            try {
+                if ($facultyId && $schedule->getFaculty()) {
+                    // Faculty was assigned – notify them
+                    $this->notificationService->notifyScheduleAssigned($schedule);
+                }
+                if (!$facultyId && $oldFaculty) {
+                    // Faculty was unassigned – notify the OLD faculty
+                    $subject = $schedule->getSubject();
+                    $this->notificationService->notifyScheduleRemoved(
+                        $oldFaculty,
+                        $subject?->getTitle() ?? 'N/A',
+                        $subject?->getCode() ?? '',
+                    );
+                }
+                if ($facultyId && $oldFaculty && $oldFaculty->getId() !== (int) $facultyId) {
+                    // Schedule was reassigned from one faculty to another – notify the old one
+                    $subject = $schedule->getSubject();
+                    $this->notificationService->notifyScheduleRemoved(
+                        $oldFaculty,
+                        $subject?->getTitle() ?? 'N/A',
+                        $subject?->getCode() ?? '',
+                    );
+                }
+            } catch (\Exception $e) {
+                // Log but don't fail – the assignment itself succeeded
+                error_log('[Notification] Failed to send notification in assignFacultyToSchedule: ' . $e->getMessage());
+            }
             
             return $this->json([
                 'success' => true,

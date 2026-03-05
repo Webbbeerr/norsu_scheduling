@@ -6,9 +6,10 @@ use App\Entity\College;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -27,19 +28,21 @@ class CollegeFormType extends AbstractType
                     'maxlength' => 10,
                 ],
                 'constraints' => [
-                    new Assert\NotBlank(['message' => 'College code is required']),
-                    new Assert\Length([
-                        'min' => 2,
-                        'max' => 10,
-                        'minMessage' => 'College code must be at least {{ limit }} characters',
-                        'maxMessage' => 'College code cannot exceed {{ limit }} characters',
-                    ]),
-                    new Assert\Regex([
-                        'pattern' => '/^[A-Z0-9]+$/',
-                        'message' => 'College code must contain only uppercase letters and numbers',
+                    new Assert\Sequentially([
+                        new Assert\NotBlank(['message' => 'College code is required']),
+                        new Assert\Length([
+                            'min' => 2,
+                            'max' => 10,
+                            'minMessage' => 'College code must be at least {{ limit }} characters',
+                            'maxMessage' => 'College code cannot exceed {{ limit }} characters',
+                        ]),
+                        new Assert\Regex([
+                            'pattern' => '/^[A-Z]+$/',
+                            'message' => 'College code must contain only uppercase letters',
+                        ]),
                     ]),
                 ],
-                'help' => 'Unique abbreviation for the college (2-10 uppercase letters/numbers)',
+                'help' => 'Unique abbreviation for the college (2-10 uppercase letters)',
             ])
             ->add('name', TextType::class, [
                 'label' => 'College Name',
@@ -70,11 +73,11 @@ class CollegeFormType extends AbstractType
                 'help' => 'Optional description of the college',
             ])
             ->add('dean', TextType::class, [
-                'label' => 'Dean Name',
+                'label' => 'Dean',
                 'required' => false,
                 'attr' => [
                     'class' => 'mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm',
-                    'placeholder' => 'e.g., Dr. John Smith',
+                    'placeholder' => 'e.g., Dr. Juan Dela Cruz',
                     'maxlength' => 255,
                 ],
                 'help' => 'Name of the college dean',
@@ -100,18 +103,16 @@ class CollegeFormType extends AbstractType
                     ])
                 ],
                 'help' => 'Upload college logo (max 2MB, JPG/PNG/GIF/WebP)',
-            ])
-            ->add('isActive', CheckboxType::class, [
-                'label' => 'Active',
-                'required' => false,
-                'attr' => [
-                    'class' => 'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500',
-                ],
-                'label_attr' => [
-                    'class' => 'ml-2 block text-sm text-gray-900',
-                ],
-                'help' => 'Inactive colleges won\'t appear in selection lists',
             ]);
+
+        // Auto-uppercase the college code before validation
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event) {
+            $data = $event->getData();
+            if (isset($data['code']) && is_string($data['code'])) {
+                $data['code'] = strtoupper(trim($data['code']));
+                $event->setData($data);
+            }
+        });
     }
 
     public function configureOptions(OptionsResolver $resolver): void

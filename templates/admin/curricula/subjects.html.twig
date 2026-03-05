@@ -538,15 +538,6 @@
                                 </svg>
                                 Duplicate
                             </button>
-                            
-                            <button type="button"
-                                    onclick="openPrerequisitesModal(this)"
-                                    class="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
-                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                                </svg>
-                                Prerequisites
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -607,7 +598,7 @@
                             <ul class="text-sm text-blue-700 space-y-1">
                                 <li>• <strong>Supported formats:</strong> Excel (.xlsx, .xls) or CSV (.csv)</li>
                                 <li>• <strong>Required columns:</strong> Course Code, Course Title, Units, Lec, Lab, Year Level, Semester</li>
-                                <li>• <strong>Optional columns:</strong> Course Type, Required (yes/no), Prerequisites</li>
+                                <li>• <strong>Optional columns:</strong> Course Type, Required (yes/no)</li>
                             </ul>
                         </div>
                     </div>
@@ -886,14 +877,6 @@
                             </svg>
                             Duplicate
                         </button>
-                        
-                        <button type="button" onclick="openPrerequisitesModal(this)"
-                                class="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 transition">
-                            <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-                            </svg>
-                            Prerequisites
-                        </button>
                     </div>
                 </div>
             `;
@@ -948,11 +931,6 @@
             clone.querySelector('input[name="course_title[]"]').value = '';
             
             coursesContainer.appendChild(clone);
-        }
-
-        function openPrerequisitesModal(button) {
-            // TODO: Implement prerequisites modal
-            alert('Prerequisites feature coming soon!');
         }
 
         async function saveSubjects() {

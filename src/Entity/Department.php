@@ -29,8 +29,9 @@ class Department
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
-    #[ORM\Column(name: 'head_name', length: 255, nullable: true)]
-    private ?string $headName = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'head_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $head = null;
 
     #[ORM\Column(name: 'contact_email', length: 255, nullable: true)]
     private ?string $contactEmail = null;
@@ -103,15 +104,27 @@ class Department
         return $this;
     }
 
-    public function getHeadName(): ?string
+    public function getHead(): ?User
     {
-        return $this->headName;
+        return $this->head;
     }
 
-    public function setHeadName(?string $headName): static
+    public function setHead(?User $head): static
     {
-        $this->headName = $headName;
+        $this->head = $head;
         return $this;
+    }
+
+    /**
+     * Backward-compatible getter — returns the head's full name or null.
+     */
+    public function getHeadName(): ?string
+    {
+        if ($this->head === null) {
+            return null;
+        }
+
+        return trim(($this->head->getFirstname() ?? '') . ' ' . ($this->head->getLastname() ?? '')) ?: $this->head->getUsername();
     }
 
     public function getContactEmail(): ?string

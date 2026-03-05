@@ -229,12 +229,108 @@
                         {% endif %}
                         
                         <!-- Notifications -->
-                        <button class="p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg">
-                            <span class="sr-only">View notifications</span>
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                            </svg>
-                        </button>
+                        <div class="relative" x-data="notificationDropdown()">
+                            <button @click="toggle()" class="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg">
+                                <span class="sr-only">View notifications</span>
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                </svg>
+                                <!-- Unread badge -->
+                                <span x-show="unreadCount > 0"
+                                      x-text="unreadCount > 99 ? '99+' : unreadCount"
+                                      class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-500 rounded-full min-w-[1.25rem]">
+                                </span>
+                            </button>
+
+                            <!-- Notification Panel -->
+                            <div x-show="open"
+                                 @click.away="open = false"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="transform opacity-0 scale-95 -translate-y-1"
+                                 x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
+                                
+                                <!-- Header -->
+                                <div class="px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+                                    <h3 class="text-sm font-semibold text-white">Notifications</h3>
+                                    <button x-show="unreadCount > 0" @click="markAllRead()"
+                                            class="text-xs text-blue-100 hover:text-white transition-colors">
+                                        Mark all as read
+                                    </button>
+                                </div>
+
+                                <!-- Notification list -->
+                                <div class="max-h-96 overflow-y-auto divide-y divide-gray-100">
+                                    <template x-if="loading">
+                                        <div class="p-6 text-center text-gray-400">
+                                            <svg class="animate-spin h-6 w-6 mx-auto mb-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                            <p class="text-sm">Loading…</p>
+                                        </div>
+                                    </template>
+                                    <template x-if="!loading && notifications.length === 0">
+                                        <div class="p-6 text-center">
+                                            <svg class="mx-auto h-10 w-10 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                            </svg>
+                                            <p class="text-sm text-gray-500">No notifications yet</p>
+                                        </div>
+                                    </template>
+                                    <template x-for="n in notifications" :key="n.id">
+                                        <div :class="n.is_read ? 'bg-white' : 'bg-blue-50'"
+                                             class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer group">
+                                            <div class="flex items-start space-x-3">
+                                                <!-- Icon -->
+                                                <div :class="n.is_read ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'"
+                                                     class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5">
+                                                    <template x-if="n.type === 'schedule_assigned'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                    </template>
+                                                    <template x-if="n.type === 'schedule_updated'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                    </template>
+                                                    <template x-if="n.type === 'schedule_removed'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </template>
+                                                    <template x-if="n.type === 'schedule_activated'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    </template>
+                                                    <template x-if="n.type === 'schedule_deactivated'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    </template>
+                                                    <template x-if="n.type === 'announcement' || n.type === 'system'">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    </template>
+                                                </div>
+                                                <!-- Content -->
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-medium text-gray-900" x-text="n.title"></p>
+                                                    <p class="text-xs text-gray-500 mt-0.5 line-clamp-2" x-text="n.message"></p>
+                                                    <p class="text-xs text-gray-400 mt-1" x-text="n.time_ago"></p>
+                                                </div>
+                                                <!-- Actions -->
+                                                <div class="flex-shrink-0 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button x-show="!n.is_read" @click.stop="markRead(n)" title="Mark as read"
+                                                            class="p-1 text-gray-400 hover:text-blue-600 rounded">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    </button>
+                                                    <button @click.stop="deleteNotification(n)" title="Delete"
+                                                            class="p-1 text-gray-400 hover:text-red-500 rounded">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- User Dropdown -->
                         <div class="relative">
@@ -323,7 +419,130 @@
     <!-- Include Profile Modal -->
     {% include 'components/profile_modal.html.twig' %}
 
+    <!-- Notification dropdown Alpine.js component -->
+    <script>
+    function notificationDropdown() {
+        return {
+            open: false,
+            loading: false,
+            notifications: [],
+            unreadCount: 0,
+            pollInterval: null,
+
+            init() {
+                console.log('[Notifications] Component initialized');
+                this.fetchUnreadCount();
+                // Poll for new notifications every 10 seconds
+                this.pollInterval = setInterval(() => this.fetchUnreadCount(), 10000);
+            },
+
+            destroy() {
+                if (this.pollInterval) {
+                    clearInterval(this.pollInterval);
+                }
+            },
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.fetchNotifications();
+                }
+            },
+
+            /** Helper: perform a fetch and return parsed JSON, or null on auth/error */
+            async _fetch(url, options = {}) {
+                const defaults = {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) }
+                };
+                const res = await fetch(url, { ...options, ...defaults });
+
+                // Detect redirect to login page (session expired)
+                if (res.redirected) {
+                    console.warn('[Notifications] Session expired — redirected to', res.url);
+                    window.location.reload();
+                    return null;
+                }
+
+                if (!res.ok) {
+                    console.error('[Notifications] Request failed', res.status, url);
+                    return null;
+                }
+
+                // Guard: make sure we actually got JSON back
+                const ct = res.headers.get('content-type') || '';
+                if (!ct.includes('application/json')) {
+                    console.warn('[Notifications] Expected JSON but got', ct, '— likely a login page redirect');
+                    return null;
+                }
+
+                return await res.json();
+            },
+
+            async fetchNotifications() {
+                this.loading = true;
+                try {
+                    const data = await this._fetch('{{ path("faculty_notifications_json") }}');
+                    if (!data) return;
+                    this.notifications = data.notifications || [];
+                    this.unreadCount = data.unread_count || 0;
+                    console.log('[Notifications] Loaded', this.notifications.length, 'notifications, unread:', this.unreadCount);
+                } catch (e) {
+                    console.error('[Notifications] Failed to load notifications', e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            async fetchUnreadCount() {
+                try {
+                    const data = await this._fetch('{{ path("faculty_notifications_unread_count") }}');
+                    if (!data) return;
+                    this.unreadCount = data.unread_count || 0;
+                } catch (e) {
+                    console.error('[Notifications] Polling error', e);
+                }
+            },
+
+            async markRead(n) {
+                try {
+                    const data = await this._fetch('{{ path("faculty_notification_read", {id: 0}) }}'.replace('/0/', '/' + n.id + '/'), { method: 'POST' });
+                    if (!data) return;
+                    n.is_read = true;
+                    this.unreadCount = Math.max(0, this.unreadCount - 1);
+                } catch (e) {
+                    console.error('[Notifications] Failed to mark notification as read', e);
+                }
+            },
+
+            async markAllRead() {
+                try {
+                    const data = await this._fetch('{{ path("faculty_notifications_read_all") }}', { method: 'POST' });
+                    if (!data) return;
+                    this.notifications.forEach(n => n.is_read = true);
+                    this.unreadCount = 0;
+                } catch (e) {
+                    console.error('[Notifications] Failed to mark all as read', e);
+                }
+            },
+
+            async deleteNotification(n) {
+                try {
+                    const data = await this._fetch('{{ path("faculty_notification_delete", {id: 0}) }}'.replace('/0/', '/' + n.id + '/'), { method: 'POST' });
+                    if (!data) return;
+                    this.notifications = this.notifications.filter(x => x.id !== n.id);
+                    if (!n.is_read) {
+                        this.unreadCount = Math.max(0, this.unreadCount - 1);
+                    }
+                } catch (e) {
+                    console.error('[Notifications] Failed to delete notification', e);
+                }
+            }
+        };
+    }
+    </script>
+
     <!-- Alpine.js loaded last to ensure all component functions are defined -->
-    <script src="{{ asset('vendor/js/alpine.min.js') }}"></script>
+    <script defer src="{{ asset('vendor/js/alpine.min.js') }}"></script>
 </body>
 </html>

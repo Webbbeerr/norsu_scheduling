@@ -9,8 +9,10 @@ use App\Repository\CollegeRepository;
 use App\Repository\DepartmentRepository;
 use App\Repository\UserRepository;
 use App\Service\ActivityLogService;
+use App\Service\UserService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -154,5 +156,41 @@ class SecurityController extends AbstractController
             'registrationForm' => $form->createView(),
             'departments_by_college' => $departmentsByCollege,
         ], new Response('', $form->isSubmitted() ? Response::HTTP_UNPROCESSABLE_ENTITY : Response::HTTP_OK));
+    }
+
+    #[Route('/register/check-availability', name: 'app_register_check_availability', methods: ['POST'])]
+    public function checkRegistrationAvailability(Request $request, UserService $userService): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $field = $data['field'] ?? null;
+        $value = $data['value'] ?? null;
+
+        if (!$field || !$value) {
+            return new JsonResponse(['available' => false, 'message' => 'Missing field or value.']);
+        }
+
+        $available = false;
+        $label = '';
+        switch ($field) {
+            case 'username':
+                $available = $userService->isUsernameAvailable($value);
+                $label = 'Username';
+                break;
+            case 'email':
+                $available = $userService->isEmailAvailable($value);
+                $label = 'Email';
+                break;
+            case 'employee_id':
+                $available = $userService->isEmployeeIdAvailable($value);
+                $label = 'Employee ID';
+                break;
+            default:
+                return new JsonResponse(['available' => false, 'message' => 'Invalid field.']);
+        }
+
+        return new JsonResponse([
+            'available' => $available,
+            'message' => $available ? 'Available' : $label . ' is already taken.'
+        ]);
     }
 }

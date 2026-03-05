@@ -4,12 +4,15 @@ namespace App\Controller;
 
 use App\Entity\Schedule;
 use App\Entity\AcademicYear;
+use App\Entity\Notification;
 use App\Entity\User;
 use App\Form\FacultyProfileFormType;
+use App\Service\NotificationService;
 use App\Service\SystemSettingsService;
 use App\Service\TeachingLoadPdfService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,15 +26,18 @@ class FacultyController extends AbstractController
     private EntityManagerInterface $entityManager;
     private SystemSettingsService $systemSettingsService;
     private TeachingLoadPdfService $teachingLoadPdfService;
+    private NotificationService $notificationService;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         SystemSettingsService $systemSettingsService,
-        TeachingLoadPdfService $teachingLoadPdfService
+        TeachingLoadPdfService $teachingLoadPdfService,
+        NotificationService $notificationService
     ) {
         $this->entityManager = $entityManager;
         $this->systemSettingsService = $systemSettingsService;
         $this->teachingLoadPdfService = $teachingLoadPdfService;
+        $this->notificationService = $notificationService;
     }
 
     private function getBaseTemplateData(): array
@@ -602,5 +608,83 @@ class FacultyController extends AbstractController
         }
         
         return $pdf;
+    }
+
+    // ══════════════════════════════════════════════
+    //  NOTIFICATION ENDPOINTS (session-auth JSON)
+    // ══════════════════════════════════════════════
+
+    #[Route('/notifications/json', name: 'notifications_json', methods: ['GET'])]
+    public function notificationsJson(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user   = $this->getUser();
+        $limit  = (int) $request->query->get('limit', 20);
+        $offset = (int) $request->query->get('offset', 0);
+
+        $notifications = $this->notificationService->getForUser($user, $limit, $offset);
+        $unreadCount   = $this->notificationService->getUnreadCount($user);
+
+        return $this->json([
+            'notifications' => array_map(
+                fn(Notification $n) => $this->notificationService->serialize($n),
+                $notifications,
+            ),
+            'unread_count' => $unreadCount,
+        ]);
+    }
+
+    #[Route('/notifications/unread-count', name: 'notifications_unread_count', methods: ['GET'])]
+    public function notificationsUnreadCount(): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json([
+            'unread_count' => $this->notificationService->getUnreadCount($user),
+        ]);
+    }
+
+    #[Route('/notifications/{id}/read', name: 'notification_read', methods: ['POST'])]
+    public function markNotificationRead(int $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $notification = $this->entityManager->getRepository(Notification::class)->find($id);
+
+        if (!$notification || $notification->getUser()?->getId() !== $user->getId()) {
+            return $this->json(['error' => 'Notification not found'], 404);
+        }
+
+        $this->notificationService->markAsRead($notification);
+
+        return $this->json(['success' => true]);
+    }
+
+    #[Route('/notifications/read-all', name: 'notifications_read_all', methods: ['POST'])]
+    public function markAllNotificationsRead(): JsonResponse
+    {
+        /** @var User $user */
+        $user    = $this->getUser();
+        $updated = $this->notificationService->markAllAsRead($user);
+
+        return $this->json([
+            'success' => true,
+            'updated' => $updated,
+        ]);
+    }
+
+    #[Route('/notifications/{id}/delete', name: 'notification_delete', methods: ['POST'])]
+    public function deleteNotification(int $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $notification = $this->entityManager->getRepository(Notification::class)->find($id);
+
+        if (!$notification || !$this->notificationService->delete($notification, $user)) {
+            return $this->json(['error' => 'Notification not found'], 404);
+        }
+
+        return $this->json(['success' => true]);
     }
 }

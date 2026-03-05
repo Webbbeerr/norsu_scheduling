@@ -10,6 +10,7 @@ use App\Form\UserEditFormType;
 use App\Form\RoomFormType;
 use App\Service\DashboardService;
 use App\Service\DepartmentHeadService;
+use App\Service\NotificationService;
 use App\Service\UserService;
 use App\Service\ScheduleConflictDetector;
 use App\Service\TeachingLoadPdfService;
@@ -45,6 +46,7 @@ class DepartmentHeadController extends AbstractController
     private TeachingLoadPdfService $pdfService;
     private ActivityLogService $activityLogService;
     private SystemSettingsService $systemSettingsService;
+    private NotificationService $notificationService;
 
     public function __construct(
         DashboardService $dashboardService,
@@ -59,7 +61,8 @@ class DepartmentHeadController extends AbstractController
         EntityManagerInterface $entityManager,
         TeachingLoadPdfService $pdfService,
         ActivityLogService $activityLogService,
-        SystemSettingsService $systemSettingsService
+        SystemSettingsService $systemSettingsService,
+        NotificationService $notificationService
     ) {
         $this->dashboardService = $dashboardService;
         $this->departmentHeadService = $departmentHeadService;
@@ -74,6 +77,7 @@ class DepartmentHeadController extends AbstractController
         $this->entityManager = $entityManager;
         $this->pdfService = $pdfService;
         $this->systemSettingsService = $systemSettingsService;
+        $this->notificationService = $notificationService;
     }
 
     private function getBaseTemplateData(): array
@@ -1888,6 +1892,17 @@ class DepartmentHeadController extends AbstractController
                     );
                 }
 
+                // Notify assigned faculty about their new schedules
+                foreach ($createdSchedules as $schedule) {
+                    try {
+                        if ($schedule->getFaculty()) {
+                            $this->notificationService->notifyScheduleAssigned($schedule);
+                        }
+                    } catch (\Exception $e) {
+                        error_log('[Notification] Failed in createSchedule: ' . $e->getMessage());
+                    }
+                }
+
                 $count = count($createdSchedules);
                 $this->addFlash('success', "✅ {$count} schedule(s) created successfully!");
 
@@ -2409,6 +2424,13 @@ class DepartmentHeadController extends AbstractController
                         ]
                     );
 
+                    // Notify faculty about the update
+                    try {
+                        $this->notificationService->notifyScheduleUpdated($schedule);
+                    } catch (\Exception $e) {
+                        error_log('[Notification] Failed in editSchedule: ' . $e->getMessage());
+                    }
+
                     $this->addFlash('success', 'Schedule updated successfully!');
                     return $this->redirectToRoute('department_head_schedules');
                 }
@@ -2471,10 +2493,15 @@ class DepartmentHeadController extends AbstractController
         try {
             $schedule->setStatus('active');
             $this->entityManager->flush();
-
             $this->addFlash('success', 'Schedule activated successfully.');
         } catch (\Exception $e) {
             $this->addFlash('error', 'Error activating schedule: ' . $e->getMessage());
+        }
+
+        try {
+            $this->notificationService->notifyScheduleActivated($schedule);
+        } catch (\Exception $e) {
+            error_log('[Notification] Failed in activateSchedule: ' . $e->getMessage());
         }
 
         return $this->redirectToRoute('department_head_schedules');
@@ -2501,10 +2528,15 @@ class DepartmentHeadController extends AbstractController
         try {
             $schedule->setStatus('inactive');
             $this->entityManager->flush();
-
             $this->addFlash('success', 'Schedule deactivated successfully.');
         } catch (\Exception $e) {
             $this->addFlash('error', 'Error deactivating schedule: ' . $e->getMessage());
+        }
+
+        try {
+            $this->notificationService->notifyScheduleDeactivated($schedule);
+        } catch (\Exception $e) {
+            error_log('[Notification] Failed in deactivateSchedule: ' . $e->getMessage());
         }
 
         return $this->redirectToRoute('department_head_schedules');
@@ -2812,6 +2844,7 @@ class DepartmentHeadController extends AbstractController
         }
 
         $facultyId = $request->request->get('faculty_id');
+        $oldFaculty = $schedule->getFaculty(); // Capture before any change
         
         if ($facultyId) {
             $faculty = $this->entityManager->getRepository(User::class)->find($facultyId);
@@ -2859,7 +2892,6 @@ class DepartmentHeadController extends AbstractController
                 ]
             );
         } else {
-            $oldFaculty = $schedule->getFaculty();
             $schedule->setFaculty(null);
             
             // Log the activity
@@ -2880,18 +2912,37 @@ class DepartmentHeadController extends AbstractController
 
         try {
             $this->entityManager->flush();
-            
-            return $this->json([
-                'success' => true,
-                'message' => $facultyId ? 'Faculty assigned successfully' : 'Faculty unassigned successfully',
-                'faculty' => $schedule->getFaculty() ? [
-                    'id' => $schedule->getFaculty()->getId(),
-                    'name' => $schedule->getFaculty()->getFullName()
-                ] : null
-            ]);
         } catch (\Exception $e) {
             return $this->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
+
+        // Send notifications (isolated so assignment is never rolled back)
+        try {
+            if ($facultyId && $schedule->getFaculty()) {
+                // Faculty was assigned – notify them
+                $this->notificationService->notifyScheduleAssigned($schedule);
+            } elseif (!$facultyId && $oldFaculty) {
+                // Faculty was unassigned – notify the OLD faculty
+                $subject = $schedule->getSubject();
+                $this->notificationService->notifyScheduleRemoved(
+                    $oldFaculty,
+                    $subject?->getTitle() ?? 'N/A',
+                    $subject?->getCode() ?? '',
+                );
+            }
+        } catch (\Exception $e) {
+            // Log but don't fail the response – the assignment itself succeeded
+            error_log('[Notification] Failed to send notification in assignFaculty: ' . $e->getMessage());
+        }
+
+        return $this->json([
+            'success' => true,
+            'message' => $facultyId ? 'Faculty assigned successfully' : 'Faculty unassigned successfully',
+            'faculty' => $schedule->getFaculty() ? [
+                'id' => $schedule->getFaculty()->getId(),
+                'name' => $schedule->getFaculty()->getFullName()
+            ] : null
+        ]);
     }
 
     #[Route('/faculty-assignments/toggle-overload/{id}', name: 'faculty_assignments_toggle_overload', methods: ['POST'])]
